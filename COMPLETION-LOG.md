@@ -801,14 +801,49 @@
     dispatch + semaphore + isolated context.
 
 ### Phase 07 — MCP client integration
-- **Status:** ⏳ Not started
-- **Started:** —
+- **Status:** 🔄 In progress (Prompt 01 ✅; Prompts 02–03 pending)
+- **Started:** 2026-04-15
 - **Completed:** —
 - **Duration (actual):** —
-- **Session count:** —
-- **Commits:** —
-- **Tests passing:** —
-- **Notes:** —
+- **Session count:** 1
+- **Commits:** (pending commit for 07.01)
+- **Tests passing:** 586/589 + 3 skipped (+28 new: credential-strip 12, client-stdio 6, registry 10)
+- **Notes:**
+  - ✅ Prompt 01 (stdio MCP client) — landed via 2-agent parallel Opus team.
+    SDK pinned to `@modelcontextprotocol/sdk@^1` (resolved 1.29.0).
+    (A) `engine/src/mcp/credential-strip.ts` + `.test.ts` (12 tests) —
+    `buildCredentialScrubber` over `Object.values(env)`: longest-first,
+    regex-metachar escaped, <6-char / empty-string secrets skipped via
+    optional `onSkipped` hook, identity-function fallback when all
+    secrets are skipped, `REDACTED = "[REDACTED]"` constant exported.
+    (B) `engine/src/mcp/client-stdio.ts` + `.test.ts` (6 tests) —
+    `createStdioMcpClient` wraps SDK `Client` over `StdioClientTransport`
+    with single-queue serialization (`#enqueue` release-promise chain),
+    10 s connect timeout, cancellable exponential-backoff reconnect
+    `[500, 1_000, 2_000, 4_000, 8_000]` × 5 attempts → `dead`, SIGTERM
+    → SIGKILL (3 s grace), credential scrubber applied to stderr,
+    callTool errors, timeout messages, reconnect-failure reasons, and
+    listener-error log lines. `__testPid__` accessor for kill tests; no
+    `env` logging, ever. (C) `engine/src/mcp/registry.ts` + `.test.ts`
+    (10 tests) — `McpRegistry` with `Promise.allSettled` parallel
+    connect, DI-seam `clientFactory`, 30 s background retry for dead
+    servers (rebuilds client fresh), snapshot (`live`/`dead`/`retrying`),
+    namespaced routing via `parseNamespaced`, `McpUnknownServerError`
+    + `McpNotReadyError` from types.ts. Barrel
+    `engine/src/mcp/index.ts` re-exports. Test fixture
+    `test/fixtures/mcp/echo-server.ts` (bun-runnable stdio server
+    exposing `echo`). Smoke script `engine/scripts/mcp-list.ts`
+    verified end-to-end against `~/.jellyclaw/jellyclaw.json`: prints
+    `mcp: 1 live, 0 dead, 0 retrying` + `mcp__echo__echo`.
+    Typecheck ✅ (tsc clean), biome ✅ on all new files, full vitest
+    586/589 + 3 skipped (Phase 06 baseline was 558 → +28). Root
+    `JellyclawConfig.mcp` root schema NOT extended yet — MCP's own
+    `StdioMcpServerConfig` adds `transport: "stdio"` discriminant in
+    preparation for Prompt 02's HTTP/SSE variants; adapter from the
+    root config to `McpServerConfig` is deferred to Prompt 02 along
+    with the schema extension.
+    Next: Prompt 02 — HTTP + SSE transports + OAuth + config-schema
+    extension + `docs/mcp.md`.
 
 ### Phase 08 — Permission engine + hooks
 - **Status:** ⏳ Not started
@@ -934,6 +969,7 @@
 
 | Date | Session # | Phase | Sub-prompt | Outcome |
 |---|---|---|---|---|
+| 2026-04-15 | 19 | 07 | 01-mcp-client-stdio | 🔄 Phase 07 Prompt 01 landed via 2-agent parallel Opus team against a pre-authored `engine/src/mcp/types.ts` contract. `@modelcontextprotocol/sdk@^1` installed (1.29.0). (A) `credential-strip.ts` (12 tests) — `buildCredentialScrubber` over `Object.values(env)`, longest-first, metachar-escaped, <6-char / empty secrets skipped via `onSkipped`, identity fallback, `REDACTED` constant. (B) `client-stdio.ts` (6 tests) — `createStdioMcpClient` wraps SDK `Client` over `StdioClientTransport` with serialized `#enqueue` queue, 10 s connect timeout, cancellable `[500, 1_000, 2_000, 4_000, 8_000]` × 5 backoff → `dead`, SIGTERM→SIGKILL (3 s grace), credential scrubber on stderr/callTool-errors/timeouts/reconnect-reasons/listener-errors, `__testPid__` accessor for kill tests, zero `env` logging. (C) `registry.ts` (10 tests) — `McpRegistry` with `Promise.allSettled` parallel connect, DI `clientFactory`, 30 s background retry rebuilding dead clients, snapshot(`live`/`dead`/`retrying`), namespaced routing, `McpUnknownServerError`/`McpNotReadyError`. Barrel `index.ts`; fixture `test/fixtures/mcp/echo-server.ts`; smoke `engine/scripts/mcp-list.ts` (prints `mcp: 1 live, 0 dead, 0 retrying` + `mcp__echo__echo` against `~/.jellyclaw/jellyclaw.json`). Typecheck ✅, biome ✅, vitest 586/589 + 3 skipped ✅ (+28 new). Root `JellyclawConfig.mcp` schema deliberately left untouched — Prompt 02 owns the transport-discriminant extension. Next: 07.02 HTTP+SSE transports + OAuth. |
 | 2026-04-15 | 18 | 06 | 03-verify-hook-patch | ✅ **Phase 06 COMPLETE.** Phase 06 Prompt 03 landed via 2-agent parallel Opus team. Pivot forced by `patches/README.md`: no `.patch` file exists (opencode-ai ships compiled binary); the hook-fire fix lives as `engine/src/plugin/agent-context.ts`. Prompt rescoped: static "sentinel on node_modules" → static surface check on the replacement file + its three exports. (A) `engine/src/hooks/test-harness.ts` (test-only `HookRecorder` with `tool_use_id` → name map); `test/integration/fixtures/agents/hook-probe/AGENT.md`; `test/integration/subagent-hooks.test.ts` (11 tests + 1 skipped negative control) locks in the #5894 invariants — `session_id !== parent`, `PostToolUse` matches, audit chain, input contains "echo probe", event ordering subagent.start → tool.call.* → subagent.end, `subagent_path` correctness, `enrichHookEnvelope` integration (agentChain === [parent]). (B) `scripts/verify-hook-patch.ts` two-step verifier (static + vitest subprocess) exits with exact `patch verified: static + dynamic`; `package.json` adds `test:hook-patch`; `docs/development.md` "Upstream rebase checklist" added. Typecheck ✅, biome ✅, vitest 558/561 + 3 skipped ✅, `bun run test:hook-patch` green end-to-end. Foundation group now 7/7. Next: Phase 07 MCP client. |
 | 2026-04-15 | 17 | 06 | 02-task-tool-implementation | 🔄 Phase 06 Prompt 02 landed via 2-agent parallel Opus team against a pre-authored `engine/src/agents/dispatch-types.ts` contract. (A) `semaphore.ts` (6 tests) — p-limit closure with clamp [1, 5] + warn-once, slot release on rejection; `context.ts` (15 tests) — pure builder, depth guard, tool intersection dedupe, model/skills/CLAUDE.md resolution. (B) `dispatch.ts` (14 tests) — `SubagentDispatcher implements SubagentService` with 10-step flow (graceful errors, no throw), child `AbortController` bound to parent signal, isolated listener errors, JSON-clean result; `events.ts` — `makeSubagentStart/EndEvent` factories (no progress variant — 15-protocol parity). Task tool rewritten to return `{ status: "error" }` on all failure paths. `test/unit/tools/task.test.ts` updated for new contract. `docs/agents.md` authored. `SessionRunner` seam allows production wiring in Phase 09 without blocking this prompt. Typecheck ✅, biome ✅ on agents/ + tools/task.ts + docs/agents.md, vitest 549/549 + 2 skipped ✅ (+35 net new). Next: prompt 03 — verify hook-patch propagation end-to-end. |
 | 2026-04-15 | 16 | 06 | 01-subagent-definitions | 🔄 Phase 06 Prompt 01 landed via 3-agent parallel Opus team against a pre-authored `engine/src/agents/types.ts` contract (Agent, AgentFrontmatter Zod-strict, AgentLoadError, AGENT_BODY_MAX_BYTES = 16384). (A) `parser.ts` (12 tests) — gray-matter + Zod strict frontmatter with kebab `name`, ≤1024 `description`, `mode` enum (`subagent`/`primary`), `tools` regex covering built-ins + `mcp__<server>__<tool>`, `skills` kebab, `max_turns` ≤100, `max_tokens` >0, 16 KB body cap, empty-body rejection, trimmed prompt, optional `expectedName` cross-check. (B) `discovery.ts` (10 tests) — walks `~/.jellyclaw/agents` → `cwd/.jellyclaw/agents` → `cwd/.claude/agents` (legacy), both `<name>/AGENT.md` dir-style (wins) and `<name>.md` flat. Example agents `agents/code-reviewer/AGENT.md` + `agents/doc-writer/AGENT.md` + `engine/scripts/agents-dump.ts` smoke. (C) `registry.ts` (9 tests) — `AgentRegistry` first-wins across sources with warn-on-shadow, per-file `AgentLoadError` capture, `reload()` + `subscribe()` diff (added/removed/modified keyed on path+mtime), listener errors isolated. Barrel `index.ts` mirrors skills pattern (single-line value export for `AgentFrontmatter` to avoid TS2300). `p-limit@^6` installed for prompt 02 dispatch. Typecheck ✅, biome ✅ on agents/ + scripts/, vitest 514/514 ✅ (+31 new: parser 12, discovery 10, registry 9). Smoke: `echo` agent loads from `~/.jellyclaw/agents/echo/AGENT.md` as source=user with tools=[Read] and max_turns=3. Next: Prompt 02 — Task tool + dispatch + semaphore + isolated context. |
