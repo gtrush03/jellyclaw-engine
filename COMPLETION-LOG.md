@@ -1,7 +1,7 @@
 # Jellyclaw Engine — Completion Log
 
 **Last updated:** 2026-04-15
-**Current phase:** Phase 06 — Subagent system + hook patch (🔄 Prompt 01 complete)
+**Current phase:** Phase 06 — Subagent system + hook patch (🔄 Prompts 01+02 complete; 03 next)
 
 ## Overall progress
 
@@ -721,14 +721,39 @@
     substitution, and watcher land in prompt 02.
 
 ### Phase 06 — Subagent system + hook patch
-- **Status:** 🔄 In progress (Prompt 01/03 complete)
+- **Status:** 🔄 In progress (Prompts 01+02 complete; 03 next)
 - **Started:** 2026-04-15
 - **Completed:** —
 - **Duration (actual):** —
-- **Session count:** 1
-- **Commits:** (pending)
-- **Tests passing:** 514/514 (+31 new in agents/: parser 12, discovery 10, registry 9)
+- **Session count:** 2
+- **Commits:** 810267b (P01), (P02 pending)
+- **Tests passing:** 549/549 (+66 net new in agents/: parser 12, discovery 10, registry 9, semaphore 6, context 15, dispatch 14; task tool suite rewritten for graceful-error contract)
 - **Notes:**
+  - ✅ **Prompt 02 — Task tool + dispatch + semaphore complete.** Landed via 2-agent
+    parallel Opus team against a pre-authored `dispatch-types.ts` contract
+    (`SubagentContext`, `ParentContext`, `SessionRunner` seam, `DispatchConfig`,
+    `RunReason`, errors `UnknownSubagentError` / `SubagentDepthExceededError` /
+    `NoUsableToolsError`). (A) `semaphore.ts` (6 tests) — p-limit closure, clamps
+    `maxConcurrency` to [1, 5] with warn-once on ceiling breach, releases slot on
+    rejection; `context.ts` (15 tests) — pure `buildSubagentContext` with depth
+    guard, tool intersection (dedupe + request-order), model fallback, skills
+    passthrough, CLAUDE.md prefix. (B) `dispatch.ts` (14 tests) — `SubagentDispatcher
+    implements SubagentService`, 10-step flow (lookup → depth-check → semaphore slot
+    → build context → mint child sessionId → emit start → runner.run → map reason →
+    emit end → release), child `AbortController` bound to parent signal, listener
+    errors isolated, payload JSON-serialisable round-trip asserted; `events.ts` —
+    thin factory helpers for `SubagentStartEvent` + `SubagentEndEvent` (no
+    `subagent.progress` — 15-variant protocol has only start+end; interleaved
+    tool.call.* carries progress). Task tool rewritten to **never throw** — every
+    failure path (invalid input, missing `ctx.subagents`, dispatcher throw) returns
+    `{ status: "error", summary, usage: zero }` so parent turns continue. Updated
+    Phase-04 `test/unit/tools/task.test.ts` to match new graceful-error contract.
+    `docs/agents.md` — subagent guide + event contract + config + pre-Phase-09
+    SessionRunner-seam caveat. Tool registry untouched (Task already registered in
+    Phase 04). Typecheck ✅, biome ✅ on agents/ + tools/task.ts + docs/agents.md,
+    vitest 549/549 + 2 skipped ✅ (+35 new this prompt; task suite net -1 after
+    removing a duplicate file). Real OpenCode-session binding for SessionRunner
+    lands in Phase 09; prompt 03 next verifies hook-propagation end-to-end.
   - ✅ **Prompt 01 — Subagent definitions (discovery + parser + registry) complete.** Landed
     via 3-agent parallel Opus team against a pre-authored `engine/src/agents/types.ts`
     contract. (A) `parser.ts` — gray-matter + Zod strict frontmatter (name kebab, description
@@ -881,6 +906,7 @@
 
 | Date | Session # | Phase | Sub-prompt | Outcome |
 |---|---|---|---|---|
+| 2026-04-15 | 17 | 06 | 02-task-tool-implementation | 🔄 Phase 06 Prompt 02 landed via 2-agent parallel Opus team against a pre-authored `engine/src/agents/dispatch-types.ts` contract. (A) `semaphore.ts` (6 tests) — p-limit closure with clamp [1, 5] + warn-once, slot release on rejection; `context.ts` (15 tests) — pure builder, depth guard, tool intersection dedupe, model/skills/CLAUDE.md resolution. (B) `dispatch.ts` (14 tests) — `SubagentDispatcher implements SubagentService` with 10-step flow (graceful errors, no throw), child `AbortController` bound to parent signal, isolated listener errors, JSON-clean result; `events.ts` — `makeSubagentStart/EndEvent` factories (no progress variant — 15-protocol parity). Task tool rewritten to return `{ status: "error" }` on all failure paths. `test/unit/tools/task.test.ts` updated for new contract. `docs/agents.md` authored. `SessionRunner` seam allows production wiring in Phase 09 without blocking this prompt. Typecheck ✅, biome ✅ on agents/ + tools/task.ts + docs/agents.md, vitest 549/549 + 2 skipped ✅ (+35 net new). Next: prompt 03 — verify hook-patch propagation end-to-end. |
 | 2026-04-15 | 16 | 06 | 01-subagent-definitions | 🔄 Phase 06 Prompt 01 landed via 3-agent parallel Opus team against a pre-authored `engine/src/agents/types.ts` contract (Agent, AgentFrontmatter Zod-strict, AgentLoadError, AGENT_BODY_MAX_BYTES = 16384). (A) `parser.ts` (12 tests) — gray-matter + Zod strict frontmatter with kebab `name`, ≤1024 `description`, `mode` enum (`subagent`/`primary`), `tools` regex covering built-ins + `mcp__<server>__<tool>`, `skills` kebab, `max_turns` ≤100, `max_tokens` >0, 16 KB body cap, empty-body rejection, trimmed prompt, optional `expectedName` cross-check. (B) `discovery.ts` (10 tests) — walks `~/.jellyclaw/agents` → `cwd/.jellyclaw/agents` → `cwd/.claude/agents` (legacy), both `<name>/AGENT.md` dir-style (wins) and `<name>.md` flat. Example agents `agents/code-reviewer/AGENT.md` + `agents/doc-writer/AGENT.md` + `engine/scripts/agents-dump.ts` smoke. (C) `registry.ts` (9 tests) — `AgentRegistry` first-wins across sources with warn-on-shadow, per-file `AgentLoadError` capture, `reload()` + `subscribe()` diff (added/removed/modified keyed on path+mtime), listener errors isolated. Barrel `index.ts` mirrors skills pattern (single-line value export for `AgentFrontmatter` to avoid TS2300). `p-limit@^6` installed for prompt 02 dispatch. Typecheck ✅, biome ✅ on agents/ + scripts/, vitest 514/514 ✅ (+31 new: parser 12, discovery 10, registry 9). Smoke: `echo` agent loads from `~/.jellyclaw/agents/echo/AGENT.md` as source=user with tools=[Read] and max_turns=3. Next: Prompt 02 — Task tool + dispatch + semaphore + isolated context. |
 | 2026-04-15 | 15 | 05 | 02-progressive-disclosure-and-args | ✅ **Phase 05 COMPLETE.** 3-agent parallel Opus team: (A) `substitution.ts` (12 tests, pure, trailing-digit guard for `$10`, escape sentinel, dedup-preserving unknown sweep); (B) `inject.ts` (10 tests, source-priority+alpha sort, greedy byte-capped pack, `Buffer.byteLength` ≤1536, single `logger.warn` on drop, header suppressed when nothing fits); (C) `watcher.ts` + registry `reload()/subscribe()/SkillsChangedEvent` (6 watcher + 4 registry tests, chokidar@4 parent-dir watching at depth:2, 250 ms debounce coalesces bursts, awaitWriteFinish stability 100 ms, listener errors isolated). Integration pass: `index.ts` barrel re-exports, `docs/skills.md`, `skills/{commit,review}/SKILL.md` examples, `engine/scripts/inject-preview.ts` smoke (live preview renders 378 bytes across 3 skills, 0 dropped). Typecheck ✅, biome ✅ on skills/ + scripts/, vitest 483/485 + 2 skipped ✅ (32 new in prompt 02 — skills subsystem now 58 tests). All PHASE-05 acceptance criteria met. Foundation group now 6/7. |
 | 2026-04-15 | 14 | 05 | 01-discovery-and-loader | 🔄 Phase 05 Prompt 01 landed. `engine/src/skills/{types,parser,discovery,registry,index}.ts` + three `*.test.ts` + `engine/scripts/skills-dump.ts` smoke. Zod frontmatter (`name` kebab-case, `description` ≤1536), 8 KB body cap measured in **bytes**. Discovery walks `~/.jellyclaw/skills` → `cwd/.jellyclaw/skills` → `cwd/.claude/skills` (legacy), supporting both `<name>/SKILL.md` and `<name>.md` shapes with dir-per-skill winning inside a single root. Registry first-wins across sources with per-shadow warn log; per-file parse failures are caught + warned, rest of load proceeds. `loadAll` kept async (biome-ignore) for prompt 02's chokidar seam. Deps: `gray-matter@^4.0.3`, `chokidar@^4.0.0`. Smoke loads `~/.jellyclaw/skills/hello` as source=user. Typecheck ✅, biome ✅ on skills/, vitest 449/449 + 2 skipped ✅ (26 new: discovery 9, parser 10, registry 7). |
