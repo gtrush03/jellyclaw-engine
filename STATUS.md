@@ -3,8 +3,8 @@
 > Living doc. Update at the start and end of every working day.
 > If this file is stale, don't trust it.
 
-**Last updated:** 2026-04-15 (Phase 06 🔄 Prompts 01+02/03 complete — dispatcher + Task tool shipped)
-**Current phase:** Phase 06 — Subagent system + hook patch (Prompt 03 next)
+**Last updated:** 2026-04-15 (Phase 06 ✅ COMPLETE — subagent system + hook regression gate shipped)
+**Current phase:** Phase 07 — MCP client integration (next)
 **Current milestone target:** M1 (Engine works) — projected week of May 18
 **Engine on:** n/a (not yet bootable)
 **Genie dispatcher:** Claurst (unchanged)
@@ -55,7 +55,8 @@ Budget ceiling for v1.0 (Phases 00–18): **TBD — pending Q2 answer.**
 
 | Metric | Count |
 |--------|-------|
-| Unit tests passing | 549 (+2 benches under BENCH=1) |
+| Unit tests passing | 558 (+3 skipped, +2 benches under BENCH=1) |
+| Integration tests passing | 11 (subagent hook-fire regression) |
 | Unit tests failing | 0 |
 | Integration tests passing | 0 |
 | Golden-prompt regression tests | 0 / 5 target |
@@ -83,7 +84,7 @@ Budget ceiling for v1.0 (Phases 00–18): **TBD — pending Q2 answer.**
 - [x] ✅ Phase 03 — Event stream adapter
 - [x] ✅ Phase 04 — Tool parity
 - [x] ✅ Phase 05 — Skills system
-- [ ] Phase 06 — Subagents + hook patch
+- [x] ✅ Phase 06 — Subagents + hook patch
 - [ ] Phase 07 — MCP client integration
 - [ ] Phase 08 — Permission engine + hooks
 - [ ] Phase 09 — Session persistence + resume
