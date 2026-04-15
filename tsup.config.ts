@@ -34,6 +34,12 @@ const EXTERNAL: readonly string[] = [
   "eventsource-parser",
   "execa",
   "p-limit",
+  "ink",
+  "ink-text-input",
+  "ink-spinner",
+  "react",
+  "react/jsx-runtime",
+  "react-devtools-core",
 ];
 
 export default defineConfig({

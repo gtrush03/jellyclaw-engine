@@ -20,7 +20,7 @@
  * may do that. All exit paths return a numeric code.
  */
 
-import type { LaunchTuiOptions } from "../tui/index.js";
+import type { LaunchTuiHandle, LaunchTuiOptions } from "../tui/index.js";
 import { ExitError } from "./main.js";
 import type { EmbeddedServerHandle, SpawnEmbeddedServerOptions } from "./shared/spawn-server.js";
 import { TuiHealthTimeoutError } from "./shared/spawn-server.js";
@@ -30,17 +30,21 @@ import { TuiHealthTimeoutError } from "./shared/spawn-server.js";
 // ---------------------------------------------------------------------------
 
 /**
- * `launchTui` handle the CLI depends on. Current `engine/src/tui/index.ts`
- * returns `{ sdk, cwd, dispose }`; Agent F is adding `onExit: Promise<number>`
- * in parallel. The CLI treats `onExit` as optional and falls back to `0` when
- * it's absent so the two agents can merge independently.
+ * `launchTui` handle the CLI depends on. Phase 99-06 narrowed this to the
+ * `{ cwd, onExit, dispose }` shape produced by the new Ink launcher in
+ * `engine/src/tui/index.ts`. We keep `onExit` optional in the type so the
+ * embedded-test fakes (which still ship a stub launchTui) compile cleanly.
  */
 export interface LaunchTuiHandleLike {
   readonly dispose: () => Promise<void>;
   readonly onExit?: Promise<number>;
+  readonly cwd?: string;
 }
 
 export type LaunchTuiFn = (opts: LaunchTuiOptions) => Promise<LaunchTuiHandleLike>;
+
+// Keep the public type for callers wanting the precise handle shape.
+export type { LaunchTuiHandle };
 
 export type SpawnEmbeddedServerFn = (
   opts?: SpawnEmbeddedServerOptions,
@@ -248,9 +252,9 @@ export async function tuiAction(options: TuiOptions): Promise<number> {
   // --- attach path: skip spawn -------------------------------------------
   const attachTarget = resolveAttachTarget(options.args, envSource);
 
-  // Track signal + server handle + raw-mode guard.
+  // Track signal + raw-mode guard. Server lifecycle is owned by `launchTui`
+  // since Phase 99-06; `tuiAction` no longer spawns directly.
   let receivedSignal: "SIGINT" | "SIGTERM" | null = null;
-  const serverHandle: EmbeddedServerHandle | null = null;
   let rawGuard: RestoreHandle | null = null;
   let settled = false;
 
@@ -286,17 +290,6 @@ export async function tuiAction(options: TuiOptions): Promise<number> {
     process.off("SIGINT", onInt);
     process.off("SIGTERM", onTerm);
     if (rawGuard !== null) rawGuard.restore();
-    // Narrowed to `never` by TS when no assignment happens in the embedded-
-    // spike path; keep the null-check + typed cast so the attach path (future
-    // assignment) stays safe.
-    const handle = serverHandle as EmbeddedServerHandle | null;
-    if (handle !== null) {
-      try {
-        await handle.stop();
-      } catch {
-        /* swallow — we're already on the exit path */
-      }
-    }
     restoreEnv();
   };
 
@@ -332,14 +325,37 @@ export async function tuiAction(options: TuiOptions): Promise<number> {
       return resolved.value ?? code;
     }
 
-    // ---- default path: Ink TUI not yet built (Phase 99-06) ---------------
-    // The stock vendored OpenCode TUI was removed in Phase 99-05. The
-    // jellyclaw-native Ink TUI lands in Phase 99-06. Until then, only the
-    // `attach <url>` subcommand is functional.
-    throw new ExitError(
-      3,
-      "Phase 99-06: Ink TUI not yet built. Use `jellyclaw tui attach <url>` against a running server, or `node engine/dist/cli/main.js run ...` for one-shot prompts.",
-    );
+    // ---- default path: Ink TUI (Phase 99-06+) ---------------------------
+    rawGuard = installRawModeGuard(stdin, stderr);
+    const launchOpts: LaunchTuiOptions = { cwd };
+    if (typeof flags?.resume === "string" && flags.resume.length > 0) {
+      (launchOpts as { resumeSessionId?: string }).resumeSessionId = flags.resume;
+    }
+    if (flags?.continue === true) {
+      (launchOpts as { continueLast?: boolean }).continueLast = true;
+    }
+    // Forward test seams when present so unit tests can swap spawn/health.
+    if (options.spawnEmbeddedServer !== undefined) {
+      (launchOpts as { spawnServer?: SpawnEmbeddedServerFn }).spawnServer =
+        options.spawnEmbeddedServer;
+    }
+    if (options.waitForHealth !== undefined) {
+      (launchOpts as { waitForHealth?: WaitForHealthFn }).waitForHealth = options.waitForHealth;
+    }
+    const handle = await launchTui(launchOpts);
+    const onExitPromise: Promise<number> =
+      handle.onExit !== undefined
+        ? handle.onExit.then((n) => n).catch(() => 1)
+        : Promise.resolve(0);
+    const code = await Promise.race([onExitPromise, waitSettled()]);
+    try {
+      await handle.dispose();
+    } catch {
+      /* swallow */
+    }
+    if (!settled) settle(code);
+    await cleanup();
+    return resolved.value ?? code;
   } catch (err) {
     if (err instanceof TuiHealthTimeoutError) {
       stderr.write(`jellyclaw tui: ${err.message}\n`);

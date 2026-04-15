@@ -4,8 +4,11 @@ export default defineConfig({
   test: {
     include: [
       "test/**/*.test.ts",
+      "test/**/*.test.tsx",
       "test/**/*.bench.ts",
       "engine/src/**/*.test.ts",
+      "engine/test/**/*.test.ts",
+      "engine/test/**/*.test.tsx",
       "shared/src/**/*.test.ts",
     ],
     exclude: ["node_modules", "dist", "engine/src/tui/_vendored/**"],

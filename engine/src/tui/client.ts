@@ -57,6 +57,12 @@ export interface JellyclawClient {
    */
   events(runId: string, lastEventId?: string): AsyncIterable<AgentEvent>;
   cancel(runId: string): Promise<void>;
+  /**
+   * Resolve a pending permission request by POSTing to
+   * `/v1/permissions/:id` with `{ granted }`. Used by the Ink TUI's
+   * permission modal.
+   */
+  resolvePermission(requestId: string, granted: boolean): Promise<void>;
   listSessions(): Promise<readonly SessionMeta[]>;
   /**
    * Like `events()` but for a completed session — replays JSONL from disk
@@ -377,6 +383,12 @@ export function createClient(opts: CreateClientOptions): JellyclawClient {
         method: "POST",
       });
     },
+    resolvePermission: async (requestId, granted) => {
+      await jsonRequest<unknown>(`/v1/permissions/${encodeURIComponent(requestId)}`, {
+        method: "POST",
+        body: { granted },
+      });
+    },
     listSessions: async () => {
       const raw = await jsonRequest<readonly Record<string, unknown>[]>("/v1/sessions");
       return raw.map((s) => {
@@ -391,82 +403,6 @@ export function createClient(opts: CreateClientOptions): JellyclawClient {
       sseEvents(`/v1/sessions/${encodeURIComponent(sessionId)}/replay`, undefined, {
         allowReconnect: false,
       }),
-  };
-}
-
-// ---------------------------------------------------------------------------
-// launchTui — compatibility wrapper
-// ---------------------------------------------------------------------------
-//
-// The CLI (`engine/src/cli/tui.ts`) imports `launchTui` from `../tui/index.js`
-// for its `attach <url>` subcommand. The old vendored-TUI renderer is gone,
-// so this wrapper exposes a minimal handle — it creates a client, opens the
-// events stream in the background, and waits for SIGINT / `dispose()` / the
-// stream to complete.
-//
-// Callers that want UI should consume `createClient()` directly.
-
-export interface LaunchTuiOptions {
-  readonly url: string;
-  readonly token: string;
-  readonly cwd?: string;
-  readonly onSignal?: (signal: "SIGINT" | "SIGTERM", handler: () => void) => () => void;
-}
-
-export interface LaunchTuiHandle {
-  readonly client: JellyclawClient;
-  readonly cwd: string;
-  readonly onExit: Promise<number>;
-  readonly dispose: () => Promise<void>;
-}
-
-const SIGINT_EXIT = 130;
-const SIGTERM_EXIT = 143;
-const CLEAN_EXIT = 0;
-
-export function launchTui(opts: LaunchTuiOptions): Promise<LaunchTuiHandle> {
-  const cwd = opts.cwd ?? process.cwd();
-  const abort = new AbortController();
-  const client = createClient({
-    baseUrl: opts.url,
-    token: opts.token,
-    signal: abort.signal,
-  });
-
-  let exitResolve!: (code: number) => void;
-  const onExit = new Promise<number>((resolve) => {
-    exitResolve = resolve;
-  });
-
-  let settled = false;
-  const settle = (code: number): void => {
-    if (settled) return;
-    settled = true;
-    abort.abort();
-    exitResolve(code);
-  };
-
-  const register = opts.onSignal ?? defaultOnSignal;
-  const offSigint = register("SIGINT", () => settle(SIGINT_EXIT));
-  const offSigterm = register("SIGTERM", () => settle(SIGTERM_EXIT));
-
-  onExit.finally(() => {
-    offSigint();
-    offSigterm();
-  });
-
-  const dispose = (): Promise<void> => {
-    settle(CLEAN_EXIT);
-    return Promise.resolve();
-  };
-
-  return Promise.resolve({ client, cwd, onExit, dispose });
-}
-
-function defaultOnSignal(signal: "SIGINT" | "SIGTERM", handler: () => void): () => void {
-  process.on(signal, handler);
-  return (): void => {
-    process.off(signal, handler);
   };
 }
 

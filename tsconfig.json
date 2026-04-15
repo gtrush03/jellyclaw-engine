@@ -4,6 +4,7 @@
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "lib": ["ES2022"],
+    "jsx": "react-jsx",
 
     "strict": true,
     "noImplicitAny": true,
@@ -43,11 +44,18 @@
       "@jellyclaw/shared/*": ["shared/src/*"]
     }
   },
-  "include": ["engine/src/**/*.ts", "shared/src/**/*.ts", "test/**/*.ts"],
+  "include": [
+    "engine/src/**/*.ts",
+    "engine/src/**/*.tsx",
+    "shared/src/**/*.ts",
+    "test/**/*.ts",
+    "test/**/*.tsx"
+  ],
   "exclude": [
     "node_modules",
     "dist",
     "**/*.test.ts",
+    "**/*.test.tsx",
     "engine/src/tui/_vendored/**"
   ]
 }
