@@ -3,8 +3,8 @@
 > Living doc. Update at the start and end of every working day.
 > If this file is stale, don't trust it.
 
-**Last updated:** 2026-04-15 (Phase 01 research complete; implementation pending)
-**Current phase:** Phase 01 — OpenCode pinning + patching (research ✅, impl ⏳)
+**Last updated:** 2026-04-15 (Phase 02 research complete; implementation pending)
+**Current phase:** Phase 02 — Config + provider layer (research ✅, impl ⏳)
 **Current milestone target:** M1 (Engine works) — projected week of May 18
 **Engine on:** n/a (not yet bootable)
 **Genie dispatcher:** Claurst (unchanged)
@@ -55,7 +55,7 @@ Budget ceiling for v1.0 (Phases 00–18): **TBD — pending Q2 answer.**
 
 | Metric | Count |
 |--------|-------|
-| Unit tests passing | 6 |
+| Unit tests passing | 48 |
 | Unit tests failing | 0 |
 | Integration tests passing | 0 |
 | Golden-prompt regression tests | 0 / 5 target |
@@ -78,7 +78,7 @@ Budget ceiling for v1.0 (Phases 00–18): **TBD — pending Q2 answer.**
 ## Phase progress
 
 - [x] ✅ Phase 00 — Repo scaffolding
-- [ ] Phase 01 — OpenCode pinning + patching
+- [x] ✅ Phase 01 — OpenCode pinning + patching
 - [ ] Phase 02 — Config + provider layer
 - [ ] Phase 03 — Event stream adapter
 - [ ] Phase 04 — Tool parity
@@ -116,4 +116,13 @@ Budget ceiling for v1.0 (Phases 00–18): **TBD — pending Q2 answer.**
   (950 lines, commit `dcb0601`). Pin target `opencode-ai@1.4.5`. Issue #5894
   rescoped to add `agent` context to hook envelope; SPEC §5.1 drift flagged
   (refers to `processor.ts`; real target is `prompt.ts`).
-- Next action: Phase 01 Prompt 02 — implementation. Fresh Claude session.
+- Phase 01 Prompt 02 (implementation) complete via PIVOT — opencode-ai@1.4.5
+  ships a compiled Bun binary, no source to patch. All three planned patches
+  reimplemented as first-class jellyclaw code. 48/48 tests green.
+- Phase 02 Prompt 01 (research) landed: `engine/provider-research-notes.md`
+  (1753 lines). Anthropic streaming + tool use + caching + retry fully
+  documented; OpenRouter endpoint contract + tool mapping + both caching
+  regressions (#1245, #17910) deep-dived; `acknowledgeCachingLimits` gate
+  decision table authored.
+- Next action: Phase 02 Prompt 02 — implement Anthropic provider wrapper.
+  Fresh Claude session.

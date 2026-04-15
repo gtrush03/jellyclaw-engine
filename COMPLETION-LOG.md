@@ -117,14 +117,33 @@
     what the name suggests in this binary.
 
 ### Phase 02 — Config + provider layer
-- **Status:** ⏳ Not started
-- **Started:** —
+- **Status:** 🔄 In progress (Prompt 01 ✅ research)
+- **Started:** 2026-04-15
 - **Completed:** —
 - **Duration (actual):** —
-- **Session count:** —
-- **Commits:** —
-- **Tests passing:** —
-- **Notes:** —
+- **Session count:** 1 (ongoing)
+- **Commits:** (this commit)
+- **Tests passing:** n/a (research-only prompt)
+- **Notes:**
+  - ✅ Prompt 01 (research) — `engine/provider-research-notes.md` landed
+    (1753 lines, 10 sections + 2 appendices). Every section populated;
+    every caching-related claim has a source URL. Key confirmations from
+    live doc fetch: beta header `extended-cache-ttl-2025-04-11` still
+    current (April 2026) for 1h TTL; min-cacheable-tokens table updated
+    per model tier (Opus 4.6 = 4096, Sonnet 4.6 = 2048, Haiku 4.5 = 4096,
+    older Sonnet/Opus family = 1024); max 4 breakpoints per request;
+    lookback = 20 positions. OR issue trail reconciled: "#1245" spans
+    sst/opencode#1245 (closed via downstream fix) + upstream root cause
+    OpenRouterTeam/ai-sdk-provider#35 (still open) + independent reproductions
+    in pydantic-ai, Zed. "#17910" is anomalyco/opencode#17910 — Anthropic
+    server-side change on 2026-03-17 rejects cache_control on OAuth auth;
+    root cause is Anthropic-side, not OR, but OR routes share the blast
+    radius. §10 decision table: `acknowledgeCachingLimits` gate (default
+    false) blocks `anthropic/*` models via OR unless explicitly flipped;
+    non-Anthropic via OR proceeds with cache_control strip.
+  - Prompts 02 (anthropic provider), 03 (openrouter provider), 04
+    (router/fallback), 05 (config schema + loader), 06 (tests + docs)
+    remain.
 
 ### Phase 03 — Event stream adapter
 - **Status:** ⏳ Not started
@@ -302,6 +321,7 @@
 |---|---|---|---|---|
 | 2026-04-15 | 1 | 00 | 01-verify-scaffolding | ✅ Phase 00 complete — toolchain green, tag v0.0.0-scaffold, commit 6644aaf |
 | 2026-04-15 | 2 | 01 | 01-research | 🔄 Research note landed (engine/opencode-research-notes.md, 950 lines). Commit dcb0601. Phase 01 NOT complete — awaits Prompt 02 implementation. |
+| 2026-04-15 | 4 | 02 | 01-research | 🔄 `engine/provider-research-notes.md` landed (1753 lines). Beta header `extended-cache-ttl-2025-04-11` verified current. Min-cache-tokens table refreshed. OR #1245 + #17910 deep-dives completed with primary + mirror citations. `acknowledgeCachingLimits` gate decision table authored (§10). Phase 02 NOT complete — Prompts 02-06 still ahead. |
 | 2026-04-15 | 3 | 01 | 02-implement | ✅ Phase 01 complete via PIVOT. opencode-ai@1.4.5 is a compiled binary → three planned source patches reimplemented as engine/src/plugin/{agent-context,secret-scrub}.ts + engine/src/bootstrap/opencode-server.ts. 48/48 tests green (incl. live e2e against opencode-ai child). SPEC §5.1/§15 + CVE-MITIGATION §1.4/§2.1 + patches/README + phases/PHASE-01 synced. Commits 06d7d8a (pin+lock), 8a380dd (code), (this commit) (docs+log). |
 
 ## Blockers & decisions
