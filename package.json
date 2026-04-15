@@ -56,6 +56,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "latest",
+    "@playwright/mcp": "0.0.41",
     "@types/better-sqlite3": "latest",
     "@types/diff": "^8.0.0",
     "@types/node": "latest",

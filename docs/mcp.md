@@ -148,6 +148,43 @@ bun run engine/scripts/mcp-list.ts
 # mcp__echo__echo
 ```
 
+## Playwright / browser automation
+
+jellyclaw drives a real Chrome through `@playwright/mcp@0.0.41` as a stdio
+MCP server. The version pin is deliberate and load-bearing — see
+`patches/004-playwright-mcp-pin.md`. Do NOT float it.
+
+**Production (drive your real browser on `9222`):**
+
+```json
+{
+  "mcp": [
+    {
+      "transport": "stdio",
+      "name": "playwright",
+      "command": "npx",
+      "args": [
+        "@playwright/mcp@0.0.41",
+        "--browser", "chrome",
+        "--cdp-endpoint", "http://127.0.0.1:9222"
+      ]
+    }
+  ]
+}
+```
+
+Port `9222` is reserved for your real browser (logged-in sessions, cookies,
+bank tabs). Tests never touch `9222`; the test harness runs an isolated
+headless Chrome on `9333` with a throwaway user-data-dir. Full walkthrough
+in `docs/playwright-setup.md`.
+
+The integration test (`test/integration/playwright-mcp.test.ts`) spawns
+Chrome via `scripts/playwright-test-chrome.sh`, loads the MCP server, and
+asserts a navigate+screenshot round-trip against `http://example.com`.
+`assertNoForbiddenPort()` fails any test line whose config, helper output,
+or path contains the literal `9222`; the helper script itself refuses to
+bind `9222` when asked.
+
 ## Files
 
 - `engine/src/mcp/types.ts` — `McpServerConfig` union + `McpClient` contract
