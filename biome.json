@@ -15,7 +15,8 @@
       "!traces",
       "!patches",
       "!**/target",
-      "!**/*.md"
+      "!**/*.md",
+      "!engine/src/tui/_vendored/**"
     ]
   },
   "assist": {

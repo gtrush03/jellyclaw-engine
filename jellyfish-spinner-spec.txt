@@ -1,0 +1,230 @@
+JELLYFISH SPINNER SPEC — jellyclaw-engine Phase 10.5
+=====================================================
+
+Purpose: Replace Claude Code's quad-dots with a brand-signature jellyfish/medusa
+spinner. Must read as "pulsing medusa with drifting tentacles" on frame 1 —
+not abstract motion.
+
+Two variants ship: Compact (inline, 1 line, <=8 cols) and Hero (multi-line,
+dominant position). Both purple. Both seamless loops. Both have a static
+reduced-motion fallback.
+
+-----------------------------------------------------------------------------
+VARIANT A — COMPACT INLINE (1 line, 7 cols)
+-----------------------------------------------------------------------------
+
+Anatomy per frame (7 cols):
+  [pad] [tip-L] [dome] [tip-R] [tentacle-drift × 3]
+
+The dome (◉ ◎ ○ ⊚) pulses open/contracted. Tentacles are braille micro-motion
+that ripple right-to-left underneath, so the medusa appears to propel leftward
+while hovering in place.
+
+10 frames (80ms interval = 12.5 FPS):
+
+  Frame 1:  " ◉   ⠄ "   ← dome contracted, single tentacle dot drifting
+  Frame 2:  "(◉)  ⠆ "   ← dome flaring, tentacle growing
+  Frame 3:  "(◎)  ⠇ "   ← peak pulse, tentacle fuller
+  Frame 4:  " ◎  ⠧⠄"   ← dome releases, two tentacle threads
+  Frame 5:  " ○ ⠇⠦ "   ← dome smallest, tentacles trailing
+  Frame 6:  " ○⠇⠴  "   ← tentacles sweeping left
+  Frame 7:  " ◎⠧⠰  "   ← dome begins next pulse
+  Frame 8:  "(◎)⠇⠠  "   ← flaring again
+  Frame 9:  "(◉)⠆   "   ← near peak, tentacles reset
+  Frame 10: " ◉⠄    "   ← back to rest → loops to frame 1
+
+Width: every frame is exactly 7 chars (count spaces). Parentheses read as
+the bell flaring outward during propulsion — a real medusa motion.
+
+Static fallback (NO_COLOR / CLAUDE_CODE_DISABLE_ANIMATIONS):  "(◉)⠇ "
+
+-----------------------------------------------------------------------------
+VARIANT B — HERO MULTI-LINE (3 lines, 11 cols wide)
+-----------------------------------------------------------------------------
+
+Anatomy: line 1 is the bell dome (block elements pulsing), line 2 is the
+bell rim + oral arms, line 3 is the trailing tentacles (braille, drift-left).
+
+8 frames at 90ms (≈11 FPS). Ping-pong: frames 1→8→1 via reversing, OR seamless
+loop as written (frame 8 leads back into frame 1 cleanly — we ship seamless).
+
+Frame 1  (rest, contracted):
+    ▁▂▃▂▁
+    ╲│││╱
+    ⠄⠂⠁⠂⠄
+
+Frame 2  (beginning pulse):
+   ▂▃▄▅▄▃▂
+    ╲│││╱
+    ⠆⠂⠃⠂⠆
+
+Frame 3  (flaring out):
+  ▃▄▅▆▇▆▅▄▃
+    ╲╱│╲╱
+    ⠇⠆⠇⠆⠇
+
+Frame 4  (peak — full bell, tentacles long):
+  ▄▅▆▇█▇▆▅▄
+   ╲ ╱│╲ ╱
+   ⠧⠇⠏⠇⠧
+
+Frame 5  (contract, thrust — tentacles whip back):
+   ▅▆▇█▇▆▅
+    ╲│││╱
+    ⠴⠦⠇⠦⠴
+
+Frame 6  (relaxing):
+    ▄▅▆▅▄
+    │╲│╱│
+    ⠰⠤⠆⠤⠰
+
+Frame 7  (gliding, tentacles settle):
+    ▃▄▅▄▃
+    │╲│╱│
+    ⠠⠄⠂⠄⠠
+
+Frame 8  (near rest, small tentacle wisp):
+    ▁▂▃▂▁
+    ╲│││╱
+    ⠄⠂⠄⠂⠄    → loops to Frame 1 seamlessly
+
+Each frame: 3 lines, max 11 cols. Shorter lines centered with leading spaces
+so the medusa appears to hover.
+
+Frame 1 one-sentence test: "A tiny contracted jellyfish bell with four
+tentacles dangling and a dot of water disturbance beneath it."  ✓ reads as
+jellyfish.
+
+Static fallback: Frame 4 (peak pulse — most recognizable silhouette).
+
+-----------------------------------------------------------------------------
+COLOR PLAN
+-----------------------------------------------------------------------------
+
+  Primary bell:      #B78EFF   (medium purple — the brand signature)
+  Tentacle tips:     #D4BFFF   (lighter violet — highlight last char of tentacle row)
+  Bell rim:          #8B5CF6   (violet-500 — line 2, the rim strokes)
+  Trail dim:         #5B4B7A   (muted purple-grey — used for the faintest braille dots)
+  Reset / fallback:  default terminal fg
+
+chalk / picocolors:
+  import pc from "picocolors";
+  const bell   = (s) => `\x1b[38;2;183;142;255m${s}\x1b[0m`;  // #B78EFF
+  const tip    = (s) => `\x1b[38;2;212;191;255m${s}\x1b[0m`;  // #D4BFFF
+  const rim    = (s) => `\x1b[38;2;139;92;246m${s}\x1b[0m`;   // #8B5CF6
+  const trail  = (s) => `\x1b[38;2;91;75;122m${s}\x1b[0m`;    // #5B4B7A
+
+ANSI 256 fallbacks (for terminals without truecolor):
+  bell   → 141   tip → 189   rim → 99   trail → 60
+
+Detect via process.env.COLORTERM === "truecolor" or supports-color lib.
+
+-----------------------------------------------------------------------------
+MOTION PROFILE
+-----------------------------------------------------------------------------
+
+  Compact:  interval = 80ms   (12.5 FPS)   frames = 10   loop = seamless
+  Hero:     interval = 90ms   (11.1 FPS)   frames = 8    loop = seamless
+
+Seamless (not ping-pong) — last frame flows into first. Ping-pong on a
+medusa would read as "jellyfish inhaling backwards" which breaks biology.
+
+CPU: 11-12 FPS redraws of <200 bytes each = negligible; safe on SSH/tmux.
+
+Reduced-motion:
+  if (process.env.NO_COLOR ||
+      process.env.CLAUDE_CODE_DISABLE_ANIMATIONS ||
+      !process.stdout.isTTY) {
+    render(staticFallback);  // no color, no animation
+  }
+
+-----------------------------------------------------------------------------
+SYMBOLISM CHECK
+-----------------------------------------------------------------------------
+
+Compact frame 1:   " ◉   ⠄ "  — "A solid round bell hovering above a single
+drifting droplet of tentacle." → reads as jellyfish ✓
+
+Hero frame 1:      ▁▂▃▂▁ / ╲│││╱ / ⠄⠂⠁⠂⠄  — "A small bell-shaped dome with
+four tentacles hanging down and water particles beneath." → reads as
+jellyfish ✓
+
+Both pass the one-sentence test.
+
+-----------------------------------------------------------------------------
+JS MODULE SHAPE
+-----------------------------------------------------------------------------
+
+// src/tui/spinners/jellyfish.ts
+
+export interface Spinner {
+  interval: number;
+  frames: string[];
+  staticFrame: string;
+}
+
+export const jellyfishSpinnerCompact: Spinner = {
+  interval: 80,
+  frames: [
+    " ◉   ⠄ ",
+    "(◉)  ⠆ ",
+    "(◎)  ⠇ ",
+    " ◎  ⠧⠄",
+    " ○ ⠇⠦ ",
+    " ○⠇⠴  ",
+    " ◎⠧⠰  ",
+    "(◎)⠇⠠ ",
+    "(◉)⠆  ",
+    " ◉⠄   ",
+  ],
+  staticFrame: "(◉)⠇ ",
+};
+
+export const jellyfishSpinnerHero: Spinner = {
+  interval: 90,
+  frames: [
+    "    ▁▂▃▂▁  \n    ╲│││╱  \n    ⠄⠂⠁⠂⠄  ",
+    "   ▂▃▄▅▄▃▂ \n    ╲│││╱  \n    ⠆⠂⠃⠂⠆  ",
+    "  ▃▄▅▆▇▆▅▄▃\n    ╲╱│╲╱  \n    ⠇⠆⠇⠆⠇  ",
+    "  ▄▅▆▇█▇▆▅▄\n   ╲ ╱│╲ ╱ \n   ⠧⠇⠏⠇⠧   ",
+    "   ▅▆▇█▇▆▅ \n    ╲│││╱  \n    ⠴⠦⠇⠦⠴  ",
+    "    ▄▅▆▅▄  \n    │╲│╱│  \n    ⠰⠤⠆⠤⠰  ",
+    "    ▃▄▅▄▃  \n    │╲│╱│  \n    ⠠⠄⠂⠄⠠  ",
+    "    ▁▂▃▂▁  \n    ╲│││╱  \n    ⠄⠂⠄⠂⠄  ",
+  ],
+  staticFrame: "  ▄▅▆▇█▇▆▅▄\n   ╲ ╱│╲ ╱ \n   ⠧⠇⠏⠇⠧   ",
+};
+
+// Color application is done at render time, not baked into frames,
+// so themes can recolor without editing frames:
+//
+//   renderFrame(frame, { bell: "#B78EFF", rim: "#8B5CF6", trail: "#5B4B7A" })
+//
+// Line 1 → bell color; Line 2 → rim color; Line 3 → trail color, with
+// center char of line 3 painted in `tip` (#D4BFFF) for a heartbeat accent.
+
+-----------------------------------------------------------------------------
+IMPLEMENTATION NOTES FOR PHASE 10.5
+-----------------------------------------------------------------------------
+
+1. Frames stored as plain strings — no ANSI baked in. Color is a runtime
+   layer so `--no-color`, theme swaps, and truecolor detection work cleanly.
+
+2. Hero spinner uses multi-line frames. The renderer must:
+   - save cursor, move up N-1 lines each redraw, erase to end-of-line,
+     then reprint — standard multi-line ora/ink pattern.
+   - OR use Ink `<Text>` with a key that changes each frame.
+
+3. Padding: every compact frame is exactly 7 chars; every hero line is
+   exactly 11 chars (trailing spaces preserved) so no jitter on redraw.
+
+4. Font fallback: if the terminal can't render braille (⠧⠇⠏), swap to
+   the block-only fallback:
+     tentacle row → ":·:·:" (simple ASCII)
+   Detect via process.env.TERM === "linux" or an explicit --ascii flag.
+
+5. Reduced motion: render staticFrame once, no timer. Honors NO_COLOR,
+   CLAUDE_CODE_DISABLE_ANIMATIONS, and non-TTY stdout.
+
+-----------------------------------------------------------------------------
+END OF SPEC

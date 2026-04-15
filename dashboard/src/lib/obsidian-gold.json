@@ -1,0 +1,183 @@
+{
+  "$schema": "vscode://schemas/color-theme",
+  "name": "Obsidian & Gold",
+  "displayName": "Obsidian & Gold",
+  "type": "dark",
+  "semanticHighlighting": true,
+  "_comment": "Obsidian & Gold — the house theme for Jellyclaw Engine. Matte obsidian background (#050505) with a restrained palette of warm gold tones. Designed for long reading sessions: high contrast on the primary foreground, muted auxiliaries, and no jarring reds/greens in common syntax positions. Keep this file in sync with the Tailwind theme tokens.",
+  "colors": {
+    "editor.background": "#050505",
+    "editor.foreground": "#e8e6e1",
+    "editor.lineHighlightBackground": "#0a0a0a",
+    "editor.selectionBackground": "#92846633",
+    "editor.selectionHighlightBackground": "#92846622",
+    "editor.findMatchBackground": "#d4a04a44",
+    "editor.findMatchHighlightBackground": "#d4a04a22",
+    "editorCursor.foreground": "#928466",
+    "editorWhitespace.foreground": "#1a1a1a",
+    "editorIndentGuide.background": "#111111",
+    "editorIndentGuide.activeBackground": "#1f1f1f",
+    "editorLineNumber.foreground": "#3a3a3a",
+    "editorLineNumber.activeForeground": "#928466",
+    "editorBracketMatch.background": "#928466",
+    "editorBracketMatch.border": "#928466",
+    "focusBorder": "#928466",
+    "foreground": "#e8e6e1"
+  },
+  "tokenColors": [
+    {
+      "name": "Comment",
+      "scope": ["comment", "punctuation.definition.comment"],
+      "settings": { "foreground": "#6b6760", "fontStyle": "italic" }
+    },
+    {
+      "name": "Keyword",
+      "scope": [
+        "keyword",
+        "keyword.control",
+        "storage.type",
+        "storage.modifier",
+        "keyword.operator.new",
+        "keyword.operator.expression"
+      ],
+      "settings": { "foreground": "#928466", "fontStyle": "bold" }
+    },
+    {
+      "name": "String",
+      "scope": [
+        "string",
+        "string.quoted",
+        "string.template",
+        "punctuation.definition.string"
+      ],
+      "settings": { "foreground": "#e8c07a" }
+    },
+    {
+      "name": "Number",
+      "scope": ["constant.numeric", "constant.language.numeric"],
+      "settings": { "foreground": "#d4a04a" }
+    },
+    {
+      "name": "Function",
+      "scope": [
+        "entity.name.function",
+        "support.function",
+        "meta.function-call",
+        "variable.function"
+      ],
+      "settings": { "foreground": "#c9b380" }
+    },
+    {
+      "name": "Variable",
+      "scope": [
+        "variable",
+        "variable.other",
+        "variable.parameter",
+        "meta.definition.variable"
+      ],
+      "settings": { "foreground": "#e8e6e1" }
+    },
+    {
+      "name": "Class / Type declaration",
+      "scope": [
+        "entity.name.class",
+        "entity.name.type.class",
+        "support.class"
+      ],
+      "settings": { "foreground": "#d4bf8f" }
+    },
+    {
+      "name": "Type",
+      "scope": [
+        "entity.name.type",
+        "support.type",
+        "meta.type",
+        "storage.type.primitive"
+      ],
+      "settings": { "foreground": "#b8a27a" }
+    },
+    {
+      "name": "Operator",
+      "scope": [
+        "keyword.operator",
+        "punctuation.separator",
+        "punctuation.accessor"
+      ],
+      "settings": { "foreground": "#928466" }
+    },
+    {
+      "name": "Constant",
+      "scope": [
+        "constant",
+        "constant.language",
+        "constant.character",
+        "support.constant",
+        "variable.other.constant"
+      ],
+      "settings": { "foreground": "#c9a256" }
+    },
+    {
+      "name": "Tag",
+      "scope": ["entity.name.tag", "meta.tag", "punctuation.definition.tag"],
+      "settings": { "foreground": "#928466" }
+    },
+    {
+      "name": "Attribute",
+      "scope": [
+        "entity.other.attribute-name",
+        "meta.attribute",
+        "meta.attribute-selector"
+      ],
+      "settings": { "foreground": "#d4bf8f" }
+    },
+    {
+      "name": "Regex",
+      "scope": ["string.regexp", "constant.other.character-class"],
+      "settings": { "foreground": "#e8c07a" }
+    },
+    {
+      "name": "Escape character",
+      "scope": ["constant.character.escape"],
+      "settings": { "foreground": "#d4a04a" }
+    },
+    {
+      "name": "Markdown heading",
+      "scope": ["markup.heading", "entity.name.section"],
+      "settings": { "foreground": "#c9b380", "fontStyle": "bold" }
+    },
+    {
+      "name": "Markdown link",
+      "scope": ["markup.underline.link", "string.other.link"],
+      "settings": { "foreground": "#d4a04a", "fontStyle": "underline" }
+    },
+    {
+      "name": "Markdown bold",
+      "scope": ["markup.bold"],
+      "settings": { "foreground": "#e8e6e1", "fontStyle": "bold" }
+    },
+    {
+      "name": "Markdown italic",
+      "scope": ["markup.italic"],
+      "settings": { "foreground": "#e8e6e1", "fontStyle": "italic" }
+    },
+    {
+      "name": "Markdown inline code",
+      "scope": ["markup.inline.raw", "markup.raw"],
+      "settings": { "foreground": "#e8c07a" }
+    },
+    {
+      "name": "Punctuation",
+      "scope": [
+        "punctuation",
+        "punctuation.terminator",
+        "punctuation.definition.block"
+      ],
+      "settings": { "foreground": "#b8a27a" }
+    },
+    {
+      "name": "Invalid",
+      "scope": ["invalid", "invalid.illegal"],
+      "settings": { "foreground": "#d66a5b" }
+    }
+  ]
+}

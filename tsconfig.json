@@ -44,5 +44,10 @@
     }
   },
   "include": ["engine/src/**/*.ts", "shared/src/**/*.ts", "test/**/*.ts"],
-  "exclude": ["node_modules", "dist", "**/*.test.ts"]
+  "exclude": [
+    "node_modules",
+    "dist",
+    "**/*.test.ts",
+    "engine/src/tui/_vendored/**"
+  ]
 }

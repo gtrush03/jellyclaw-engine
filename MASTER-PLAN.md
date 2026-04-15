@@ -97,8 +97,9 @@ that picture or away from it?"
 
 ## 4. Phase summary table
 
-All 20 phases. Duration is engineering days (solo). Acceptance gate is the
-one test that must pass before the phase is considered closed.
+All 21 phases (0–19 + Phase 10.5 inserted between 10 and 11). Duration is
+engineering days (solo). Acceptance gate is the one test that must pass
+before the phase is considered closed.
 
 | # | Name | Duration | Depends | Acceptance gate | Doc |
 |---|------|----------|---------|-----------------|-----|
@@ -112,8 +113,9 @@ one test that must pass before the phase is considered closed.
 | 07 | MCP client integration | 1.5 d | 01, 02 | `playwright-mcp@0.0.41` connects to CDP `127.0.0.1:9222` via config | PHASE-07 (pending) |
 | 08 | Permission engine + hooks | 2 d | 02, 04, 06 | PreToolUse/PostToolUse hook contract identical to Claude Code | PHASE-08 (pending) |
 | 09 | Session persistence + resume | 2 d | 03 | `jellyclaw --resume <id>` replays last session exactly | PHASE-09 (pending) |
-| 10 | CLI + HTTP server + library | 2 d | 02, 03, 08, 09 | Three entry points stable: `bin/jellyclaw`, `localhost:PORT`, `import { Engine }` | PHASE-10 (pending) |
-| 11 | Testing harness | 3 d | 02-10 | 5 golden-prompt regression tests + 20 unit tests pass in CI | PHASE-11 (pending) |
+| 10 | CLI + HTTP server + library | 2 d | 02, 03, 08, 09 | Three entry points stable: `bin/jellyclaw`, `localhost:PORT`, `import { Engine }` | PHASE-10 ✅ |
+| 10.5 | Interactive terminal TUI | 4–5 h | 10 | ✅ 4/4 prompts (01 vendor + adapter, 02 jellyfish spinner + purple theme + reduced-motion, 03 live render loop + embedded server spawn + CLI flags, 04 docs + dashboard regex widen + denominator 20→21) | [PHASE-10.5](phases/PHASE-10.5-tui.md) |
+| 11 | Testing harness | 3 d | 02-10, 10.5 | 5 golden-prompt regression tests + 20 unit tests pass in CI | PHASE-11 (pending) |
 | 12 | Genie integration behind flag | 3 d | 10, 11 | `GENIE_ENGINE=jellyclaw genie wish "…"` succeeds on 3 real wishes | PHASE-12 (pending) |
 | 13 | Make jellyclaw default in Genie | 2 d + 72 h burn-in | 12 | 72-hour burn-in: zero regressions vs Claurst on production wishes | PHASE-13 (pending) |
 | 14 | Observability + tracing | 2 d | 10 | OTLP traces export; per-tool latency visible in Grafana | PHASE-14 (pending) |

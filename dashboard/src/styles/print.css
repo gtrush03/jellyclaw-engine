@@ -1,0 +1,121 @@
+/*
+ * Print styles for the Jellyclaw dashboard.
+ * Goal: when the user prints the prompt viewer, we want a clean
+ * paper-friendly document — black ink on white, no sidebar, full-width.
+ *
+ * Hooks: mark any no-print element with `data-no-print` or `.no-print`,
+ * and wrap the printable region with `<main data-printable>` or `.printable`.
+ */
+
+@media print {
+  /* Page basics */
+  @page {
+    margin: 18mm 16mm;
+  }
+
+  html,
+  body {
+    background: #ffffff !important;
+    color: #111111 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  body {
+    font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+    font-size: 11pt;
+    line-height: 1.55;
+  }
+
+  /* Hide chrome */
+  header,
+  nav,
+  aside,
+  [data-no-print],
+  .no-print,
+  [role="dialog"],
+  [role="tooltip"],
+  [data-sonner-toaster],
+  .live-indicator,
+  .jellyclaw-skip-link,
+  button,
+  [role="button"] {
+    display: none !important;
+  }
+
+  /* Promote the printable area */
+  main,
+  [data-printable],
+  .printable {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    color: #111111 !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  /* Typography */
+  h1, h2, h3, h4, h5, h6 {
+    color: #000000 !important;
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+  h1 { font-size: 20pt; margin: 0 0 8pt; }
+  h2 { font-size: 15pt; margin: 16pt 0 6pt; }
+  h3 { font-size: 12.5pt; margin: 12pt 0 4pt; }
+
+  p, li {
+    orphans: 3;
+    widows: 3;
+  }
+
+  /* Links: show URL inline for paper */
+  a[href]::after {
+    content: " (" attr(href) ")";
+    font-size: 0.85em;
+    color: #555555;
+    word-break: break-all;
+  }
+  a[href^="#"]::after,
+  a[href^="javascript:"]::after {
+    content: "";
+  }
+
+  /* Code + prompt text */
+  pre,
+  code,
+  kbd {
+    font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace !important;
+    color: #000000 !important;
+    background: #f4f2ec !important;
+    border: 1px solid #d6cfbd !important;
+  }
+  pre {
+    padding: 8pt 10pt;
+    border-radius: 4pt;
+    white-space: pre-wrap;
+    word-break: break-word;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  code {
+    padding: 1pt 3pt;
+    border-radius: 2pt;
+  }
+
+  /* Progress / skeletons should be invisible in print */
+  [role="progressbar"],
+  [aria-busy="true"] {
+    display: none !important;
+  }
+
+  /* Show full prompt area as one block */
+  [data-prompt-body] {
+    page-break-before: auto;
+    break-before: auto;
+  }
+}

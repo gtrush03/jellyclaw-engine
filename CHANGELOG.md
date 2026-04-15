@@ -8,7 +8,80 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- feat(tui): **JellyJelly brand redesign** — cyan-first deep-sea palette
+  replaces generic purple (`#3BA7FF` Jelly Cyan primary, `#9E7BFF`
+  Medusa Violet accent, `#FFB547` Amber Eye heartbeat, `#0A1020` Deep
+  Ink bg); readable 9-letter JELLYCLAW stencil wordmark (5 rows,
+  cyan→violet gradient via existing `textMuted`/`text` theme consumers,
+  zero call-site changes); jellyfish spinner recolored with a per-frame
+  amber heartbeat at pulse peak. Brand brief at
+  `/Users/gtrush/Downloads/jellyclaw-brand-brief.md`. Patch-log entries
+  at `patches/005-jellyclaw-wordmark.md` and
+  `engine/src/tui/_vendored/_upstream-patches/jellyclaw-theme-brand-rebrand.patch`.
+- feat(cli): **in-TUI API key capture + rotation**. First-run
+  `jellyclaw tui` drops to a hidden-paste prompt when no
+  `ANTHROPIC_API_KEY` is present; persists to
+  `~/.jellyclaw/credentials.json` (file `0600`, dir `0700`, atomic
+  rename). Subsequent launches read silently. New `jellyclaw key`
+  subcommand rotates without exiting. New `engine/src/cli/credentials.ts`,
+  `credentials-prompt.ts`, `key-cmd.ts`, `credentials.test.ts`
+  (17 tests). Pino redact extended with `anthropicApiKey`,
+  `openaiApiKey`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `token`,
+  `credentials` (+ nested variants). Inline `/key` inside the
+  vendored Solid TUI deferred to Phase 11+.
+- feat(tui): phase 10.5 complete — interactive terminal TUI (`jellyclaw tui`)
+  vendored from OpenCode, rebranded, bridged to the Phase 10.02 HTTP+SSE
+  surface, themed purple, CLI-wrapped, documented, and recognized by the
+  dashboard. The repo now honestly reports 21 phases (0–19 + 10.5).
+- feat(tui): docs + dashboard phase 10.5 recognition (Phase 10.5 Prompt 04).
+  Polished `docs/tui.md` (env-var matrix, CLI flags, running recipes, exit
+  codes, vendor upgrade procedure); widened the dashboard phase-parsing
+  regexes in `dashboard/server/src/lib/log-parser.ts` (`PHASE_CHECK_RE` +
+  `sectionRe` now accept `\d+(?:\.\d+)?`, decimal ids skip zero-padding) and
+  `dashboard/src/hooks/useSSE.ts` (`phase-\d{2}(?:\.\d+)?/…`); flipped
+  `20 → 21` denominators across dashboard READMEs / smoke / healthcheck /
+  integration-checklist / future-polish; bumped `COMPLETION-LOG.md`
+  progress `11/20 (55%)` → `12/21 (57%)`; closed Phase 10.5 in STATUS /
+  COMPLETION-LOG / MASTER-PLAN / `phases/PHASE-10.5-tui.md`; added a short
+  "Interactive TUI" paragraph to top-level `README.md`.
+- feat(tui): live render loop + embedded server spawn (Phase 10.5 Prompt 03).
+  `engine/src/tui/render-loop.ts` renders streaming tokens, tool-call cards,
+  permission prompts, session sidebar, slash-command palette, and diff
+  viewer. `engine/src/cli/tui.ts` `launchTui()` picks a random free port on
+  `127.0.0.1`, mints a Bearer token, boots the engine HTTP server
+  in-process, and spawns the TUI with `JELLYCLAW_SERVER_URL` +
+  `JELLYCLAW_SERVER_TOKEN` + `JELLYCLAW_TUI` + `JELLYCLAW_REDUCED_MOTION` +
+  `JELLYCLAW_BRAND_GLYPH` + `NO_COLOR` passthrough. SIGINT/SIGTERM forwards
+  with a 3 s grace, then SIGKILL; on exit the HTTP server shuts down,
+  SQLite WAL flushes, the port releases, and the process exits with the
+  TUI's own code (0/1/2/124/130/143). New CLI surface: `jellyclaw tui
+  [--cwd] [--session] [--continue] [--model] [--permission-mode
+  default|acceptEdits|bypassPermissions|plan] [--theme jellyclaw|opencode]
+  [--no-spinner] [--ascii]` + `jellyclaw attach <url> [--token]` + `bun run
+  tui:vendored` escape hatch.
+- feat(tui): add jellyfish theme + spinner (Phase 10.5 Prompt 02). Ships
+  `jellyclaw.json` purple-primary theme (`#B78EFF` / `#D4BFFF` / `#8B5CF6` /
+  `#5B4B7A`, terminal-default background), a two-variant jellyfish spinner
+  (compact 7-col × 10-frame + hero 3-line × 8-frame, seamless loop, color at
+  render time), and a `supports-emoji` util driving the `🪼` → `◉` brand-glyph
+  fallback. `DEFAULT_THEME` flips to `"jellyclaw"`; `JELLYCLAW_REDUCED_MOTION`
+  is honored alongside `NO_COLOR` / `CLAUDE_CODE_DISABLE_ANIMATIONS` / non-TTY /
+  `--ascii` to collapse the spinner to a static frame. Bundled theme count
+  33 → 34.
+- feat(tui): vendor OpenCode TUI + SDK adapter (Phase 10.5 Prompt 01). OpenCode's
+  Solid + OpenTUI TUI subtree lands at `engine/src/tui/_vendored/` pinned to
+  upstream SHA `1f279cd2c8719601c72eff071dd69c58cda93219`, with a thin
+  SDK-shaped adapter bridging to jellyclaw's Phase 10.02 HTTP + SSE server
+  (Bearer auth, dotted ↔ snake_case event translation). New CLI entry points:
+  `jellyclaw tui` and `jellyclaw attach <url>`. MIT attribution preserved at
+  `engine/src/tui/_vendored/LICENSE.vendored`. See [`docs/tui.md`](docs/tui.md).
 - Initial scaffolding and phase plans (Phase 0).
+
+### Fixed
+- fix(deps): remove `_vendored` from bun workspaces (fixes 42 GB OOM on install).
+  Including the vendored OpenCode monorepo subtree as a workspace root pulled
+  its full dep graph into jellyclaw's `bun install`, triggering OOM kills on
+  16 GB machines. The vendored tree is now a plain subtree, not a workspace.
 - Repo layout: `engine/`, `agents/`, `skills/`, `patches/`, `phases/`, `integration/`,
   `desktop/`, `docs/`, `scripts/`, `test/`.
 - TypeScript strict config, Biome lint + format, Vitest suite, tsup bundler.

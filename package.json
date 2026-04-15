@@ -27,8 +27,7 @@
     "postinstall": "patch-package --patch-dir patches --error-on-fail",
     "verify:patches": "patch-package --patch-dir patches --dry-run",
     "clean": "rm -rf dist node_modules/.cache",
-    "tui": "node engine/dist/cli.js tui",
-    "tui:vendored": "cd engine/src/tui/_vendored && bun install && cd opencode && bun run src/index.ts"
+    "tui": "node engine/dist/cli.js tui"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.40.0",

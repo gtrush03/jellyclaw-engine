@@ -1,0 +1,30 @@
+{
+  "name": "@jellyclaw/dashboard-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Local-only HTTP + SSE server powering the jellyclaw-engine dashboard.",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsup",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.13.0",
+    "better-sse": "^0.14.0",
+    "chokidar": "^4.0.1",
+    "gray-matter": "^4.0.3",
+    "hono": "^4.6.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "tsup": "^8.3.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  },
+  "engines": {
+    "node": ">=20.6.0"
+  }
+}

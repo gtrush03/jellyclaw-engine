@@ -8,7 +8,7 @@ export default defineConfig({
       "engine/src/**/*.test.ts",
       "shared/src/**/*.test.ts",
     ],
-    exclude: ["node_modules", "dist"],
+    exclude: ["node_modules", "dist", "engine/src/tui/_vendored/**"],
     environment: "node",
     globals: false,
     testTimeout: 20_000,
