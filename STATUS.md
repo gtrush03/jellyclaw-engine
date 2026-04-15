@@ -3,8 +3,8 @@
 > Living doc. Update at the start and end of every working day.
 > If this file is stale, don't trust it.
 
-**Last updated:** 2026-04-15 (Phase 03 Prompt 01 ✅ — schemas + docs landed)
-**Current phase:** Phase 03 — Event stream adapter (in progress)
+**Last updated:** 2026-04-15 (Phase 03 ✅ complete — adapter + emitter + golden replay)
+**Current phase:** Phase 04 — Tool parity (next)
 **Current milestone target:** M1 (Engine works) — projected week of May 18
 **Engine on:** n/a (not yet bootable)
 **Genie dispatcher:** Claurst (unchanged)
@@ -55,7 +55,7 @@ Budget ceiling for v1.0 (Phases 00–18): **TBD — pending Q2 answer.**
 
 | Metric | Count |
 |--------|-------|
-| Unit tests passing | 179 |
+| Unit tests passing | 242 |
 | Unit tests failing | 0 |
 | Integration tests passing | 0 |
 | Golden-prompt regression tests | 0 / 5 target |
@@ -80,7 +80,7 @@ Budget ceiling for v1.0 (Phases 00–18): **TBD — pending Q2 answer.**
 - [x] ✅ Phase 00 — Repo scaffolding
 - [x] ✅ Phase 01 — OpenCode pinning + patching
 - [x] ✅ Phase 02 — Config + provider layer
-- [ ] Phase 03 — Event stream adapter
+- [x] ✅ Phase 03 — Event stream adapter
 - [ ] Phase 04 — Tool parity
 - [ ] Phase 05 — Skills system
 - [ ] Phase 06 — Subagents + hook patch
@@ -146,4 +146,22 @@ Budget ceiling for v1.0 (Phases 00–18): **TBD — pending Q2 answer.**
   `vitest.config.ts` alias all updated. Smoke import from engine verified via
   `engine/src/stream/smoke-import.ts`. 179/179 tests green, typecheck ✅,
   `biome check shared/ engine/src/stream/` ✅.
-- Next action: Phase 03 Prompt 02 — adapter wiring. Fresh Claude session.
+- Phase 03 Prompt 02 (adapter + emitter + golden replay) landed via a 2-agent
+  parallel team. `engine/src/adapters/opencode-events.ts` (940 lines, 7 tests —
+  happy-path sequence, late-start ordering, orphan-end timeout with fake timers,
+  parse-error tolerance, subagent nesting, AbortController cancellation,
+  backpressure under slow-consumer load). `engine/src/stream/emit.ts` (200 lines,
+  54 vitest cases — drain-aware `writeEvent`, stateless `downgrade()` matrix
+  across 15 events × 3 formats, `claude-code-compat` delta coalescing with
+  synthetic-message flush on `finish()`, `claurst-min` flat-shape rewrite).
+  Golden replay via `test/golden/replay.test.ts` + `hello.opencode.jsonl` +
+  `hello.jellyclaw.jsonl` (regenerable via `GOLDEN_UPDATE=1`; narrow normaliser
+  strips only `ts`/`session_id`/`duration_ms`/`stats.duration_ms`, proven
+  narrow by a mutation test). `engine/scratch/emit-hello.ts` scratch smoke
+  hand-verified all three output formats produce distinct correct output.
+  `eventsource-parser@^3` added. Main-session reconcile: 4 targeted
+  `biome-ignore useAwait` comments on async generators + wrapper functions.
+  242/242 tests green, typecheck ✅, biome ✅ on all Phase 03 files.
+  **Phase 03 ✅ COMPLETE.**
+- Next action: Phase 04 — Tool parity. Fresh Claude session. Run
+  `prompts/phase-04/01-<name>.md`.

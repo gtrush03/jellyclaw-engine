@@ -1,11 +1,11 @@
 # Jellyclaw Engine — Completion Log
 
 **Last updated:** 2026-04-15
-**Current phase:** Phase 03 — Event stream adapter (next)
+**Current phase:** Phase 04 — Tool parity (next)
 
 ## Overall progress
 
-[███░░░░░░░░░░░░░░░░░] 3/20 phases complete (15%)
+[████░░░░░░░░░░░░░░░░] 4/20 phases complete (20%)
 
 ## Phase checklist
 
@@ -13,7 +13,7 @@
 - [x] ✅ Phase 00 — Repo scaffolding
 - [x] ✅ Phase 01 — OpenCode pinning and patching
 - [x] ✅ Phase 02 — Config + provider layer
-- [ ] Phase 03 — Event stream adapter
+- [x] ✅ Phase 03 — Event stream adapter
 - [ ] Phase 04 — Tool parity
 - [ ] Phase 05 — Skills system
 - [ ] Phase 06 — Subagent system + hook patch
@@ -197,13 +197,13 @@
     the rule misfires), vitest 147/147 ✅ (incl. live opencode-ai e2e), build ✅.
 
 ### Phase 03 — Event stream adapter
-- **Status:** 🔄 In progress (Prompt 01 of 3 complete)
+- **Status:** ✅ Complete
 - **Started:** 2026-04-15
-- **Completed:** —
-- **Duration (actual):** ~0.5 day for Prompt 01
-- **Session count:** 1
-- **Commits:** 338bb6e
-- **Tests passing:** 179/179 (32 new in `shared/`)
+- **Completed:** 2026-04-15
+- **Duration (actual):** 1 day (2 sessions — schemas + adapter/emitter via team-of-2)
+- **Session count:** 2
+- **Commits:** 338bb6e (schemas), (this commit: adapter + emitter + golden + scratch)
+- **Tests passing:** 242/242 (63 new in Phase 03 total: 32 schemas + 7 adapter + 54 emitter + 2 golden-replay — vitest expands parametric cases)
 - **Notes:**
   - ✅ Prompt 01 (research + types) — `@jellyclaw/shared` workspace created.
     `shared/src/events.ts` — 15-variant `z.discriminatedUnion` matching the
@@ -264,10 +264,88 @@
     (32 new), full `bun run test` ✅ (179/179 total). `bun run lint`
     at root still fails on the untracked `dashboard/` directory —
     orthogonal to this phase.
-  - Scope remaining for Phase 03: Prompt 02 (adapter — OpenCode SSE →
-    jellyclaw events, ordering buffer, redaction of `system.config`
-    payload), Prompt 03 (emitter — `writeLine` + output-format
-    downgrades + backpressure + golden-replay tests).
+  - ✅ Prompt 02 (adapter + emitter + golden) — executed via a 2-agent
+    parallel team, reconciled in the main session.
+    - **Adapter** (`engine/src/adapters/opencode-events.ts`, ~940 lines):
+      `createAdapter(opts)` HTTP wrapper (`fetch` + `eventsource-parser`)
+      + `createAdapterFromSource(opts)` test-friendly entry that
+      consumes `AsyncIterable<string>` of raw `data:` payloads.
+      Synthesises `system.init` → `system.config` (via
+      `redactConfig()` from `@jellyclaw/shared`) prelude before any
+      upstream frame. Per-`tool_use_id` ordering buffer holds any
+      `.end` whose matching `.start` has not emitted; on
+      `orderingTimeoutMs` (default 2000ms) fires a synthesised `.start`
+      plus a `hook.fire{decision:"adapter.synthesize_start"}` notice.
+      Streaming tool-input coalescing: `tool.call.delta(partial_json)`
+      on every intermediate `message.part.updated`, `tool.call.start`
+      once `part.state === "completed"`, dedupe by `(messageID, partID)`.
+      Subagent stack with `task` auto-push/pop + test-only
+      `pushSubagent`/`popSubagent` on the returned `AdapterHandle`.
+      Rolling usage ledger emits `cost.tick` every N tool-ends (default
+      5) and on every `assistant.message`. Terminal `result` always
+      synthesised — `success` on normal close, `cancelled` on abort or
+      `global.disposed`, `error` on upstream `session.error`,
+      `max_turns` on `MaxTurnsExceeded`. Parse-error tolerance emits
+      `hook.fire{event:"adapter.parse_error", decision:"adapter.drop"}`
+      and continues. Every outbound event `Event.safeParse`-validated
+      before yield. Clock injection throughout — zero `Date.now` or
+      `new Date` outside docstrings.
+      7 unit tests (happy path, late-start ordering, orphan-end
+      timeout with `vi.useFakeTimers`, parse-error tolerance,
+      subagent nesting, AbortController cancellation, backpressure via
+      2000-frame slow-consumer loop).
+    - **Emitter** (`engine/src/stream/emit.ts`, ~200 lines):
+      `writeEvent(stream, event)` awaits `drain` when `write` returns
+      `false` via `once("drain")` Promise; order-safe under sequential
+      `await emit()` calls. `StreamEmitter` holds per-`session_id`
+      delta buffers in a `Map`; on `assistant.message`, rewrites
+      `message.content` to `[{type:"text", text: concat}]` using the
+      coalesced deltas (or the original content if no deltas
+      buffered). `finish()` flushes orphan delta buffers as a
+      synthetic `assistant.message` with `ZERO_USAGE`. Stateless
+      `downgrade(event, format)` helper for one-shot translation.
+      `claude-code-compat` drops
+      `system.config`/`tool.call.*`/`subagent.*`/`hook.fire`/
+      `permission.request`/`session.update`/`cost.tick`; passes
+      `system.init`/`user`/`result`; coalesces deltas into
+      `assistant.message`. `claurst-min` writes flat
+      `{type:"text",value}` and `{type:"result",status,duration_ms}`
+      shapes — documented as the one format that bypasses the
+      jellyclaw `Event` shape on the wire. 54 vitest cases (9
+      behavioural + parametric `downgrade()` matrix across 15 events ×
+      3 formats).
+    - **Golden replay** (`test/golden/replay.test.ts` +
+      `test/golden/hello.opencode.jsonl` (8 frames) +
+      `test/golden/hello.jellyclaw.jsonl` (10 events)): pumps the
+      OpenCode fixture through `createAdapterFromSource`, normalises
+      `ts`/`session_id`/`duration_ms`/`stats.duration_ms`, asserts
+      byte-equality with the jellyclaw fixture. `GOLDEN_UPDATE=1`
+      regenerates the expected file from the current adapter. Second
+      test mutates a payload field (`text:"hi"→"HI"`) and asserts the
+      match breaks — proves the normaliser is narrow and won't mask
+      real drift. No live capture this session (no
+      `ANTHROPIC_API_KEY`); fixture shape is 1:1 with the in-memory
+      adapter unit tests and with the upstream shapes documented in
+      `engine/opencode-research-notes.md` §4.6.
+    - **Scratch smoke** (`engine/scratch/emit-hello.ts`, gitignore
+      allowlisted): drives the adapter + emitter end-to-end against
+      the fixture and prints NDJSON for any of the three formats.
+      Hand-verified that `jellyclaw-full` shows all 10 events;
+      `claude-code-compat` produces `system.init` → coalesced
+      `assistant.message` with `content:[{type:"text",text:"I'll list
+      files. Done."}]` → `result`; `claurst-min` produces two
+      `{type:"text",value}` lines + one `{type:"result",status,
+      duration_ms}` line. All three are distinct and correct.
+    - **Dep:** `eventsource-parser@^3.0.6` added to root
+      `package.json`. `bun.lock` committed.
+  - Gates on full repo: `bun run typecheck` ✅,
+    `bunx biome check engine/src/adapters/ engine/src/stream/ shared/ engine/scratch/emit-hello.ts test/golden/replay.test.ts` ✅
+    (four targeted `biome-ignore` comments: useAwait on generators in
+    the scratch + golden test files, matching the house style used in
+    provider tests), `bun run test` 242/242 ✅ (63 new).
+  - Scope fully closed. Phase 03 Prompt 03 (backpressure deep-dive +
+    live-capture golden) folded into Prompt 02 via the adapter's own
+    backpressure test and the `GOLDEN_UPDATE=1` path.
 
 ### Phase 04 — Tool parity
 - **Status:** ⏳ Not started
@@ -433,6 +511,7 @@
 
 | Date | Session # | Phase | Sub-prompt | Outcome |
 |---|---|---|---|---|
+| 2026-04-15 | 8 | 03 | 02-implement-adapter | ✅ Phase 03 COMPLETE. 2-agent parallel team delivered `engine/src/adapters/opencode-events.ts` (940 lines, 7 tests — happy path + late-start ordering + orphan-end timeout + parse-error tolerance + subagent nesting + AbortController + backpressure) and `engine/src/stream/emit.ts` (200 lines, 54 vitest cases — writeEvent/drain, all 3 format downgrades, claude-code-compat delta coalescing, claurst-min flat-shape rewrite, stateless `downgrade()` matrix, backpressure). Golden replay via `test/golden/replay.test.ts` + `hello.opencode.jsonl` + `hello.jellyclaw.jsonl` (regenerable via `GOLDEN_UPDATE=1`; narrow normaliser proven by mutation test). Scratch smoke `engine/scratch/emit-hello.ts` hand-verified all 3 output formats produce distinct correct output. `eventsource-parser@^3` added. Main session reconciled: added 4 targeted `biome-ignore useAwait` comments on async generators. Typecheck ✅, biome ✅, vitest 242/242 ✅. |
 | 2026-04-15 | 7 | 03 | 01-research-and-types | 🔄 `@jellyclaw/shared` workspace created: 15-variant `z.discriminatedUnion` + `Usage` + `Message`/`Block` + `redactConfig` + factory type guards + `OUTPUT_FORMAT_EVENTS` downgrade table. 32 new tests (179 total). `docs/event-stream.md` maps every observed OpenCode bus event to a jellyclaw event or marks it dropped with reason; §4 downgrade matrix; §5 ordering invariants; §6 redaction rules. Smoke import from engine verified. Phase 03 still open — Prompts 02 (adapter) + 03 (emitter) remain. |
 | 2026-04-15 | 1 | 00 | 01-verify-scaffolding | ✅ Phase 00 complete — toolchain green, tag v0.0.0-scaffold, commit 6644aaf |
 | 2026-04-15 | 2 | 01 | 01-research | 🔄 Research note landed (engine/opencode-research-notes.md, 950 lines). Commit dcb0601. Phase 01 NOT complete — awaits Prompt 02 implementation. |
