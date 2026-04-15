@@ -197,14 +197,77 @@
     the rule misfires), vitest 147/147 ✅ (incl. live opencode-ai e2e), build ✅.
 
 ### Phase 03 — Event stream adapter
-- **Status:** ⏳ Not started
-- **Started:** —
+- **Status:** 🔄 In progress (Prompt 01 of 3 complete)
+- **Started:** 2026-04-15
 - **Completed:** —
-- **Duration (actual):** —
-- **Session count:** —
-- **Commits:** —
-- **Tests passing:** —
-- **Notes:** —
+- **Duration (actual):** ~0.5 day for Prompt 01
+- **Session count:** 1
+- **Commits:** (pending)
+- **Tests passing:** 179/179 (32 new in `shared/`)
+- **Notes:**
+  - ✅ Prompt 01 (research + types) — `@jellyclaw/shared` workspace created.
+    `shared/src/events.ts` — 15-variant `z.discriminatedUnion` matching the
+    Phase 03 spec exactly (`system.init`, `system.config`, `user`,
+    `assistant.delta`, `assistant.message`, `tool.call.{start,delta,end}`,
+    `subagent.{start,end}`, `hook.fire`, `permission.request`,
+    `session.update`, `cost.tick`, `result`). Shared `Usage` schema with
+    defaults for `cache_creation_input_tokens`, `cache_read_input_tokens`,
+    `cost_usd`. Minimal `Message`/`Block` (text/tool_use/tool_result)
+    shapes used by the `user` and `assistant.message` payloads. Type
+    guards generated via a `makeGuard<T>(type)` factory + generic
+    `isEvent(e, type)`. `EVENT_TYPES` canonical ordering + `parseEvent`
+    boundary helper. `redactConfig` pure recursive scrubber (key-name
+    patterns for `apiKey`/`api_key`/`*token`/`*password`/`*secret`/
+    `OPENCODE_SERVER_PASSWORD`; string-value patterns for `sk-ant-...`,
+    `sk-or-...`, `AKIA[0-9A-Z]{16}`, `github_pat_*`, `gh[pous]_*`).
+    `OUTPUT_FORMAT_EVENTS: Record<OutputFormat, ReadonlySet<EventType>>`
+    encodes the three downgrades (`jellyclaw-full` / `claude-code-compat`
+    / `claurst-min`) that Prompt 03's emitter will consult.
+  - `shared/src/events.test.ts` (32 tests): per-variant round-trip via
+    hand-written golden samples, unknown-discriminator rejection,
+    missing-required-field rejection, negative-`ts` rejection, Usage
+    defaults fill, guard narrowing (both typed and generic), compile-time
+    exhaustive-switch check over all 15 variants (`const _: never = e`),
+    redactor covering (a) key-name patterns at any nesting depth,
+    (b) string-value patterns under unrecognised keys, (c) purity (no
+    input mutation), (d) non-secret passthrough. Output-format matrix
+    asserts the exact membership of each of the three sets.
+  - `docs/event-stream.md` (357 lines): rationale; shape + when-emitted
+    for each of the 15 events; upstream-mapping table covering every
+    OpenCode bus event from `engine/opencode-research-notes.md` §4.6
+    (`server.connected`, `server.heartbeat`, `global.disposed`,
+    `session.updated`, `session.error`, `message.updated`,
+    `message.part.updated` text/tool-use/tool-result, `tool.permission.ask`,
+    `project.updated`) plus jellyclaw-native rows (plugin hooks,
+    permission decisions, task-tool spawn/return, usage roll-up); each
+    upstream event either maps to a jellyclaw event or is explicitly
+    marked dropped with reason. §4 output-format downgrade matrix (tick
+    table). §5 ordering invariants (system.init first → system.config
+    second → result terminal → tool.call.start before .end →
+    subagent.start before nested tool events → monotonic ts →
+    assistant.message after its deltas). §6 redaction rule list aligned
+    with `redactConfig()` implementation. §7 forward-references Phase
+    09/10/14 follow-ups.
+  - Live-sample capture deferred: `test/golden/opencode-raw-samples.jsonl`
+    path documented in §3.1 with the curl one-liner, but a live capture
+    was not performed this session (schemas stand on their own; Prompt
+    02 will replay captured frames through the adapter).
+  - Workspace integration: root `package.json` `workspaces` +
+    `tsconfig.json` `paths` (`@jellyclaw/shared` + `@jellyclaw/shared/*`)
+    + `vitest.config.ts` `alias` all updated. Smoke import from engine
+    side proven via `engine/src/stream/smoke-import.ts` (imports
+    `Event`, `EventType`, `EVENT_TYPES`, `parseEvent` from
+    `@jellyclaw/shared`; placeholder until Prompt 02's adapter lands).
+  - Gates: `bun install` ✅, `bun run typecheck` ✅,
+    `bunx biome check shared/ engine/src/stream/` ✅ (autofix applied
+    once for formatter line-joining), `bun run test shared/` ✅
+    (32 new), full `bun run test` ✅ (179/179 total). `bun run lint`
+    at root still fails on the untracked `dashboard/` directory —
+    orthogonal to this phase.
+  - Scope remaining for Phase 03: Prompt 02 (adapter — OpenCode SSE →
+    jellyclaw events, ordering buffer, redaction of `system.config`
+    payload), Prompt 03 (emitter — `writeLine` + output-format
+    downgrades + backpressure + golden-replay tests).
 
 ### Phase 04 — Tool parity
 - **Status:** ⏳ Not started
@@ -370,6 +433,7 @@
 
 | Date | Session # | Phase | Sub-prompt | Outcome |
 |---|---|---|---|---|
+| 2026-04-15 | 7 | 03 | 01-research-and-types | 🔄 `@jellyclaw/shared` workspace created: 15-variant `z.discriminatedUnion` + `Usage` + `Message`/`Block` + `redactConfig` + factory type guards + `OUTPUT_FORMAT_EVENTS` downgrade table. 32 new tests (179 total). `docs/event-stream.md` maps every observed OpenCode bus event to a jellyclaw event or marks it dropped with reason; §4 downgrade matrix; §5 ordering invariants; §6 redaction rules. Smoke import from engine verified. Phase 03 still open — Prompts 02 (adapter) + 03 (emitter) remain. |
 | 2026-04-15 | 1 | 00 | 01-verify-scaffolding | ✅ Phase 00 complete — toolchain green, tag v0.0.0-scaffold, commit 6644aaf |
 | 2026-04-15 | 2 | 01 | 01-research | 🔄 Research note landed (engine/opencode-research-notes.md, 950 lines). Commit dcb0601. Phase 01 NOT complete — awaits Prompt 02 implementation. |
 | 2026-04-15 | 6 | 02 | 03-openrouter-provider | ✅ Phase 02 COMPLETE. 5-agent parallel team produced `openrouter.ts` (with SSE parser + cache_control strip + warn-once) + `router.ts` + `gate.ts` + `credential-pool.ts` + `docs/providers.md`. Main session reconciled barrel exports, updated `engine/src/index.ts` `makeProvider`, fixed 5 linter misfires on async generators in tests. 147/147 tests green (54 new). Typecheck ✅, build ✅, biome ✅. |
