@@ -53,6 +53,62 @@ export const TelemetryBlock = z
   })
   .default({});
 
+/**
+ * Permission mode — see `engine/src/permissions/types.ts` and
+ * `docs/permissions.md`. Exported so CLI / config consumers can reuse it.
+ */
+export const PermissionModeSchema = z.enum(["default", "acceptEdits", "bypassPermissions", "plan"]);
+export type PermissionMode = z.infer<typeof PermissionModeSchema>;
+
+/**
+ * Permissions block. Replaces the legacy `Record<string, "allow"|"ask"|"deny">`
+ * shape from Phase 02; the new structured form is what the Phase 08 rule
+ * parser / decision engine consume. `mcpTools` opts specific MCP tools into
+ * plan-mode read-only treatment.
+ */
+export const PermissionsBlock = z
+  .object({
+    mode: PermissionModeSchema.default("default"),
+    allow: z.array(z.string()).default([]),
+    deny: z.array(z.string()).default([]),
+    ask: z.array(z.string()).default([]),
+    mcpTools: z.record(z.string(), z.literal("readonly")).default({}),
+  })
+  .default({});
+export type PermissionsBlock = z.infer<typeof PermissionsBlock>;
+
+/**
+ * Hooks block — Phase 08 prompt 02. One entry per configured hook. The
+ * TypeScript contract lives in `engine/src/hooks/types.ts` as `HookConfig`;
+ * this schema is structurally compatible (string enum, optional matcher,
+ * command, args, timeout, blocking, name, env).
+ */
+export const HookConfigSchema = z.object({
+  event: z.enum([
+    "SessionStart",
+    "InstructionsLoaded",
+    "UserPromptSubmit",
+    "PreToolUse",
+    "PostToolUse",
+    "SubagentStart",
+    "SubagentStop",
+    "PreCompact",
+    "Stop",
+    "Notification",
+  ]),
+  matcher: z.string().optional(),
+  command: z.string().min(1),
+  args: z.array(z.string()).optional(),
+  timeout: z.number().int().positive().max(120_000).optional(),
+  blocking: z.boolean().optional(),
+  name: z.string().optional(),
+  env: z.record(z.string(), z.string()).optional(),
+});
+export type HookConfigInput = z.infer<typeof HookConfigSchema>;
+
+export const HooksBlock = z.array(HookConfigSchema).default([]);
+export type HooksBlock = z.infer<typeof HooksBlock>;
+
 export const Config = z.object({
   provider: Provider.default("anthropic"),
   model: z.string().default("claude-sonnet-4-6"),
@@ -61,7 +117,8 @@ export const Config = z.object({
   cache: CacheBlock,
   server: ServerBlock,
   telemetry: TelemetryBlock,
-  permissions: z.record(z.string(), z.enum(["allow", "ask", "deny"])).default({}),
+  permissions: PermissionsBlock,
+  hooks: HooksBlock,
   /**
    * Safety gate. When false (default), the router MUST reject any request
    * that routes an `anthropic/*` model via the `openrouter` provider.

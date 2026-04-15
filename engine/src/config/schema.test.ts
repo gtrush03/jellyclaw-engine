@@ -56,6 +56,103 @@ describe("schema", () => {
   });
 });
 
+describe("permissions block (Phase 08)", () => {
+  it("defaults to mode=default with empty arrays and empty mcpTools", () => {
+    const c = parseConfig({});
+    expect(c.permissions.mode).toBe("default");
+    expect(c.permissions.allow).toEqual([]);
+    expect(c.permissions.deny).toEqual([]);
+    expect(c.permissions.ask).toEqual([]);
+    expect(c.permissions.mcpTools).toEqual({});
+  });
+
+  it("round-trips mode=plan", () => {
+    const c = parseConfig({ permissions: { mode: "plan" } });
+    expect(c.permissions.mode).toBe("plan");
+    expect(c.permissions.allow).toEqual([]);
+  });
+
+  it("round-trips a rich block", () => {
+    const c = parseConfig({
+      permissions: {
+        mode: "acceptEdits",
+        allow: ["Bash(git status)"],
+        deny: ["Bash(rm *)"],
+        ask: ["Write(src/**)"],
+        mcpTools: { mcp__github__get_issue: "readonly" },
+      },
+    });
+    expect(c.permissions.mode).toBe("acceptEdits");
+    expect(c.permissions.allow).toEqual(["Bash(git status)"]);
+    expect(c.permissions.deny).toEqual(["Bash(rm *)"]);
+    expect(c.permissions.ask).toEqual(["Write(src/**)"]);
+    expect(c.permissions.mcpTools).toEqual({ mcp__github__get_issue: "readonly" });
+  });
+
+  it("rejects an unknown mode", () => {
+    expect(() => parseConfig({ permissions: { mode: "yolo" } })).toThrow();
+  });
+
+  it("rejects a non-readonly mcpTools value", () => {
+    expect(() => parseConfig({ permissions: { mcpTools: { mcp__x__y: "readwrite" } } })).toThrow();
+  });
+});
+
+describe("hooks block (Phase 08.02)", () => {
+  it("defaults to an empty array", () => {
+    const c = parseConfig({});
+    expect(c.hooks).toEqual([]);
+  });
+
+  it("round-trips a valid hook entry", () => {
+    const hook = {
+      event: "PreToolUse" as const,
+      matcher: "Bash(*)",
+      command: "/usr/local/bin/guard",
+      args: ["--strict"],
+      timeout: 5000,
+      blocking: true,
+      name: "bash-guard",
+      env: { LEVEL: "debug" },
+    };
+    const c = parseConfig({ hooks: [hook] });
+    expect(c.hooks).toHaveLength(1);
+    expect(c.hooks[0]).toEqual(hook);
+  });
+
+  it("accepts a minimal hook entry (event + command only)", () => {
+    const c = parseConfig({
+      hooks: [{ event: "Stop", command: "echo" }],
+    });
+    expect(c.hooks[0]).toEqual({ event: "Stop", command: "echo" });
+  });
+
+  it("rejects an unknown event name", () => {
+    expect(() => parseConfig({ hooks: [{ event: "WatThis", command: "echo" }] })).toThrow();
+  });
+
+  it("rejects timeout over the 120_000 ms cap", () => {
+    expect(() =>
+      parseConfig({
+        hooks: [{ event: "PreToolUse", command: "echo", timeout: 500_000 }],
+      }),
+    ).toThrow();
+  });
+
+  it("rejects zero / negative timeout", () => {
+    expect(() =>
+      parseConfig({ hooks: [{ event: "PreToolUse", command: "echo", timeout: 0 }] }),
+    ).toThrow();
+    expect(() =>
+      parseConfig({ hooks: [{ event: "PreToolUse", command: "echo", timeout: -1 }] }),
+    ).toThrow();
+  });
+
+  it("rejects empty command", () => {
+    expect(() => parseConfig({ hooks: [{ event: "PreToolUse", command: "" }] })).toThrow();
+  });
+});
+
 describe("assertCredentials", () => {
   it("passes when anthropic.apiKey is set in config", () => {
     const c = parseConfig({ provider: "anthropic", anthropic: { apiKey: "sk-ant-x" } });
