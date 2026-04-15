@@ -1,17 +1,17 @@
 # Jellyclaw Engine — Completion Log
 
 **Last updated:** 2026-04-15
-**Current phase:** Phase 01 — OpenCode pinning and patching (next)
+**Current phase:** Phase 02 — Config + provider layer (next)
 
 ## Overall progress
 
-[█░░░░░░░░░░░░░░░░░░░] 1/20 phases complete (5%)
+[██░░░░░░░░░░░░░░░░░░] 2/20 phases complete (10%)
 
 ## Phase checklist
 
 ### Foundation
 - [x] ✅ Phase 00 — Repo scaffolding
-- [ ] Phase 01 — OpenCode pinning and patching
+- [x] ✅ Phase 01 — OpenCode pinning and patching
 - [ ] Phase 02 — Config + provider layer
 - [ ] Phase 03 — Event stream adapter
 - [ ] Phase 04 — Tool parity
@@ -59,25 +59,62 @@
   `test` / `build` all exit 0 from a fresh `rm -rf node_modules dist`. Tag `v0.0.0-scaffold` set.
 
 ### Phase 01 — OpenCode pinning and patching
-- **Status:** 🔄 In progress
+- **Status:** ✅ Complete
 - **Started:** 2026-04-15
-- **Completed:** —
-- **Duration (actual):** —
-- **Session count:** 1
-- **Commits:** dcb0601
-- **Tests passing:** —
+- **Completed:** 2026-04-15
+- **Duration (actual):** ~1 day (2 sessions — research + implementation)
+- **Session count:** 2
+- **Commits:** dcb0601, 06d7d8a, 8a380dd, (doc-pivot commit)
+- **Tests passing:** 48/48 (38 new plugin + bootstrap + 10 pre-existing)
 - **Notes:**
   - ✅ Prompt 01 (research) — `engine/opencode-research-notes.md` landed (950 lines).
     Pin target confirmed: `opencode-ai@1.4.5` (dist-tag latest, commit dfc72838).
     Two CVEs documented (22812 unauth RCE, 22813 web-UI XSS→RCE). Issue #5894
-    audited against v1.4.5: auto-closed with no PR; original SPEC §5.1 patch
-    plan is obsolete (plugins now Instance-scoped, hooks already fire for
-    subagents). Revised patch plan keys all three patches to
-    `packages/opencode/src/session/prompt.ts` (not `processor.ts` as SPEC
-    claims — drift flagged for Prompt 02 to fix). Patch 001 rescoped from
-    "thread plugin registry" to "add `agent` context to hook envelope."
-    Patch 002 (bind lockdown) and 003 (secret scrub) scopes unchanged.
-  - ⏳ Prompt 02 (implementation) — pending new session.
+    audited against v1.4.5: auto-closed with no PR; hooks already fire for
+    subagents (plugins are Instance-scoped). Original SPEC §5.1 patch plan
+    obsolete; revised plan targeted `packages/opencode/src/session/prompt.ts`
+    at three sites, adding `agent` context to the hook envelope.
+  - ✅ Prompt 02 (implementation) — **major pivot discovered and executed mid-session.**
+    On `bun install` against the `opencode-ai@1.4.5` pin, we learned the npm
+    tarball ships a **compiled Bun standalone binary** (`bin/opencode` is a
+    ~170-line Node launcher that execs `opencode-darwin-arm64/bin/opencode`
+    or equivalent). There is no TypeScript source in the installed tree —
+    `packages/opencode/src/session/prompt.ts` exists only in the GitHub repo
+    at tag v1.4.5, not in what consumers install. `patch-package` cannot
+    operate on this.
+  - **Pivot:** all three would-be source patches reimplemented as first-class
+    jellyclaw code:
+    - 001-subagent-hook-fire → `engine/src/plugin/agent-context.ts` (hook
+      envelope enrichment with agent / parentSessionID / agentChain; 9 tests).
+    - 002-bind-localhost-only → `engine/src/bootstrap/opencode-server.ts`
+      (hostname locked to 127.0.0.1; port pre-allocated from ephemeral range
+      because opencode's `--port 0` actively falls back to 4096; 4 tests
+      including live e2e against real opencode-ai@1.4.5).
+    - 003-secret-scrub-tool-results → `engine/src/plugin/secret-scrub.ts`
+      (13-rule regex redactor + extraLiterals + recursive tool-result walk;
+      29 tests).
+  - Docs synced to the new reality: SPEC §5.1 + §15 rewritten, CVE-MITIGATION
+    added §1.4 for CVE-22813 and updated §2.1 to match the v1.4.5 reality,
+    patches/README rewritten ("zero active patches; patch-package retained for
+    future non-binary deps"), three `.patch` files renamed to `.design.md` as
+    historical design-intent archive with "STATUS: superseded" blocks.
+    phases/PHASE-01-opencode-pinning.md deliverables + acceptance criteria
+    updated.
+  - Repro `engine/scratch/repro-5894.ts` exercises the two plugins end-to-end
+    against synthetic envelopes (live subagent-spawn e2e lands in Phase 06
+    when the `task` tool is wired).
+  - Deps pinned exactly: opencode-ai@1.4.5, @anthropic-ai/sdk^0.40.0,
+    zod^3.23.0, patch-package^8.0.0. `bun.lock` committed.
+  - Postinstall flipped from `patch-package || true` to
+    `patch-package --patch-dir patches --error-on-fail` per research §6.6
+    (silent patch failures are security regressions).
+  - **Deviations from the phase doc worth noting for future phases:**
+    (1) patch-package stays in the toolchain but currently applies zero
+    patches; do not assume it is load-bearing for opencode-ai;
+    (2) any future "patch opencode" work needs a fork-from-source path
+    (vendor submodule + rebuild) — patch-package alone cannot help;
+    (3) port ephemeralization must be caller-side — `--port 0` does NOT do
+    what the name suggests in this binary.
 
 ### Phase 02 — Config + provider layer
 - **Status:** ⏳ Not started
@@ -265,7 +302,18 @@
 |---|---|---|---|---|
 | 2026-04-15 | 1 | 00 | 01-verify-scaffolding | ✅ Phase 00 complete — toolchain green, tag v0.0.0-scaffold, commit 6644aaf |
 | 2026-04-15 | 2 | 01 | 01-research | 🔄 Research note landed (engine/opencode-research-notes.md, 950 lines). Commit dcb0601. Phase 01 NOT complete — awaits Prompt 02 implementation. |
+| 2026-04-15 | 3 | 01 | 02-implement | ✅ Phase 01 complete via PIVOT. opencode-ai@1.4.5 is a compiled binary → three planned source patches reimplemented as engine/src/plugin/{agent-context,secret-scrub}.ts + engine/src/bootstrap/opencode-server.ts. 48/48 tests green (incl. live e2e against opencode-ai child). SPEC §5.1/§15 + CVE-MITIGATION §1.4/§2.1 + patches/README + phases/PHASE-01 synced. Commits 06d7d8a (pin+lock), 8a380dd (code), (this commit) (docs+log). |
 
 ## Blockers & decisions
 
 (running list)
+
+**2026-04-15 — Phase 01 architectural pivot.** `opencode-ai@1.4.5` on npm ships
+a compiled Bun standalone binary, not TypeScript source. The original
+patch-package-based plan for SPEC §5.1 Layer A is unexecutable as written —
+there is nothing to patch. Decision: move all three would-be patches into
+first-class jellyclaw code (plugin modules + bootstrap assertions). Layer B
+(provider-wrapper permission ruleset) remains the load-bearing safety net.
+This pivot should inform every future phase that discusses "patching opencode":
+the only real option is a fork-from-source vendor submodule, which we are NOT
+doing unless a specific future need justifies the cross-platform build matrix.
