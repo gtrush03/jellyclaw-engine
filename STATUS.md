@@ -3,8 +3,8 @@
 > Living doc. Update at the start and end of every working day.
 > If this file is stale, don't trust it.
 
-**Last updated:** 2026-04-15 (Phase 05 prompt 01 landed — skills discovery + loader)
-**Current phase:** Phase 05 — Skills system (in progress)
+**Last updated:** 2026-04-15 (Phase 05 ✅ COMPLETE — skills system shipped)
+**Current phase:** Phase 06 — Subagent system + hook patch (next)
 **Current milestone target:** M1 (Engine works) — projected week of May 18
 **Engine on:** n/a (not yet bootable)
 **Genie dispatcher:** Claurst (unchanged)
@@ -55,7 +55,7 @@ Budget ceiling for v1.0 (Phases 00–18): **TBD — pending Q2 answer.**
 
 | Metric | Count |
 |--------|-------|
-| Unit tests passing | 449 (+2 benches under BENCH=1) |
+| Unit tests passing | 483 (+2 benches under BENCH=1) |
 | Unit tests failing | 0 |
 | Integration tests passing | 0 |
 | Golden-prompt regression tests | 0 / 5 target |
@@ -82,7 +82,7 @@ Budget ceiling for v1.0 (Phases 00–18): **TBD — pending Q2 answer.**
 - [x] ✅ Phase 02 — Config + provider layer
 - [x] ✅ Phase 03 — Event stream adapter
 - [x] ✅ Phase 04 — Tool parity
-- [ ] Phase 05 — Skills system
+- [x] ✅ Phase 05 — Skills system
 - [ ] Phase 06 — Subagents + hook patch
 - [ ] Phase 07 — MCP client integration
 - [ ] Phase 08 — Permission engine + hooks

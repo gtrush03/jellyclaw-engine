@@ -150,4 +150,75 @@ body
     expect(reg.get("a")).toBeUndefined();
     expect(reg.get("b")).toBeDefined();
   });
+
+  describe("reload + subscribe", () => {
+    it("reload() returns a correct diff across write/delete/modify cycles", async () => {
+      writeFileSync(join(userDir, "a.md"), fm("a", "v1"));
+      writeFileSync(join(userDir, "stays.md"), fm("stays"));
+      const reg = new SkillRegistry();
+      await reg.loadAll({ roots: roots() });
+
+      // Add b.md, remove a.md, modify stays.md (new path via move to project dir).
+      rmSync(join(userDir, "a.md"));
+      writeFileSync(join(userDir, "b.md"), fm("b"));
+      // Force a path change for "stays": move it to project dir. Since user
+      // is now absent, project wins — name stays, path changes.
+      rmSync(join(userDir, "stays.md"));
+      writeFileSync(join(projDir, "stays.md"), fm("stays", "v2"));
+
+      const diff = await reg.reload();
+      expect(diff.added).toEqual(["b"]);
+      expect(diff.removed).toEqual(["a"]);
+      expect(diff.modified).toEqual(["stays"]);
+    });
+
+    it("subscribe() notifies listeners after reload() and unsubscribe stops future notifications", async () => {
+      const reg = new SkillRegistry();
+      await reg.loadAll({ roots: roots() });
+
+      const events: { added: string[]; removed: string[]; modified: string[] }[] = [];
+      const unsub = reg.subscribe((e) => {
+        events.push({ added: [...e.added], removed: [...e.removed], modified: [...e.modified] });
+      });
+
+      writeFileSync(join(userDir, "one.md"), fm("one"));
+      await reg.reload({ roots: roots() });
+      expect(events).toHaveLength(1);
+      expect(events[0]).toEqual({ added: ["one"], removed: [], modified: [] });
+
+      unsub();
+      writeFileSync(join(userDir, "two.md"), fm("two"));
+      await reg.reload({ roots: roots() });
+      expect(events).toHaveLength(1);
+    });
+
+    it("a throwing listener does not stop other listeners and does not propagate", async () => {
+      const reg = new SkillRegistry();
+      await reg.loadAll({ roots: roots() });
+
+      const calls: string[] = [];
+      reg.subscribe(() => {
+        calls.push("first");
+        throw new Error("boom");
+      });
+      reg.subscribe(() => {
+        calls.push("second");
+      });
+
+      writeFileSync(join(userDir, "x.md"), fm("x"));
+      await expect(reg.reload({ roots: roots() })).resolves.toBeDefined();
+      expect(calls).toEqual(["first", "second"]);
+    });
+
+    it("reload() without a prior loadAll treats previous snapshot as empty", async () => {
+      writeFileSync(join(userDir, "a.md"), fm("a"));
+      writeFileSync(join(projDir, "b.md"), fm("b"));
+
+      const reg = new SkillRegistry();
+      const diff = await reg.reload({ roots: roots() });
+      expect(diff.added.sort()).toEqual(["a", "b"]);
+      expect(diff.removed).toEqual([]);
+      expect(diff.modified).toEqual([]);
+    });
+  });
 });
