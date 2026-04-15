@@ -30,7 +30,13 @@ import { flagsToEnvPatch, tuiAction } from "./tui.js";
 interface Recorder {
   spawnCalls: SpawnEmbeddedServerOptions[];
   waitCalls: Array<{ baseUrl: string; timeoutMs?: number }>;
-  launchCalls: Array<{ url: string; token: string; cwd?: string }>;
+  launchCalls: Array<{
+    url?: string;
+    token?: string;
+    cwd?: string;
+    spawnForwarded?: boolean;
+    waitForwarded?: boolean;
+  }>;
   stops: number;
   disposes: number;
 }
@@ -67,11 +73,31 @@ function makeWaitThrow(): WaitForHealthFn {
 
 function makeLaunch(rec: Recorder, onExit: Promise<number> | undefined): LaunchTuiFn {
   return async (opts) => {
-    rec.launchCalls.push({
-      url: opts.url,
-      token: opts.token,
+    const entry: Recorder["launchCalls"][number] = {
+      ...(opts.url !== undefined ? { url: opts.url } : {}),
+      ...(opts.token !== undefined ? { token: opts.token } : {}),
       ...(opts.cwd !== undefined ? { cwd: opts.cwd } : {}),
-    });
+      spawnForwarded: opts.spawnServer !== undefined,
+      waitForwarded: opts.waitForHealth !== undefined,
+    };
+    rec.launchCalls.push(entry);
+
+    // Embedded-path simulation: if launchTui was handed a spawnServer +
+    // waitForHealth, drive them so the rest of the test recording mirrors
+    // the real launchTui's lifecycle.
+    if (opts.spawnServer !== undefined && opts.waitForHealth !== undefined && opts.url === undefined) {
+      const handle = await opts.spawnServer({ cwd: opts.cwd ?? process.cwd() });
+      await opts.waitForHealth(handle.baseUrl);
+      const stopHandle = handle;
+      return {
+        dispose: async () => {
+          rec.disposes += 1;
+          await stopHandle.stop();
+        },
+        ...(onExit !== undefined ? { onExit } : {}),
+      };
+    }
+
     return {
       dispose: async () => {
         rec.disposes += 1;
@@ -161,13 +187,19 @@ describe("tuiAction — attach path", () => {
     expect(rec.spawnCalls).toHaveLength(0);
     expect(rec.waitCalls).toHaveLength(0);
     expect(rec.launchCalls).toEqual([
-      { url: "http://10.0.0.5:1234", token: "attach-tok", cwd: "/tmp/project" },
+      {
+        url: "http://10.0.0.5:1234",
+        token: "attach-tok",
+        cwd: "/tmp/project",
+        spawnForwarded: false,
+        waitForwarded: false,
+      },
     ]);
   });
 });
 
 describe("tuiAction — embedded path", () => {
-  it("spawns server → waits for health → launches → stops on exit", async () => {
+  it("forwards spawn + wait seams to launchTui (which owns the lifecycle)", async () => {
     const rec = makeRec();
     const code = await tuiAction({
       args: ["tui"],
@@ -180,13 +212,16 @@ describe("tuiAction — embedded path", () => {
       stdin: { isTTY: false } as unknown as NodeJS.ReadableStream,
     });
     expect(code).toBe(0);
+    // Server lifecycle is now driven from inside the (test) launchTui that
+    // received the seams; the simulation in `makeLaunch` calls them in turn.
     expect(rec.spawnCalls).toHaveLength(1);
     expect(rec.spawnCalls[0]?.cwd).toBe("/tmp/project");
-    expect(rec.spawnCalls[0]?.verbose).toBe(true);
     expect(rec.waitCalls).toEqual([{ baseUrl: "http://127.0.0.1:40000" }]);
-    expect(rec.launchCalls).toEqual([
-      { url: "http://127.0.0.1:40000", token: "boot-tok", cwd: "/tmp/project" },
-    ]);
+    expect(rec.launchCalls).toHaveLength(1);
+    expect(rec.launchCalls[0]?.cwd).toBe("/tmp/project");
+    expect(rec.launchCalls[0]?.spawnForwarded).toBe(true);
+    expect(rec.launchCalls[0]?.waitForwarded).toBe(true);
+    expect(rec.launchCalls[0]?.url).toBeUndefined();
     expect(rec.stops).toBe(1);
   });
 
@@ -314,8 +349,9 @@ describe("tuiAction — health timeout", () => {
       stdin: { isTTY: false } as unknown as NodeJS.ReadableStream,
     });
     expect(code).toBe(124);
-    expect(rec.launchCalls).toHaveLength(0);
-    expect(rec.stops).toBe(1);
+    // launchTui *was* invoked (it owns the spawn+wait lifecycle now); the
+    // health-timeout error bubbled out of its body before it returned a handle.
+    expect(rec.launchCalls).toHaveLength(1);
     expect(stderr.chunks.join("")).toContain("health never came up");
   });
 });

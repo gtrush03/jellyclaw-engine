@@ -3,7 +3,7 @@
 > Living doc. Update at the start and end of every working day.
 > If this file is stale, don't trust it.
 
-**Last updated:** 2026-04-15 (Phase 99 Prompt 05 ✅ — demolished vendored OpenCode TUI (899M), slim HTTP client landed)
+**Last updated:** 2026-04-15 (Phase 99 Prompt 06 build complete — manual paste-key smoke pending)
 **Current phase:** Phase 99 — Unfucking (5/8 prompts complete; Phase 11 queued behind it).
 **Current milestone target:** M1 (Engine works) — projected week of May 18
 **Engine on:** n/a (not yet bootable)
@@ -62,7 +62,7 @@ Budget ceiling for v1.0 (Phases 00–18): **TBD — pending Q2 answer.**
 
 | Metric | Count |
 |--------|-------|
-| Unit tests passing | 24/25 library (1 skipped = consumer smoke, gated on JELLYCLAW_LIB_CONSUMER_TEST=1) + prior ~1101 default / 1107 opt-in suites intact (+14 skipped, +2 benches under BENCH=1, +5 Playwright under JELLYCLAW_PW_MCP_TEST=1, +6 HTTP E2E under JELLYCLAW_HTTP_E2E=1) |
+| Unit tests passing | 24/25 library (1 skipped = consumer smoke, gated on JELLYCLAW_LIB_CONSUMER_TEST=1) + prior ~1101 default / 1107 opt-in suites intact (+14 skipped, +2 benches under BENCH=1, +5 Playwright under JELLYCLAW_PW_MCP_TEST=1, +6 HTTP E2E under JELLYCLAW_HTTP_E2E=1). Phase 99-06 added 80 net new (38 reducer + 7 app-snapshot + 11 api-key-prompt + 3 boot + 1 win-guard + 3 client-reconnect + new tests inside cli/tui suite). Whole-suite count: 1302/1359 (35 pre-existing failures in subprocess/library/perf-timeout suites, 22 skipped). |
 | Integration tests passing | 11 (subagent hook-fire regression) |
 | Unit tests failing | 0 |
 | Integration tests passing | 0 |
@@ -97,7 +97,7 @@ Budget ceiling for v1.0 (Phases 00–18): **TBD — pending Q2 answer.**
 - [x] ✅ Phase 09 — Session persistence + resume
 - [x] ✅ Phase 10 — CLI + HTTP server + library
 - [x] ✅ Phase 10.5 — Interactive TUI (4/4 prompts — 01 ✅, 02 ✅, 03 ✅, 04 ✅)
-- [ ] 🔄 Phase 99 — Unfucking (5/8 — 01 ✅ adapter, 02 ✅ loop, 03 ✅ wire, 04 ✅ claude-stream-json, 05 ✅ demolish vendored)
+- [ ] 🔄 Phase 99 — Unfucking (5.5/8 — 01 ✅ adapter, 02 ✅ loop, 03 ✅ wire, 04 ✅ claude-stream-json, 05 ✅ demolish vendored, 06 🟡 Ink TUI built — manual smoke pending)
 - [ ] Phase 11 — Testing harness
 - [ ] Phase 12 — Genie integration behind flag
 - [ ] Phase 13 — Make jellyclaw default in Genie
