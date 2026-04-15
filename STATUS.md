@@ -3,8 +3,8 @@
 > Living doc. Update at the start and end of every working day.
 > If this file is stale, don't trust it.
 
-**Last updated:** 2026-04-15 (Phase 00 complete; scaffold verified end-to-end)
-**Current phase:** Phase 01 — OpenCode pinning + patching (next)
+**Last updated:** 2026-04-15 (Phase 01 research complete; implementation pending)
+**Current phase:** Phase 01 — OpenCode pinning + patching (research ✅, impl ⏳)
 **Current milestone target:** M1 (Engine works) — projected week of May 18
 **Engine on:** n/a (not yet bootable)
 **Genie dispatcher:** Claurst (unchanged)
@@ -112,4 +112,8 @@ Budget ceiling for v1.0 (Phases 00–18): **TBD — pending Q2 answer.**
   fresh `rm -rf node_modules dist`. 6/6 smoke tests pass. Git initialized, first commit
   `6644aaf` created, tag `v0.0.0-scaffold` set. Minor drift fixes: workspace stubs,
   Biome 2 migration, zod v4 `z.record` 2-arg, type aliases, duplicate shebang removed.
-- Next action: start Phase 01 — OpenCode pinning + patching.
+- Phase 01 Prompt 01 (research) landed: `engine/opencode-research-notes.md`
+  (950 lines, commit `dcb0601`). Pin target `opencode-ai@1.4.5`. Issue #5894
+  rescoped to add `agent` context to hook envelope; SPEC §5.1 drift flagged
+  (refers to `processor.ts`; real target is `prompt.ts`).
+- Next action: Phase 01 Prompt 02 — implementation. Fresh Claude session.
