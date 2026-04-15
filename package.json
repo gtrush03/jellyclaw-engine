@@ -31,6 +31,7 @@
     "@opencode-ai/plugin": "latest",
     "@opencode-ai/sdk": "latest",
     "@openrouter/ai-sdk-provider": "latest",
+    "@vscode/ripgrep": "^1.17.1",
     "better-sqlite3": "latest",
     "better-sse": "latest",
     "diff": "^9.0.0",
@@ -42,6 +43,7 @@
     "pdfjs-dist": "^5.6.0",
     "pino": "latest",
     "pino-pretty": "latest",
+    "tinyglobby": "^0.2.16",
     "zod": "^3.23.0"
   },
   "devDependencies": {

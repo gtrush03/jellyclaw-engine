@@ -3,8 +3,8 @@
 > Living doc. Update at the start and end of every working day.
 > If this file is stale, don't trust it.
 
-**Last updated:** 2026-04-15 (Phase 04 Prompt 02 ✅ — Edit + diagnostics + property tests)
-**Current phase:** Phase 04 — Tool parity (in progress, 2/5 prompts done)
+**Last updated:** 2026-04-15 (Phase 04 Prompt 03 ✅ — Glob + Grep + benches)
+**Current phase:** Phase 04 — Tool parity (in progress, 3/5 prompts done)
 **Current milestone target:** M1 (Engine works) — projected week of May 18
 **Engine on:** n/a (not yet bootable)
 **Genie dispatcher:** Claurst (unchanged)
@@ -55,7 +55,7 @@ Budget ceiling for v1.0 (Phases 00–18): **TBD — pending Q2 answer.**
 
 | Metric | Count |
 |--------|-------|
-| Unit tests passing | 307 |
+| Unit tests passing | 336 (+2 benches under BENCH=1) |
 | Unit tests failing | 0 |
 | Integration tests passing | 0 |
 | Golden-prompt regression tests | 0 / 5 target |
@@ -186,4 +186,13 @@ Budget ceiling for v1.0 (Phases 00–18): **TBD — pending Q2 answer.**
   tests (fast-check, seed 42, 100 runs) prove unique replacement
   correctness and ambiguous-count correctness. 307/307 tests ✅
   (27 new: 18 + 2 + 7). Typecheck ✅, biome ✅.
-- Next action: Phase 04 — Prompt 03 (Glob + Grep). Fresh Claude session.
+- Phase 04 Prompt 03 (Glob + Grep + benches) landed via a 2-agent parallel
+  Opus team. Glob (tinyglobby-backed, mtime-desc sort, `.gitignore`
+  line-filter, `..`-segment refusal) — 12 tests + bench 7ms/10k files.
+  Grep (@vscode/ripgrep via `spawn(argv)` never shell, `--` argv
+  terminator, content/files_with_matches/count modes, O(log n)
+  binary-search truncation at 50k chars, context cap 50) — 17 tests +
+  bench 1937ms/100k files. Deps: `tinyglobby@^0.2`, `@vscode/ripgrep@^1.17`.
+  Vitest config gained `test/**/*.bench.ts` include. 336/336 + 2 skipped
+  ✅. Typecheck ✅, biome ✅.
+- Next action: Phase 04 — Prompt 04 (WebFetch + TodoWrite + Task + NotebookEdit). Fresh Claude session.
