@@ -3,8 +3,8 @@
 > Living doc. Update at the start and end of every working day.
 > If this file is stale, don't trust it.
 
-**Last updated:** 2026-04-15 (Phase 04 Prompt 01 ✅ — Bash + Read + Write + tests + registry)
-**Current phase:** Phase 04 — Tool parity (in progress, 1/5 prompts done)
+**Last updated:** 2026-04-15 (Phase 04 Prompt 02 ✅ — Edit + diagnostics + property tests)
+**Current phase:** Phase 04 — Tool parity (in progress, 2/5 prompts done)
 **Current milestone target:** M1 (Engine works) — projected week of May 18
 **Engine on:** n/a (not yet bootable)
 **Genie dispatcher:** Claurst (unchanged)
@@ -55,7 +55,7 @@ Budget ceiling for v1.0 (Phases 00–18): **TBD — pending Q2 answer.**
 
 | Metric | Count |
 |--------|-------|
-| Unit tests passing | 280 |
+| Unit tests passing | 307 |
 | Unit tests failing | 0 |
 | Integration tests passing | 0 |
 | Golden-prompt regression tests | 0 / 5 target |
@@ -175,4 +175,15 @@ Budget ceiling for v1.0 (Phases 00–18): **TBD — pending Q2 answer.**
   preservation. Registry `engine/src/tools/index.ts` exports
   `listTools()` / `getTool()`. `pdfjs-dist@^5.6.0` added. 280/280 tests ✅
   (38 new: 16 Bash + 13 Read + 9 Write). Typecheck ✅, biome ✅.
-- Next action: Phase 04 — Prompt 02 (Edit + Glob + Grep). Fresh Claude session.
+- Phase 04 Prompt 02 (Edit + diagnostics + property tests) landed via a
+  single Opus agent against a pre-authored contract (new error classes,
+  edit.json schema fixture, deps installed). Edit enforces unique-match
+  invariant with `replace_all` override, rejects no-ops, refuses to
+  create files (that's Write), preserves EOF newline, uses atomic
+  rename with tmp cleanup, and returns a 6-line unified-diff preview.
+  `explainMissingMatch` diagnoses CRLF, line-number-prefix, and
+  whitespace-only mismatches — privacy-bounded ≤400 chars. Property
+  tests (fast-check, seed 42, 100 runs) prove unique replacement
+  correctness and ambiguous-count correctness. 307/307 tests ✅
+  (27 new: 18 + 2 + 7). Typecheck ✅, biome ✅.
+- Next action: Phase 04 — Prompt 03 (Glob + Grep). Fresh Claude session.

@@ -129,6 +129,48 @@ export class PermissionDeniedError extends ToolError {
   }
 }
 
+export class EditRequiresReadError extends ToolError {
+  constructor(path: string) {
+    super(
+      "EditRequiresRead",
+      `File has not been Read in this session: ${path}. Read it first, then Edit.`,
+      { path },
+    );
+    this.name = "EditRequiresReadError";
+  }
+}
+
+export class NoMatchError extends ToolError {
+  constructor(path: string, oldStringPreview: string, diagnostic: string) {
+    super(
+      "NoMatch",
+      `old_string not found in ${path}. ${diagnostic}`,
+      { path, old_string_preview: oldStringPreview, diagnostic },
+    );
+    this.name = "NoMatchError";
+  }
+}
+
+export class AmbiguousMatchError extends ToolError {
+  readonly count: number;
+  constructor(path: string, count: number) {
+    super(
+      "AmbiguousMatch",
+      `old_string matches ${count} times in ${path}; either make it more unique by adding surrounding context, or pass replace_all: true.`,
+      { path, count },
+    );
+    this.name = "AmbiguousMatchError";
+    this.count = count;
+  }
+}
+
+export class NoOpEditError extends ToolError {
+  constructor(path: string) {
+    super("NoOpEdit", `Edit is a no-op: old_string === new_string (${path}).`, { path });
+    this.name = "NoOpEditError";
+  }
+}
+
 export class StaleReadError extends ToolError {
   constructor(path: string, cachedMtimeMs: number, currentMtimeMs: number) {
     super("StaleRead", `File changed on disk since last Read: ${path}`, {

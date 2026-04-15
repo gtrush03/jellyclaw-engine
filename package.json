@@ -33,6 +33,7 @@
     "@openrouter/ai-sdk-provider": "latest",
     "better-sqlite3": "latest",
     "better-sse": "latest",
+    "diff": "^9.0.0",
     "eventsource-parser": "^3",
     "execa": "latest",
     "hono": "latest",
@@ -46,11 +47,13 @@
   "devDependencies": {
     "@biomejs/biome": "latest",
     "@types/better-sqlite3": "latest",
+    "@types/diff": "^8.0.0",
     "@types/node": "latest",
+    "@vitest/coverage-v8": "latest",
+    "fast-check": "^4.6.0",
     "tsup": "latest",
     "typescript": "5",
-    "vitest": "latest",
-    "@vitest/coverage-v8": "latest"
+    "vitest": "latest"
   },
   "engines": {
     "node": ">=20.6",
