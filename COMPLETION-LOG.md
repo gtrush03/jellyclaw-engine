@@ -801,13 +801,13 @@
     dispatch + semaphore + isolated context.
 
 ### Phase 07 — MCP client integration
-- **Status:** 🔄 In progress (Prompt 01 ✅; Prompts 02–03 pending)
+- **Status:** 🔄 In progress (Prompts 01–02 ✅; Prompt 03 pending)
 - **Started:** 2026-04-15
 - **Completed:** —
 - **Duration (actual):** —
-- **Session count:** 1
-- **Commits:** 4f532ef
-- **Tests passing:** 586/589 + 3 skipped (+28 new: credential-strip 12, client-stdio 6, registry 10)
+- **Session count:** 2
+- **Commits:** 4f532ef (07.01), c6990e6 (07.02)
+- **Tests passing:** 652/655 + 3 skipped (+94 over Phase 06 baseline: credential-strip 12, client-stdio 6, registry 10, namespacing 14, token-store 20, client-http 6, client-sse 6, oauth 20)
 - **Notes:**
   - ✅ Prompt 01 (stdio MCP client) — landed via 2-agent parallel Opus team.
     SDK pinned to `@modelcontextprotocol/sdk@^1` (resolved 1.29.0).
@@ -844,6 +844,59 @@
     with the schema extension.
     Next: Prompt 02 — HTTP + SSE transports + OAuth + config-schema
     extension + `docs/mcp.md`.
+  - ✅ Prompt 02 (HTTP + SSE + OAuth) — landed via 5-agent parallel
+    Opus team (token-store, fixtures, http-test, sse-test, oauth-test)
+    after me building the contract surface (types discriminated union,
+    root config schema, namespacing extraction, registry dispatch).
+    Root `JellyclawConfig.mcp` schema is now a `z.discriminatedUnion`
+    on `transport: "stdio" | "http" | "sse"` with `OAuthConfig`
+    sub-schema; server `name` enforced to `/^[a-z0-9-]+$/`.
+    (A) `token-store.ts` (20 tests) — `~/.jellyclaw/mcp-tokens.json` at
+    mode 0600; `stat.mode & 0o077 !== 0` throws `TokenStoreInsecureError`
+    before any read; atomic `.tmp` + rename + explicit `chmod(0o600)`;
+    error messages scrub token values; use-before-`load()` guards.
+    (B) `oauth.ts` (20 tests) — implements SDK's `OAuthClientProvider`
+    with PKCE helpers (`pkce.generateVerifier/challengeFromVerifier/
+    generateState` via `node:crypto` base64url+sha256 S256), persistence
+    via TokenStore, loopback callback listener `awaitOAuthCallback()`
+    at `127.0.0.1:<callbackPort>` (default 47419, fixed not random so
+    `redirect_uri` matches AS registration; `OAuthCallbackPortInUseError`
+    on conflict), state-mismatch → 400 + `OAuthStateMismatchError`,
+    AbortSignal cancellation, cross-platform browser opener
+    (`open`/`xdg-open`/`cmd /c start`) with stderr URL fallback.
+    (C) `client-http.ts` (6 tests) — wraps SDK
+    `StreamableHTTPClientTransport` with `McpClient` lifecycle,
+    credential scrubbing, timeout, `exactOptionalPropertyTypes` friction
+    at `Client.connect(transport)` handled via single-point cast.
+    (D) `client-sse.ts` (6 tests) — SDK `SSEClientTransport` + shared
+    OAuth plumbing + `[500,1000,2000,4000,8000]`ms × 5 reconnect.
+    **SDK limitation flagged**: SSE `onclose` does not fire from
+    server-side stream drops; documented in docs/mcp.md and in the SSE
+    test's monkey-patch helper that forces the close signal so the
+    reconnect contract is still testable. (E) `namespacing.ts`
+    (14 tests) — extracted from types.ts, with
+    `InvalidServerNameError`/`InvalidToolNameError`; server names now
+    strict `[a-z0-9-]+` (underscore-free) to preserve round-trip
+    parsing. `types.ts` re-exports legacy `namespaceTool`/`parseNamespaced`
+    aliases for Phase 07.01 call sites.
+    Fixtures: `test/fixtures/mcp/http-echo.ts` (programmatic
+    StreamableHTTP server binding 127.0.0.1:ephemeral with
+    `requireAuth`/`rejectWithStatus` hooks) and
+    `test/fixtures/mcp/oauth-provider.ts` (minimal OAuth 2.1 AS with
+    `/.well-known/oauth-authorization-server`, `/authorize` 302 + PKCE
+    capture, `/token` with S256 verification + rotating refresh,
+    `issueTokenDirectly()` escape hatch, `lastAuthorizeRequest`
+    inspection). `registry.ts` transport dispatch switch extended;
+    `mcp-list.ts` uses the default factory and passes end-to-end smoke.
+    `docs/mcp.md` authored (full transport + OAuth + config reference,
+    SSE limitation documented).
+    Deviations from spec: (i) `eventsource@^2` install skipped — SDK
+    1.29.0 ships eventsource v3 transitively and our code does not
+    import eventsource directly; (ii) `mcp-oauth-demo.ts` script not
+    authored — the full `oauth.test.ts` suite against the mock provider
+    covers the manual smoke the script was intended to replace.
+    Typecheck clean, biome clean, vitest 652/655 + 3 skipped (+66 net
+    new). Next: Prompt 03 — Playwright MCP integration smoke.
 
 ### Phase 08 — Permission engine + hooks
 - **Status:** ⏳ Not started
@@ -969,6 +1022,7 @@
 
 | Date | Session # | Phase | Sub-prompt | Outcome |
 |---|---|---|---|---|
+| 2026-04-15 | 20 | 07 | 02-mcp-client-http-sse | 🔄 Phase 07 Prompt 02 landed via 5-agent parallel Opus team. Root `JellyclawConfig.mcp` is now a `z.discriminatedUnion` on `transport: "stdio"|"http"|"sse"` with `OAuthConfig` sub-schema. (A) `token-store.ts` (20 tests) — 0600-mode `~/.jellyclaw/mcp-tokens.json`, `stat.mode & 0o077` pre-read check, atomic `.tmp`+rename+chmod, token-scrubbed errors. (B) `oauth.ts` (20 tests) — implements SDK's `OAuthClientProvider` with PKCE S256, loopback callback `awaitOAuthCallback()` on `127.0.0.1:47419`, state-verification + `OAuthStateMismatchError`, `OAuthCallbackPortInUseError` on bind conflict, AbortSignal cancel, cross-platform browser opener + stderr fallback. (C) `client-http.ts` (6 tests) — wraps `StreamableHTTPClientTransport`; `exactOptionalPropertyTypes` friction on `Client.connect` handled via single-point cast. (D) `client-sse.ts` (6 tests) — wraps deprecated `SSEClientTransport` + shared OAuth plumbing + `[500,1000,2000,4000,8000]`ms×5 reconnect. **SDK limitation documented**: SSE `onclose` does not fire from server-side stream drops; test uses a module-scope monkey-patch to force the signal so the reconnect contract is still exercised. (E) `namespacing.ts` (14 tests) — extracted from types.ts, stricter `[a-z0-9-]+` server names + `InvalidServerNameError`/`InvalidToolNameError`; legacy aliases re-exported from types.ts. Fixtures: `http-echo.ts` (StreamableHTTP with `requireAuth`/`rejectWithStatus`) + `oauth-provider.ts` (minimal OAuth 2.1 AS, PKCE S256 verification, rotating refresh, `issueTokenDirectly` + `lastAuthorizeRequest`). Registry dispatch switch extended; `mcp-list.ts` smoke `mcp: 1 live, 0 dead, 0 retrying` + `mcp__echo__echo`. `docs/mcp.md` authored. Deviations: `eventsource@^2` skipped (SDK 1.29.0 bundles v3); `mcp-oauth-demo.ts` omitted (covered by oauth.test.ts). Typecheck ✅, biome ✅, vitest 652/655 + 3 skipped (+66 net new). Next: 07.03 Playwright MCP integration smoke. |
 | 2026-04-15 | 19 | 07 | 01-mcp-client-stdio | 🔄 Phase 07 Prompt 01 landed via 2-agent parallel Opus team against a pre-authored `engine/src/mcp/types.ts` contract. `@modelcontextprotocol/sdk@^1` installed (1.29.0). (A) `credential-strip.ts` (12 tests) — `buildCredentialScrubber` over `Object.values(env)`, longest-first, metachar-escaped, <6-char / empty secrets skipped via `onSkipped`, identity fallback, `REDACTED` constant. (B) `client-stdio.ts` (6 tests) — `createStdioMcpClient` wraps SDK `Client` over `StdioClientTransport` with serialized `#enqueue` queue, 10 s connect timeout, cancellable `[500, 1_000, 2_000, 4_000, 8_000]` × 5 backoff → `dead`, SIGTERM→SIGKILL (3 s grace), credential scrubber on stderr/callTool-errors/timeouts/reconnect-reasons/listener-errors, `__testPid__` accessor for kill tests, zero `env` logging. (C) `registry.ts` (10 tests) — `McpRegistry` with `Promise.allSettled` parallel connect, DI `clientFactory`, 30 s background retry rebuilding dead clients, snapshot(`live`/`dead`/`retrying`), namespaced routing, `McpUnknownServerError`/`McpNotReadyError`. Barrel `index.ts`; fixture `test/fixtures/mcp/echo-server.ts`; smoke `engine/scripts/mcp-list.ts` (prints `mcp: 1 live, 0 dead, 0 retrying` + `mcp__echo__echo` against `~/.jellyclaw/jellyclaw.json`). Typecheck ✅, biome ✅, vitest 586/589 + 3 skipped ✅ (+28 new). Root `JellyclawConfig.mcp` schema deliberately left untouched — Prompt 02 owns the transport-discriminant extension. Next: 07.02 HTTP+SSE transports + OAuth. |
 | 2026-04-15 | 18 | 06 | 03-verify-hook-patch | ✅ **Phase 06 COMPLETE.** Phase 06 Prompt 03 landed via 2-agent parallel Opus team. Pivot forced by `patches/README.md`: no `.patch` file exists (opencode-ai ships compiled binary); the hook-fire fix lives as `engine/src/plugin/agent-context.ts`. Prompt rescoped: static "sentinel on node_modules" → static surface check on the replacement file + its three exports. (A) `engine/src/hooks/test-harness.ts` (test-only `HookRecorder` with `tool_use_id` → name map); `test/integration/fixtures/agents/hook-probe/AGENT.md`; `test/integration/subagent-hooks.test.ts` (11 tests + 1 skipped negative control) locks in the #5894 invariants — `session_id !== parent`, `PostToolUse` matches, audit chain, input contains "echo probe", event ordering subagent.start → tool.call.* → subagent.end, `subagent_path` correctness, `enrichHookEnvelope` integration (agentChain === [parent]). (B) `scripts/verify-hook-patch.ts` two-step verifier (static + vitest subprocess) exits with exact `patch verified: static + dynamic`; `package.json` adds `test:hook-patch`; `docs/development.md` "Upstream rebase checklist" added. Typecheck ✅, biome ✅, vitest 558/561 + 3 skipped ✅, `bun run test:hook-patch` green end-to-end. Foundation group now 7/7. Next: Phase 07 MCP client. |
 | 2026-04-15 | 17 | 06 | 02-task-tool-implementation | 🔄 Phase 06 Prompt 02 landed via 2-agent parallel Opus team against a pre-authored `engine/src/agents/dispatch-types.ts` contract. (A) `semaphore.ts` (6 tests) — p-limit closure with clamp [1, 5] + warn-once, slot release on rejection; `context.ts` (15 tests) — pure builder, depth guard, tool intersection dedupe, model/skills/CLAUDE.md resolution. (B) `dispatch.ts` (14 tests) — `SubagentDispatcher implements SubagentService` with 10-step flow (graceful errors, no throw), child `AbortController` bound to parent signal, isolated listener errors, JSON-clean result; `events.ts` — `makeSubagentStart/EndEvent` factories (no progress variant — 15-protocol parity). Task tool rewritten to return `{ status: "error" }` on all failure paths. `test/unit/tools/task.test.ts` updated for new contract. `docs/agents.md` authored. `SessionRunner` seam allows production wiring in Phase 09 without blocking this prompt. Typecheck ✅, biome ✅ on agents/ + tools/task.ts + docs/agents.md, vitest 549/549 + 2 skipped ✅ (+35 net new). Next: prompt 03 — verify hook-patch propagation end-to-end. |
