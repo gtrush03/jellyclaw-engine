@@ -1,0 +1,67 @@
+{
+  "session_id": "f55dbad8-2556-4d91-a742-5a7ed8ab6778",
+  "transcript": [
+    {
+      "type": "session.started",
+      "session_id": "f55dbad8-2556-4d91-a742-5a7ed8ab6778",
+      "ts": 1776287124647,
+      "seq": 0,
+      "wish": "say the single word: pong",
+      "agent": "default",
+      "model": "claude-haiku-4-5-20251001",
+      "provider": "anthropic",
+      "cwd": "/Users/gtrush/Downloads/jellyclaw-engine"
+    },
+    {
+      "type": "agent.message",
+      "session_id": "f55dbad8-2556-4d91-a742-5a7ed8ab6778",
+      "ts": 1776287124665,
+      "seq": 1,
+      "delta": "p",
+      "final": false
+    },
+    {
+      "type": "agent.message",
+      "session_id": "f55dbad8-2556-4d91-a742-5a7ed8ab6778",
+      "ts": 1776287124671,
+      "seq": 2,
+      "delta": "ong",
+      "final": false
+    },
+    {
+      "type": "agent.message",
+      "session_id": "f55dbad8-2556-4d91-a742-5a7ed8ab6778",
+      "ts": 1776287124672,
+      "seq": 3,
+      "delta": "",
+      "final": true
+    },
+    {
+      "type": "usage.updated",
+      "session_id": "f55dbad8-2556-4d91-a742-5a7ed8ab6778",
+      "ts": 1776287124674,
+      "seq": 4,
+      "input_tokens": 3673,
+      "output_tokens": 5,
+      "cache_read_tokens": 0,
+      "cache_write_tokens": 0
+    },
+    {
+      "type": "session.completed",
+      "session_id": "f55dbad8-2556-4d91-a742-5a7ed8ab6778",
+      "ts": 1776287124691,
+      "seq": 5,
+      "turns": 1,
+      "duration_ms": 3483
+    }
+  ],
+  "usage": {
+    "input_tokens": 3673,
+    "output_tokens": 5,
+    "cache_read_tokens": 0,
+    "cache_write_tokens": 0,
+    "cost_usd": 0
+  },
+  "cost_usd_cents": 0,
+  "duration_ms": 44
+}
