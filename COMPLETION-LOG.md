@@ -1,11 +1,11 @@
 # Jellyclaw Engine — Completion Log
 
 **Last updated:** 2026-04-15
-**Current phase:** Phase 05 — Skills system (in progress, prompt 01 done)
+**Current phase:** Phase 06 — Subagent system + hook patch (next)
 
 ## Overall progress
 
-[█████░░░░░░░░░░░░░░░] 5/20 phases complete (25%)
+[██████░░░░░░░░░░░░░░] 6/20 phases complete (30%)
 
 ## Phase checklist
 
@@ -15,7 +15,7 @@
 - [x] ✅ Phase 02 — Config + provider layer
 - [x] ✅ Phase 03 — Event stream adapter
 - [x] ✅ Phase 04 — Tool parity
-- [ ] Phase 05 — Skills system
+- [x] ✅ Phase 05 — Skills system
 - [ ] Phase 06 — Subagent system + hook patch
 
 ### Core engine
@@ -669,14 +669,42 @@
     sessions — Phase 04 stays open.
 
 ### Phase 05 — Skills system
-- **Status:** 🔄 In progress
+- **Status:** ✅ Complete
 - **Started:** 2026-04-15
-- **Completed:** —
-- **Duration (actual):** —
-- **Session count:** 1
-- **Commits:** (pending)
-- **Tests passing:** 449/449 + 2 skipped (26 new in Phase 05)
+- **Completed:** 2026-04-15
+- **Duration (actual):** ~1 day (2 sessions)
+- **Session count:** 2
+- **Commits:** 82e0acc, (pending)
+- **Tests passing:** 483/485 (2 skipped) — 58 in the skills subsystem (+32 from prompt 02)
 - **Notes:**
+  - ✅ **Phase 05 COMPLETE.** Prompt 02 landed via 3-agent parallel Opus team.
+    - `engine/src/skills/substitution.ts` (12 tests) — pure function. Order: escape-sentinel →
+      `$ARGUMENTS` → `$1..$9` (trailing-digit guard so `$10` stays literal) → `$CLAUDE_PROJECT_DIR`
+      → unknown-VAR sweep (uppercase-leading, skipping the known names) → restore `\$`. Dedup
+      preserves first-seen order. No I/O.
+    - `engine/src/skills/inject.ts` (10 tests) — builds the progressive-disclosure block.
+      Sort by source priority (user > project > legacy) then alpha; greedy pack under a
+      1536-byte cap (UTF-8 bytes, not chars). "Greedy-not-break-early": a mid-priority skill
+      that overflows is dropped but later shorter skills may still be included. Single
+      `logger.warn({ dropped, maxBytes })` fires exactly when `dropped.length > 0`.
+      Empty-block suppression: nothing fits → `block = ""`, no bare header.
+    - `engine/src/skills/watcher.ts` (6 tests) + registry extensions (`reload()` +
+      `subscribe()` + `SkillsChangedEvent`) — chokidar@4 watcher at `depth: 2` on the PARENT
+      of each resolved root so late-created `skills/` dirs are picked up. 250 ms debounce
+      coalesces rapid writes (test: two files within <100 ms → single `added: [a,b]` diff).
+      `awaitWriteFinish.stabilityThreshold: 100` smooths macOS FSEvents. Listener errors are
+      caught + logged, never propagated. `stop()` closes chokidar and clears the pending timer.
+    - `engine/src/skills/index.ts` re-exports the new surface. `engine/scripts/inject-preview.ts`
+      smoke script renders the injection block from the live ~/.jellyclaw/skills (verified:
+      `commit`, `hello`, `review` → 378 bytes, none dropped). `docs/skills.md` documents file
+      format, search paths, substitution rules, progressive disclosure, watching, and quick
+      API. Example skills at `skills/commit/SKILL.md` + `skills/review/SKILL.md` (not
+      auto-loaded — copy into one of the search roots to enable).
+    - Typecheck ✅, biome ✅, vitest 483/485 + 2 skipped (32 new: substitution 12, inject 10,
+      watcher 6, registry+reload/subscribe 4). All acceptance criteria in PHASE-05-skills.md
+      met: discovered from all 3 paths, `.claude/skills/` fallback works, `$ARGUMENTS` verified,
+      1536-byte cap enforced with warn on drop, watcher updates <1 s, integration-shape tests
+      pass.
   - ✅ Prompt 01 (discovery + loader) — `engine/src/skills/{types,parser,discovery,registry,index}.ts` +
     matching `*.test.ts` files + `engine/scripts/skills-dump.ts` smoke script. Frontmatter Zod
     schema (`name` kebab-case, `description` 1..1536, optional `trigger` + `allowed_tools`).
@@ -836,6 +864,7 @@
 
 | Date | Session # | Phase | Sub-prompt | Outcome |
 |---|---|---|---|---|
+| 2026-04-15 | 15 | 05 | 02-progressive-disclosure-and-args | ✅ **Phase 05 COMPLETE.** 3-agent parallel Opus team: (A) `substitution.ts` (12 tests, pure, trailing-digit guard for `$10`, escape sentinel, dedup-preserving unknown sweep); (B) `inject.ts` (10 tests, source-priority+alpha sort, greedy byte-capped pack, `Buffer.byteLength` ≤1536, single `logger.warn` on drop, header suppressed when nothing fits); (C) `watcher.ts` + registry `reload()/subscribe()/SkillsChangedEvent` (6 watcher + 4 registry tests, chokidar@4 parent-dir watching at depth:2, 250 ms debounce coalesces bursts, awaitWriteFinish stability 100 ms, listener errors isolated). Integration pass: `index.ts` barrel re-exports, `docs/skills.md`, `skills/{commit,review}/SKILL.md` examples, `engine/scripts/inject-preview.ts` smoke (live preview renders 378 bytes across 3 skills, 0 dropped). Typecheck ✅, biome ✅ on skills/ + scripts/, vitest 483/485 + 2 skipped ✅ (32 new in prompt 02 — skills subsystem now 58 tests). All PHASE-05 acceptance criteria met. Foundation group now 6/7. |
 | 2026-04-15 | 14 | 05 | 01-discovery-and-loader | 🔄 Phase 05 Prompt 01 landed. `engine/src/skills/{types,parser,discovery,registry,index}.ts` + three `*.test.ts` + `engine/scripts/skills-dump.ts` smoke. Zod frontmatter (`name` kebab-case, `description` ≤1536), 8 KB body cap measured in **bytes**. Discovery walks `~/.jellyclaw/skills` → `cwd/.jellyclaw/skills` → `cwd/.claude/skills` (legacy), supporting both `<name>/SKILL.md` and `<name>.md` shapes with dir-per-skill winning inside a single root. Registry first-wins across sources with per-shadow warn log; per-file parse failures are caught + warned, rest of load proceeds. `loadAll` kept async (biome-ignore) for prompt 02's chokidar seam. Deps: `gray-matter@^4.0.3`, `chokidar@^4.0.0`. Smoke loads `~/.jellyclaw/skills/hello` as source=user. Typecheck ✅, biome ✅ on skills/, vitest 449/449 + 2 skipped ✅ (26 new: discovery 9, parser 10, registry 7). |
 | 2026-04-15 | 13 | 04 | 05-todowrite-task | ✅ **Phase 04 COMPLETE.** 3-agent parallel Opus team delivered TodoWrite (15 tests, full-list replace + single in_progress invariant + session.update delegation), Task (10 tests, thin pass-through to ctx.subagents.dispatch with Phase-04 stub `SubagentsNotImplementedError`), NotebookEdit (18 tests, nbformat v4 enforced, replace/insert/delete with output preservation + cell_type-change reset + atomic rename + read-before-edit invariant). Pre-authored contract: extended ToolContext with `session?` + `subagents?`, added `engine/src/subagents/{types,stub}.ts`, 6 new error classes, 3 schema fixtures + parity-allowed-drift.json. Parity suite (16 tests) asserts all 11 tools registered + names match Claude Code canon + every inputSchema deep-equals its JSON fixture + drift list empty. `docs/tools.md` rounded out with full 11-tool matrix + per-tool sections. Deps: `zod-to-json-schema@^3.25`. Typecheck ✅, biome ✅, vitest 423/423 + 2 skipped ✅ (59 new). Foundation group now 5/7. |
 | 2026-04-15 | 12 | 04 | 04-webfetch-websearch | 🔄 Phase 04 Prompt 04 landed via 2-agent parallel Opus team. `engine/src/tools/webfetch.ts` (19 tests): undici `request()` with manual redirect loop (≤5 hops, per-hop SSRF re-check), `ipaddr.js`-backed range classification (blocks loopback/private/link-local/ULA/multicast/unspecified/reserved with IPv4-mapped IPv6 unwrap), 10MB streaming cap from chunk counters, 30s timeouts, header whitelist (UA + Accept only — no auth/cookies), Turndown HTML→Markdown, text/JSON/XML (incl. +json/+xml) passthrough. Loopback-only override via `webfetch.localhost` permission. `engine/src/tools/websearch.ts` (9 tests): stub throws `WebSearchNotConfiguredError` unconditionally with MCP-config hint; one-time registration-warning helper exported for Phase 10 bootstrap. New error classes: `SsrfBlockedError`, `WebFetchProtocolError`, `WebFetchSizeError`, `WebSearchNotConfiguredError`. Registry updated alphabetically. `docs/tools.md` created with WebFetch + WebSearch sections. Deps: `undici@^8.1`, `turndown@^7.2`, `ipaddr.js@^2.3`, `@types/turndown@^5`. Typecheck ✅, biome ✅, vitest 364/364 + 2 skipped ✅. |
