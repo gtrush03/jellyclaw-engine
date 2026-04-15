@@ -103,7 +103,7 @@ export function buildProgram(): Command {
     )
     .option("--max-turns <n>", "maximum assistant turns (integer)")
     .option("--max-cost-usd <n>", "abort when cumulative cost ≥ threshold (fractional USD)")
-    .option("--output-format <format>", "stream-json | text | json")
+    .option("--output-format <format>", "stream-json | text | json | claude-stream-json")
     .option("--stream-stderr <format>", "structured stderr format (jsonl)")
     .option("--session-id <id>", "start with a specific session id")
     .option("--continue", "resume the newest session for this project")
