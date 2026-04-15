@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "file_path": {
+      "description": "The absolute path to the file to read",
+      "type": "string"
+    },
+    "offset": {
+      "description": "The line number to start reading from. Provide with `limit` to read a specific line range, or alone when the file is too large to read at once.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "limit": {
+      "description": "ONLY include with offset to read a specific slice. OMIT to read the whole file (harness truncates oversized files automatically).",
+      "type": "integer",
+      "exclusiveMinimum": 0
+    },
+    "pages": {
+      "description": "Page range for PDF files (e.g., \"1-5\", \"3\", \"10-20\"). Only applicable to PDF files. Maximum 20 pages per request.",
+      "type": "string"
+    }
+  },
+  "required": ["file_path"]
+}

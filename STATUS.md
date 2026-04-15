@@ -3,8 +3,8 @@
 > Living doc. Update at the start and end of every working day.
 > If this file is stale, don't trust it.
 
-**Last updated:** 2026-04-15 (Phase 03 ✅ complete — adapter + emitter + golden replay)
-**Current phase:** Phase 04 — Tool parity (next)
+**Last updated:** 2026-04-15 (Phase 04 Prompt 01 ✅ — Bash + Read + Write + tests + registry)
+**Current phase:** Phase 04 — Tool parity (in progress, 1/5 prompts done)
 **Current milestone target:** M1 (Engine works) — projected week of May 18
 **Engine on:** n/a (not yet bootable)
 **Genie dispatcher:** Claurst (unchanged)
@@ -55,7 +55,7 @@ Budget ceiling for v1.0 (Phases 00–18): **TBD — pending Q2 answer.**
 
 | Metric | Count |
 |--------|-------|
-| Unit tests passing | 242 |
+| Unit tests passing | 280 |
 | Unit tests failing | 0 |
 | Integration tests passing | 0 |
 | Golden-prompt regression tests | 0 / 5 target |
@@ -163,5 +163,16 @@ Budget ceiling for v1.0 (Phases 00–18): **TBD — pending Q2 answer.**
   `biome-ignore useAwait` comments on async generators + wrapper functions.
   242/242 tests green, typecheck ✅, biome ✅ on all Phase 03 files.
   **Phase 03 ✅ COMPLETE.**
-- Next action: Phase 04 — Tool parity. Fresh Claude session. Run
-  `prompts/phase-04/01-<name>.md`.
+- Phase 04 Prompt 01 (Bash + Read + Write) landed via a 3-agent parallel Opus
+  team. Shared `engine/src/tools/types.ts` (Tool/ToolContext/PermissionService
+  + typed error taxonomy) + `permissions.ts` + 3 Claude-Code JSON-Schema
+  fixtures authored up-front so all three agents coded against the same
+  contract. Bash: blocklist + bash-c bypass guard + env scrub + 30k-char
+  truncation + background mode (`~/.jellyclaw/bash-bg/<pid>.log`). Read:
+  absolute-path jail + ipynb/PDF/image/text dispatch via pdfjs-dist
+  (legacy build, disableWorker) + readCache population. Write:
+  read-before-overwrite invariant + atomic rename + trailing-newline
+  preservation. Registry `engine/src/tools/index.ts` exports
+  `listTools()` / `getTool()`. `pdfjs-dist@^5.6.0` added. 280/280 tests ✅
+  (38 new: 16 Bash + 13 Read + 9 Write). Typecheck ✅, biome ✅.
+- Next action: Phase 04 — Prompt 02 (Edit + Glob + Grep). Fresh Claude session.
