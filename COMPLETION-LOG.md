@@ -1,7 +1,7 @@
 # Jellyclaw Engine — Completion Log
 
 **Last updated:** 2026-04-15
-**Current phase:** Phase 06 — Subagent system + hook patch (next)
+**Current phase:** Phase 06 — Subagent system + hook patch (🔄 Prompt 01 complete)
 
 ## Overall progress
 
@@ -721,14 +721,31 @@
     substitution, and watcher land in prompt 02.
 
 ### Phase 06 — Subagent system + hook patch
-- **Status:** ⏳ Not started
-- **Started:** —
+- **Status:** 🔄 In progress (Prompt 01/03 complete)
+- **Started:** 2026-04-15
 - **Completed:** —
 - **Duration (actual):** —
-- **Session count:** —
-- **Commits:** —
-- **Tests passing:** —
-- **Notes:** —
+- **Session count:** 1
+- **Commits:** (pending)
+- **Tests passing:** 514/514 (+31 new in agents/: parser 12, discovery 10, registry 9)
+- **Notes:**
+  - ✅ **Prompt 01 — Subagent definitions (discovery + parser + registry) complete.** Landed
+    via 3-agent parallel Opus team against a pre-authored `engine/src/agents/types.ts`
+    contract. (A) `parser.ts` — gray-matter + Zod strict frontmatter (name kebab, description
+    ≤1024, mode enum, tools regex allowing built-ins + `mcp__<server>__<tool>`, skills
+    kebab, max_turns ≤100, max_tokens >0), 16 KB body cap, empty-body rejection, trimmed
+    prompt, expectedName cross-check; 12 tests. (B) `discovery.ts` — walks
+    `~/.jellyclaw/agents` → `cwd/.jellyclaw/agents` → `cwd/.claude/agents` supporting
+    `<name>/AGENT.md` (dir wins) and `<name>.md` (flat); 10 tests. Example agents
+    `agents/code-reviewer` + `agents/doc-writer`; smoke script
+    `engine/scripts/agents-dump.ts`. (C) `registry.ts` — `AgentRegistry` with first-wins
+    across sources + warn-on-shadow, per-file `AgentLoadError` capture, `reload()` +
+    `subscribe()` + `AgentsChangedEvent` diff (added/removed/modified by path+mtime),
+    isolated listener errors; 9 tests. Barrel `index.ts` mirrors skills pattern.
+    `p-limit@^6` installed (for prompt 02 dispatch). Typecheck ✅, biome ✅ on agents/ +
+    scripts/, vitest 514/514 ✅ (+31 new). Smoke: `echo` agent loads from
+    `~/.jellyclaw/agents/echo/AGENT.md` as source=user. Next: Prompt 02 — Task tool +
+    dispatch + semaphore + isolated context.
 
 ### Phase 07 — MCP client integration
 - **Status:** ⏳ Not started
@@ -864,6 +881,7 @@
 
 | Date | Session # | Phase | Sub-prompt | Outcome |
 |---|---|---|---|---|
+| 2026-04-15 | 16 | 06 | 01-subagent-definitions | 🔄 Phase 06 Prompt 01 landed via 3-agent parallel Opus team against a pre-authored `engine/src/agents/types.ts` contract (Agent, AgentFrontmatter Zod-strict, AgentLoadError, AGENT_BODY_MAX_BYTES = 16384). (A) `parser.ts` (12 tests) — gray-matter + Zod strict frontmatter with kebab `name`, ≤1024 `description`, `mode` enum (`subagent`/`primary`), `tools` regex covering built-ins + `mcp__<server>__<tool>`, `skills` kebab, `max_turns` ≤100, `max_tokens` >0, 16 KB body cap, empty-body rejection, trimmed prompt, optional `expectedName` cross-check. (B) `discovery.ts` (10 tests) — walks `~/.jellyclaw/agents` → `cwd/.jellyclaw/agents` → `cwd/.claude/agents` (legacy), both `<name>/AGENT.md` dir-style (wins) and `<name>.md` flat. Example agents `agents/code-reviewer/AGENT.md` + `agents/doc-writer/AGENT.md` + `engine/scripts/agents-dump.ts` smoke. (C) `registry.ts` (9 tests) — `AgentRegistry` first-wins across sources with warn-on-shadow, per-file `AgentLoadError` capture, `reload()` + `subscribe()` diff (added/removed/modified keyed on path+mtime), listener errors isolated. Barrel `index.ts` mirrors skills pattern (single-line value export for `AgentFrontmatter` to avoid TS2300). `p-limit@^6` installed for prompt 02 dispatch. Typecheck ✅, biome ✅ on agents/ + scripts/, vitest 514/514 ✅ (+31 new: parser 12, discovery 10, registry 9). Smoke: `echo` agent loads from `~/.jellyclaw/agents/echo/AGENT.md` as source=user with tools=[Read] and max_turns=3. Next: Prompt 02 — Task tool + dispatch + semaphore + isolated context. |
 | 2026-04-15 | 15 | 05 | 02-progressive-disclosure-and-args | ✅ **Phase 05 COMPLETE.** 3-agent parallel Opus team: (A) `substitution.ts` (12 tests, pure, trailing-digit guard for `$10`, escape sentinel, dedup-preserving unknown sweep); (B) `inject.ts` (10 tests, source-priority+alpha sort, greedy byte-capped pack, `Buffer.byteLength` ≤1536, single `logger.warn` on drop, header suppressed when nothing fits); (C) `watcher.ts` + registry `reload()/subscribe()/SkillsChangedEvent` (6 watcher + 4 registry tests, chokidar@4 parent-dir watching at depth:2, 250 ms debounce coalesces bursts, awaitWriteFinish stability 100 ms, listener errors isolated). Integration pass: `index.ts` barrel re-exports, `docs/skills.md`, `skills/{commit,review}/SKILL.md` examples, `engine/scripts/inject-preview.ts` smoke (live preview renders 378 bytes across 3 skills, 0 dropped). Typecheck ✅, biome ✅ on skills/ + scripts/, vitest 483/485 + 2 skipped ✅ (32 new in prompt 02 — skills subsystem now 58 tests). All PHASE-05 acceptance criteria met. Foundation group now 6/7. |
 | 2026-04-15 | 14 | 05 | 01-discovery-and-loader | 🔄 Phase 05 Prompt 01 landed. `engine/src/skills/{types,parser,discovery,registry,index}.ts` + three `*.test.ts` + `engine/scripts/skills-dump.ts` smoke. Zod frontmatter (`name` kebab-case, `description` ≤1536), 8 KB body cap measured in **bytes**. Discovery walks `~/.jellyclaw/skills` → `cwd/.jellyclaw/skills` → `cwd/.claude/skills` (legacy), supporting both `<name>/SKILL.md` and `<name>.md` shapes with dir-per-skill winning inside a single root. Registry first-wins across sources with per-shadow warn log; per-file parse failures are caught + warned, rest of load proceeds. `loadAll` kept async (biome-ignore) for prompt 02's chokidar seam. Deps: `gray-matter@^4.0.3`, `chokidar@^4.0.0`. Smoke loads `~/.jellyclaw/skills/hello` as source=user. Typecheck ✅, biome ✅ on skills/, vitest 449/449 + 2 skipped ✅ (26 new: discovery 9, parser 10, registry 7). |
 | 2026-04-15 | 13 | 04 | 05-todowrite-task | ✅ **Phase 04 COMPLETE.** 3-agent parallel Opus team delivered TodoWrite (15 tests, full-list replace + single in_progress invariant + session.update delegation), Task (10 tests, thin pass-through to ctx.subagents.dispatch with Phase-04 stub `SubagentsNotImplementedError`), NotebookEdit (18 tests, nbformat v4 enforced, replace/insert/delete with output preservation + cell_type-change reset + atomic rename + read-before-edit invariant). Pre-authored contract: extended ToolContext with `session?` + `subagents?`, added `engine/src/subagents/{types,stub}.ts`, 6 new error classes, 3 schema fixtures + parity-allowed-drift.json. Parity suite (16 tests) asserts all 11 tools registered + names match Claude Code canon + every inputSchema deep-equals its JSON fixture + drift list empty. `docs/tools.md` rounded out with full 11-tool matrix + per-tool sections. Deps: `zod-to-json-schema@^3.25`. Typecheck ✅, biome ✅, vitest 423/423 + 2 skipped ✅ (59 new). Foundation group now 5/7. |
