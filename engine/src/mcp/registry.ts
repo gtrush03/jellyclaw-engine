@@ -22,6 +22,8 @@
  */
 
 import type { Logger } from "../logger.js";
+import { createHttpMcpClient } from "./client-http.js";
+import { createSseMcpClient } from "./client-sse.js";
 import { createStdioMcpClient } from "./client-stdio.js";
 import {
   type McpCallToolResult,
@@ -56,8 +58,14 @@ function defaultClientFactory(config: McpServerConfig, opts: McpClientFactoryOpt
   switch (config.transport) {
     case "stdio":
       return createStdioMcpClient(config, opts);
+    case "http":
+      return createHttpMcpClient(config, opts);
+    case "sse":
+      return createSseMcpClient(config, opts);
     default: {
-      const _exhaustive: never = config.transport;
+      // All transport variants handled above — this branch is unreachable
+      // and `config` is narrowed to `never`.
+      const _exhaustive: never = config;
       throw new Error(`unsupported MCP transport: ${String(_exhaustive)}`);
     }
   }

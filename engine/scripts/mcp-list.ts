@@ -15,9 +15,8 @@ import { homedir } from "node:os";
 import { resolve } from "node:path";
 import { pino } from "pino";
 
-import { createStdioMcpClient } from "../src/mcp/client-stdio.js";
 import { McpRegistry } from "../src/mcp/registry.js";
-import type { McpServerConfig, StdioMcpServerConfig } from "../src/mcp/types.js";
+import type { McpServerConfig } from "../src/mcp/types.js";
 
 const logger = pino({
   level: process.env.JELLYCLAW_LOG_LEVEL ?? "warn",
@@ -28,29 +27,21 @@ const configPath =
   process.env.JELLYCLAW_CONFIG ?? resolve(homedir(), ".jellyclaw", "jellyclaw.json");
 
 const raw = JSON.parse(await readFile(configPath, "utf8")) as {
-  mcp?: Record<string, Omit<StdioMcpServerConfig, "name">>;
+  mcp?: Record<string, { transport?: "stdio" | "http" | "sse" } & Record<string, unknown>>;
 };
 
-const configs: McpServerConfig[] = Object.entries(raw.mcp ?? {}).map(([name, cfg]) => ({
-  ...cfg,
-  name,
-  transport: "stdio",
-}));
+const configs: McpServerConfig[] = Object.entries(raw.mcp ?? {}).map(
+  ([name, cfg]) => ({ ...cfg, name, transport: cfg.transport ?? "stdio" }) as McpServerConfig,
+);
 
 if (configs.length === 0) {
   process.stderr.write(`no MCP servers configured in ${configPath}\n`);
   process.exit(0);
 }
 
-const registry = new McpRegistry({
-  logger,
-  clientFactory: (config, opts) => {
-    if (config.transport !== "stdio") {
-      throw new Error(`only stdio transport is supported in this build`);
-    }
-    return createStdioMcpClient(config, opts);
-  },
-});
+// Use the registry's default factory, which dispatches to
+// stdio / http / sse based on the config's `transport` discriminant.
+const registry = new McpRegistry({ logger });
 
 await registry.start(configs);
 

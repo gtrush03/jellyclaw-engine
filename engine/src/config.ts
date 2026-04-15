@@ -77,14 +77,55 @@ export type PermissionPolicy = z.infer<typeof PermissionPolicy>;
 // MCP servers
 // ---------------------------------------------------------------------------
 
-export const McpServerConfig = z.object({
-  name: z.string(),
+// MCP server name restricted to kebab (lowercase letters, digits,
+// hyphen). Enforces the namespacing invariant — see mcp/namespacing.ts.
+const MCP_SERVER_NAME_RE = /^[a-z0-9-]+$/;
+
+const OAuthConfig = z.object({
+  clientId: z.string(),
+  scope: z.string().optional(),
+  authorizeUrl: z.string().url().optional(),
+  tokenUrl: z.string().url().optional(),
+  callbackPort: z.number().int().min(1024).max(65535).optional(),
+});
+export type OAuthConfig = z.infer<typeof OAuthConfig>;
+
+const StdioMcpServerConfig = z.object({
+  transport: z.literal("stdio"),
+  name: z.string().regex(MCP_SERVER_NAME_RE),
   command: z.string(),
   args: z.array(z.string()).default([]),
   env: z.record(z.string(), z.string()).default({}),
+  cwd: z.string().optional(),
   timeoutMs: z.number().int().positive().default(30_000),
   enabled: z.boolean().default(true),
 });
+
+const HttpMcpServerConfig = z.object({
+  transport: z.literal("http"),
+  name: z.string().regex(MCP_SERVER_NAME_RE),
+  url: z.string().url(),
+  headers: z.record(z.string(), z.string()).default({}),
+  oauth: OAuthConfig.optional(),
+  timeoutMs: z.number().int().positive().default(30_000),
+  enabled: z.boolean().default(true),
+});
+
+const SseMcpServerConfig = z.object({
+  transport: z.literal("sse"),
+  name: z.string().regex(MCP_SERVER_NAME_RE),
+  url: z.string().url(),
+  headers: z.record(z.string(), z.string()).default({}),
+  oauth: OAuthConfig.optional(),
+  timeoutMs: z.number().int().positive().default(30_000),
+  enabled: z.boolean().default(true),
+});
+
+export const McpServerConfig = z.discriminatedUnion("transport", [
+  StdioMcpServerConfig,
+  HttpMcpServerConfig,
+  SseMcpServerConfig,
+]);
 export type McpServerConfig = z.infer<typeof McpServerConfig>;
 
 // ---------------------------------------------------------------------------

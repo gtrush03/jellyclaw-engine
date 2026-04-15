@@ -21,12 +21,6 @@ import type { Logger } from "pino";
 
 /**
  * Config for a stdio-transport MCP server.
- *
- * The repo's root `JellyclawConfig.mcp` array stores a slightly different
- * shape today (no `transport` field, secrets named only by key in `env`).
- * Prompt 02 will extend the root schema to tag each entry with
- * `transport: "stdio" | "http" | "sse"`; until then, the adapter from
- * `JellyclawConfig.mcp[]` → `McpServerConfig` treats every entry as stdio.
  */
 export interface StdioMcpServerConfig {
   readonly transport: "stdio";
@@ -52,10 +46,63 @@ export interface StdioMcpServerConfig {
 }
 
 /**
- * Union type reserved for prompt 02 (HTTP + SSE variants). Only the
- * `"stdio"` arm is callable in prompt 01.
+ * OAuth 2.1 + PKCE configuration for an HTTP-ish MCP server.
+ *
+ * Discovery: when `authorizeUrl`/`tokenUrl` are omitted, the SDK's auth
+ * helper resolves them via `GET <base>/.well-known/oauth-authorization-server`.
+ * Explicit values win.
+ *
+ * `callbackPort` is fixed (not random) because `redirect_uri` is
+ * registered with the authorization server and must match exactly.
+ * Default is the jellyclaw reserved port `47419` (free/reserved via
+ * IANA user range; unlikely to collide with a running service).
  */
-export type McpServerConfig = StdioMcpServerConfig;
+export interface OAuthConfig {
+  readonly clientId: string;
+  readonly scope?: string;
+  readonly authorizeUrl?: string;
+  readonly tokenUrl?: string;
+  readonly callbackPort?: number;
+}
+
+/** Shared fields for HTTP and SSE transports. */
+interface HttpishCommon {
+  readonly name: string;
+  readonly url: string;
+  /**
+   * Static headers added to every outbound request. Values here are
+   * treated as secrets by the logger-scrubber (same policy as stdio
+   * `env`). Do not use this for `Authorization: Bearer <token>` — that
+   * lives in the OAuth layer.
+   */
+  readonly headers?: Readonly<Record<string, string>>;
+  readonly oauth?: OAuthConfig;
+  readonly connectTimeoutMs?: number;
+}
+
+/**
+ * Config for a StreamableHTTP-transport MCP server (the 2025 unified
+ * HTTP transport — supports both POST/response and SSE upgrades
+ * through the same endpoint).
+ */
+export interface HttpMcpServerConfig extends HttpishCommon {
+  readonly transport: "http";
+}
+
+/**
+ * Config for a legacy SSE-transport MCP server. Deprecated by the MCP
+ * spec but retained during the migration window.
+ */
+export interface SseMcpServerConfig extends HttpishCommon {
+  readonly transport: "sse";
+}
+
+/**
+ * Discriminated union over all supported transports. The `transport`
+ * field is the discriminant; every consumer switches on it and
+ * TypeScript will flag missing arms.
+ */
+export type McpServerConfig = StdioMcpServerConfig | HttpMcpServerConfig | SseMcpServerConfig;
 
 export type McpTransport = McpServerConfig["transport"];
 
@@ -164,36 +211,16 @@ export interface McpClientFactoryOptions {
 }
 
 // ---------------------------------------------------------------------------
-// Namespacing
+// Namespacing — implementation lives in ./namespacing.ts; these aliases
+// preserve the pre-Prompt-02 import path for existing callers (registry,
+// client-stdio). New code should import from ./namespacing directly.
 // ---------------------------------------------------------------------------
 
-/** Regex for a valid namespaced tool. `mcp__<server>__<tool>`. */
-export const NAMESPACED_TOOL_RE = /^mcp__([a-z0-9_-]+)__(.+)$/;
-
-/**
- * Namespace a raw tool name for exposure to the model.
- *
- * Server names must match `[a-z0-9_-]+`; enforced here as a defensive
- * check (config validation is upstream).
- */
-export function namespaceTool(server: string, tool: string): string {
-  if (!/^[a-z0-9_-]+$/.test(server)) {
-    throw new Error(`invalid MCP server name '${server}' (must match [a-z0-9_-]+)`);
-  }
-  return `mcp__${server}__${tool}`;
-}
-
-/**
- * Parse a namespaced tool name back into its parts. Returns `null` when
- * the string is not in the expected shape.
- */
-export function parseNamespaced(
-  namespaced: string,
-): { readonly server: string; readonly tool: string } | null {
-  const m = NAMESPACED_TOOL_RE.exec(namespaced);
-  if (!m?.[1] || !m[2]) return null;
-  return { server: m[1], tool: m[2] };
-}
+export {
+  NAMESPACED_TOOL_RE,
+  namespace as namespaceTool,
+  parse as parseNamespaced,
+} from "./namespacing.js";
 
 // ---------------------------------------------------------------------------
 // Registry contract (implementation lives in registry.ts)
