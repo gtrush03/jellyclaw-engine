@@ -1,0 +1,18 @@
+{
+  "$schema": "../../../engine/config-schema.json",
+  "provider": { "type": "anthropic" },
+  "mcp": [
+    {
+      "transport": "stdio",
+      "name": "playwright",
+      "command": "npx",
+      "args": [
+        "@playwright/mcp@0.0.41",
+        "--browser",
+        "chrome",
+        "--cdp-endpoint",
+        "http://127.0.0.1:9333"
+      ]
+    }
+  ]
+}
