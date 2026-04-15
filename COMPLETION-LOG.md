@@ -1,16 +1,16 @@
 # Jellyclaw Engine — Completion Log
 
-**Last updated:** 2026-04-14
-**Current phase:** Phase 00 (not started)
+**Last updated:** 2026-04-15
+**Current phase:** Phase 01 — OpenCode pinning and patching (next)
 
 ## Overall progress
 
-[░░░░░░░░░░░░░░░░░░░░] 0/20 phases complete (0%)
+[█░░░░░░░░░░░░░░░░░░░] 1/20 phases complete (5%)
 
 ## Phase checklist
 
 ### Foundation
-- [ ] Phase 00 — Repo scaffolding
+- [x] ✅ Phase 00 — Repo scaffolding
 - [ ] Phase 01 — OpenCode pinning and patching
 - [ ] Phase 02 — Config + provider layer
 - [ ] Phase 03 — Event stream adapter
@@ -40,14 +40,23 @@
 ## Phase completion details
 
 ### Phase 00 — Repo scaffolding
-- **Status:** ⏳ Not started
-- **Started:** —
-- **Completed:** —
-- **Duration (actual):** —
-- **Session count:** —
-- **Commits:** —
-- **Tests passing:** —
-- **Notes:** —
+- **Status:** ✅ Complete
+- **Started:** 2026-04-15
+- **Completed:** 2026-04-15
+- **Duration (actual):** 0.5 hour
+- **Session count:** 1
+- **Commits:** 6644aaf
+- **Tests passing:** 6/6
+- **Notes:** Scaffold verified end-to-end. Deviations from PHASE-00 spec (CLAUDE.md wins):
+  bun workspaces instead of pnpm (no `pnpm-workspace.yaml`, no `shared/`), no `.nvmrc`/`.npmrc`,
+  no `.github/workflows/ci.yml`. Drift fixes: added `desktop/package.json` and
+  `integration/package.json` stubs (empty workspaces blocked `bun install`); migrated
+  `biome.json` to Biome 2 schema (`files.includes`, `assist.actions.source.organizeImports`,
+  `useAwait` moved to `suspicious`); zod v4 fix in `engine/src/config.ts` (`z.record` 2-arg),
+  added `export type` aliases for `AnthropicProviderConfig`/`OpenRouterProviderConfig`;
+  removed duplicate shebang in `engine/src/cli.ts` (tsup banner adds it); added
+  `biome-ignore useYield` on provider stream stubs. `bun install` / `typecheck` / `lint` /
+  `test` / `build` all exit 0 from a fresh `rm -rf node_modules dist`. Tag `v0.0.0-scaffold` set.
 
 ### Phase 01 — OpenCode pinning and patching
 - **Status:** ⏳ Not started
@@ -243,7 +252,7 @@
 
 | Date | Session # | Phase | Sub-prompt | Outcome |
 |---|---|---|---|---|
-| — | — | — | — | — |
+| 2026-04-15 | 1 | 00 | 01-verify-scaffolding | ✅ Phase 00 complete — toolchain green, tag v0.0.0-scaffold, commit 6644aaf |
 
 ## Blockers & decisions
 

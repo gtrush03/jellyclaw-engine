@@ -3,8 +3,8 @@
 > Living doc. Update at the start and end of every working day.
 > If this file is stale, don't trust it.
 
-**Last updated:** 2026-04-14 (initial scaffold; no engineering work started)
-**Current phase:** Phase 0 — Repo scaffolding
+**Last updated:** 2026-04-15 (Phase 00 complete; scaffold verified end-to-end)
+**Current phase:** Phase 01 — OpenCode pinning + patching (next)
 **Current milestone target:** M1 (Engine works) — projected week of May 18
 **Engine on:** n/a (not yet bootable)
 **Genie dispatcher:** Claurst (unchanged)
@@ -55,7 +55,7 @@ Budget ceiling for v1.0 (Phases 00–18): **TBD — pending Q2 answer.**
 
 | Metric | Count |
 |--------|-------|
-| Unit tests passing | 0 |
+| Unit tests passing | 6 |
 | Unit tests failing | 0 |
 | Integration tests passing | 0 |
 | Golden-prompt regression tests | 0 / 5 target |
@@ -77,7 +77,7 @@ Budget ceiling for v1.0 (Phases 00–18): **TBD — pending Q2 answer.**
 
 ## Phase progress
 
-- [ ] Phase 00 — Repo scaffolding
+- [x] ✅ Phase 00 — Repo scaffolding
 - [ ] Phase 01 — OpenCode pinning + patching
 - [ ] Phase 02 — Config + provider layer
 - [ ] Phase 03 — Event stream adapter
@@ -106,3 +106,10 @@ Budget ceiling for v1.0 (Phases 00–18): **TBD — pending Q2 answer.**
 - Initial scaffold. No code. No tests. Baseline captured.
 - Next action: George executes the 10-item checklist at the end of
   `MASTER-PLAN.md`.
+
+### 2026-04-15
+- Phase 00 verified. `bun install / typecheck / lint / test / build` all green from a
+  fresh `rm -rf node_modules dist`. 6/6 smoke tests pass. Git initialized, first commit
+  `6644aaf` created, tag `v0.0.0-scaffold` set. Minor drift fixes: workspace stubs,
+  Biome 2 migration, zod v4 `z.record` 2-arg, type aliases, duplicate shebang removed.
+- Next action: start Phase 01 — OpenCode pinning + patching.
