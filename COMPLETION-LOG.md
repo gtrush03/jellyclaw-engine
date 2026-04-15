@@ -348,14 +348,88 @@
     backpressure test and the `GOLDEN_UPDATE=1` path.
 
 ### Phase 04 — Tool parity
-- **Status:** ⏳ Not started
-- **Started:** —
+- **Status:** 🔄 In progress (Prompt 01 / 5 complete)
+- **Started:** 2026-04-15
 - **Completed:** —
 - **Duration (actual):** —
-- **Session count:** —
-- **Commits:** —
-- **Tests passing:** —
-- **Notes:** —
+- **Session count:** 1
+- **Commits:** (this commit)
+- **Tests passing:** 280/280 (38 new in Prompt 01 — Bash 16 + Read 13 + Write 9)
+- **Notes:**
+  - ✅ Prompt 01 (Bash + Read + Write) — executed via a 3-agent parallel Opus
+    team. Shared `engine/src/tools/types.ts` (Tool/ToolContext/PermissionService
+    interfaces + typed error taxonomy: ToolError, InvalidInputError,
+    BlockedCommandError, CwdEscapeError, TimeoutError, WriteRequiresReadError,
+    PermissionDeniedError, StaleReadError) + `engine/src/tools/permissions.ts`
+    (`allowAll`/`denyAll`/`fromMap` helpers) authored in main session before
+    dispatch so all three agents coded against the same contract. Three
+    Claude-Code JSON-Schema fixtures landed under
+    `test/fixtures/tools/claude-code-schemas/{bash,read,write}.json` —
+    each tool imports its fixture via ESM `with { type: "json" }` and the
+    parity tests assert `inputSchema` deep-equals the fixture.
+  - **Bash** (`engine/src/tools/bash.ts`, 16 tests). Input
+    `{ command, description?, timeout?, run_in_background? }` (default
+    120s / max 600s). Pre-exec blocklist rejects `rm -rf /`, `rm -rf /*`,
+    `rm -rf ~/`, `rm -rf $HOME`, `curl|sh`/`wget|sh`, fork bomb, and
+    `dd if=… of=/dev/sd*`; bypass guard catches `bash -c 'rm -rf /'`.
+    Env scrub whitelist (PATH, HOME, USER, LANG, LC_ALL, TERM, TMPDIR,
+    SHELL, PWD) — never leaks `ANTHROPIC_API_KEY` even when present in
+    parent env (test asserts). Foreground spawn via
+    `child_process.spawn({ shell: "/bin/bash", cwd, signal, timeout })`
+    with 30_000-char stdout/stderr truncation + `[truncated N chars]`
+    marker. SIGKILL fallback beside the built-in timeout guarantees
+    `TimeoutError` across platforms. Background mode: spawn detached
+    with fd-backed log; log renamed to `~/.jellyclaw/bash-bg/<pid>.log`
+    after pid is known; `child.unref()` + returns `{ pid, tail_url }`
+    immediately. `cd ..` substring refused unless `permissions.isAllowed("bash")`.
+  - **Read** (`engine/src/tools/read.ts`, 13 tests). Input
+    `{ file_path, offset?, limit?, pages? }`. Absolute-path required;
+    cwd jail via `resolved === cwd || startsWith(cwd + sep)`; override
+    gated by `read.outside_cwd` permission. Dispatch by extension:
+    `.ipynb` → JSON parse, cells + outputs preserved, offset/limit over
+    cell count; `.pdf` → `pdfjs-dist/legacy/build/pdf.mjs` with
+    `disableWorker: true`, range parsing (`"1-5"`/`"3"`), >10-page
+    PDFs without `pages` throw `InvalidInputError`, span >20 rejected,
+    end>total silently clamped; images
+    (`.png/.jpg/.jpeg/.gif/.webp`) → `{ source: { type: "base64",
+    media_type, data } }`; text default → cat-n formatted
+    `${lineNo}\t${content}`, 1-indexed, default 2000 lines, empty-file
+    system-reminder notice. On success populates `ctx.readCache`.
+    PDF fixtures (2-page + 20-page) synthesised into `os.tmpdir()`
+    at `beforeAll` via a hand-rolled `buildPdfBytes` helper rather
+    than committing opaque binaries — spec permitted, tests clean up
+    in `afterAll`.
+  - **Write** (`engine/src/tools/write.ts`, 9 tests). Input
+    `{ file_path, content }`. Absolute-path required. Cwd jail gated
+    by `write.outside_cwd`. Read-before-overwrite invariant: if the
+    target exists on disk AND `resolve(file_path)` is not in
+    `ctx.readCache` → `WriteRequiresReadError`; new-file creation
+    always allowed. Atomic write: `<path>.jellyclaw.tmp` → `renameSync`;
+    failure cleans up the tmp. Trailing-newline preservation matches
+    Claude Code (auto-append `\n` when prior file ended in `\n` and
+    new content does not; debug-log `write.trailing_newline_preserved`).
+    StaleReadError mtime check deferred (readCache is `Set<string>`,
+    not `Map<path, mtime>` — TODO left inline for a future readCache
+    upgrade). Atomic-rename failure test uses a pre-created blocker
+    directory rather than `vi.spyOn(fs)` because ESM namespace
+    spying is not supported in this vitest/ESM config — the
+    load-bearing invariant (original file untouched on failure) is
+    still exercised.
+  - **Registry** (`engine/src/tools/index.ts`): `builtinTools` array +
+    `listTools()` + `getTool(name)` + re-exports of the three tools,
+    types, and permission helpers. Biome passes: targeted
+    `biome-ignore useAwait` on `bashTool.handler` and
+    `writeTool.handler` (Tool contract demands `async` even where
+    the body is sync fs I/O).
+  - **Deps:** `pdfjs-dist@^5.6.0` added to both root and
+    `engine/package.json`. No other new deps.
+  - Gates: `bunx tsc --noEmit` ✅, `bunx biome check engine/src/tools
+    test/unit/tools test/fixtures/tools` ✅ (3 pre-existing
+    template-literal-regex warnings in the PDF builder, orthogonal),
+    `bun run test` 280/280 ✅ (38 new). Remaining Phase 04 prompts
+    (02 Edit + Glob + Grep, 03 WebFetch + TodoWrite + Task stub, 04
+    NotebookEdit, 05 parity fixture + docs) run on subsequent
+    sessions — Phase 04 stays open.
 
 ### Phase 05 — Skills system
 - **Status:** ⏳ Not started
@@ -511,6 +585,7 @@
 
 | Date | Session # | Phase | Sub-prompt | Outcome |
 |---|---|---|---|---|
+| 2026-04-15 | 9 | 04 | 01-bash-read-write | 🔄 Phase 04 Prompt 01 landed. 3-agent parallel Opus team delivered `engine/src/tools/{bash,read,write}.ts` + matching tests in `test/unit/tools/` (Bash 16 + Read 13 + Write 9 = 38 new tests). Shared `types.ts` + `permissions.ts` + 3 Claude-Code JSON-Schema fixtures pre-authored for contract alignment. Registry `engine/src/tools/index.ts` exports `listTools()` / `getTool()`. Bash: blocklist (rm-rf, curl|sh, fork bomb, dd), bash-c bypass guard, env scrub, 30k-char truncation, background mode with `~/.jellyclaw/bash-bg/<pid>.log`. Read: absolute-path jail, ipynb + PDF (pdfjs-dist) + image + text dispatch, pages range with >10-page gate + >20-page refusal, readCache population. Write: read-before-overwrite invariant, atomic rename, trailing-newline preservation, outside-cwd gate. Deps: `pdfjs-dist@^5.6.0`. Typecheck ✅, biome ✅, vitest 280/280 ✅. Remaining Phase 04 prompts queued. |
 | 2026-04-15 | 8 | 03 | 02-implement-adapter | ✅ Phase 03 COMPLETE. 2-agent parallel team delivered `engine/src/adapters/opencode-events.ts` (940 lines, 7 tests — happy path + late-start ordering + orphan-end timeout + parse-error tolerance + subagent nesting + AbortController + backpressure) and `engine/src/stream/emit.ts` (200 lines, 54 vitest cases — writeEvent/drain, all 3 format downgrades, claude-code-compat delta coalescing, claurst-min flat-shape rewrite, stateless `downgrade()` matrix, backpressure). Golden replay via `test/golden/replay.test.ts` + `hello.opencode.jsonl` + `hello.jellyclaw.jsonl` (regenerable via `GOLDEN_UPDATE=1`; narrow normaliser proven by mutation test). Scratch smoke `engine/scratch/emit-hello.ts` hand-verified all 3 output formats produce distinct correct output. `eventsource-parser@^3` added. Main session reconciled: added 4 targeted `biome-ignore useAwait` comments on async generators. Typecheck ✅, biome ✅, vitest 242/242 ✅. |
 | 2026-04-15 | 7 | 03 | 01-research-and-types | 🔄 `@jellyclaw/shared` workspace created: 15-variant `z.discriminatedUnion` + `Usage` + `Message`/`Block` + `redactConfig` + factory type guards + `OUTPUT_FORMAT_EVENTS` downgrade table. 32 new tests (179 total). `docs/event-stream.md` maps every observed OpenCode bus event to a jellyclaw event or marks it dropped with reason; §4 downgrade matrix; §5 ordering invariants; §6 redaction rules. Smoke import from engine verified. Phase 03 still open — Prompts 02 (adapter) + 03 (emitter) remain. |
 | 2026-04-15 | 1 | 00 | 01-verify-scaffolding | ✅ Phase 00 complete — toolchain green, tag v0.0.0-scaffold, commit 6644aaf |
