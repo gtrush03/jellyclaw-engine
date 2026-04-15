@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "query": {
+      "description": "The search query to use",
+      "type": "string",
+      "minLength": 2
+    },
+    "allowed_domains": {
+      "description": "Only include search results from these domains",
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "blocked_domains": {
+      "description": "Never include search results from these domains",
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "required": ["query"]
+}

@@ -129,6 +129,50 @@ export class PermissionDeniedError extends ToolError {
   }
 }
 
+export class SsrfBlockedError extends ToolError {
+  constructor(url: string, ip: string, range: string) {
+    super(
+      "SsrfBlocked",
+      `WebFetch refused: ${url} resolves to ${ip} which is in private range ${range}.`,
+      { url, ip, range },
+    );
+    this.name = "SsrfBlockedError";
+  }
+}
+
+export class WebFetchProtocolError extends ToolError {
+  constructor(url: string, protocol: string) {
+    super(
+      "WebFetchProtocol",
+      `WebFetch refused: ${url} uses unsupported protocol "${protocol}". Only http: and https: are allowed.`,
+      { url, protocol },
+    );
+    this.name = "WebFetchProtocolError";
+  }
+}
+
+export class WebFetchSizeError extends ToolError {
+  constructor(url: string, maxBytes: number) {
+    super(
+      "WebFetchSize",
+      `WebFetch refused: ${url} exceeded ${maxBytes} byte limit.`,
+      { url, maxBytes },
+    );
+    this.name = "WebFetchSizeError";
+  }
+}
+
+export class WebSearchNotConfiguredError extends ToolError {
+  constructor() {
+    super(
+      "WebSearchNotConfigured",
+      "WebSearch is not built into jellyclaw. Configure a search MCP (e.g. @modelcontextprotocol/server-brave-search, tavily-mcp) in your jellyclaw.json `mcp` map. See docs/tools.md#websearch.",
+      {},
+    );
+    this.name = "WebSearchNotConfiguredError";
+  }
+}
+
 export class EditRequiresReadError extends ToolError {
   constructor(path: string) {
     super(

@@ -3,8 +3,8 @@
 > Living doc. Update at the start and end of every working day.
 > If this file is stale, don't trust it.
 
-**Last updated:** 2026-04-15 (Phase 04 Prompt 03 ✅ — Glob + Grep + benches)
-**Current phase:** Phase 04 — Tool parity (in progress, 3/5 prompts done)
+**Last updated:** 2026-04-15 (Phase 04 Prompt 04 ✅ — WebFetch + WebSearch stub)
+**Current phase:** Phase 04 — Tool parity (in progress, 4/5 prompts done)
 **Current milestone target:** M1 (Engine works) — projected week of May 18
 **Engine on:** n/a (not yet bootable)
 **Genie dispatcher:** Claurst (unchanged)
@@ -55,7 +55,7 @@ Budget ceiling for v1.0 (Phases 00–18): **TBD — pending Q2 answer.**
 
 | Metric | Count |
 |--------|-------|
-| Unit tests passing | 336 (+2 benches under BENCH=1) |
+| Unit tests passing | 364 (+2 benches under BENCH=1) |
 | Unit tests failing | 0 |
 | Integration tests passing | 0 |
 | Golden-prompt regression tests | 0 / 5 target |
@@ -195,4 +195,18 @@ Budget ceiling for v1.0 (Phases 00–18): **TBD — pending Q2 answer.**
   bench 1937ms/100k files. Deps: `tinyglobby@^0.2`, `@vscode/ripgrep@^1.17`.
   Vitest config gained `test/**/*.bench.ts` include. 336/336 + 2 skipped
   ✅. Typecheck ✅, biome ✅.
-- Next action: Phase 04 — Prompt 04 (WebFetch + TodoWrite + Task + NotebookEdit). Fresh Claude session.
+- Phase 04 Prompt 04 (WebFetch + WebSearch stub) landed via a 2-agent
+  parallel Opus team. WebFetch: undici-backed with full SSRF protection
+  via `ipaddr.js` range labels (blocks loopback/private/link-local/ULA/
+  multicast/unspecified/reserved), per-hop redirect SSRF re-check (≤5
+  hops), 10MB streaming cap, 30s timeouts, header whitelist (UA + Accept
+  only — no auth/cookies leak), Turndown HTML→MD + text/JSON/XML
+  passthrough. Loopback-only override via `webfetch.localhost`
+  permission (RFC1918/link-local/ULA never skippable). WebSearch: stub
+  throws `WebSearchNotConfiguredError` unconditionally pointing to MCP
+  config; one-time registration-warning helper exported for Phase 10
+  bootstrap. Deps: `undici@^8.1`, `turndown@^7.2`, `ipaddr.js@^2.3`,
+  `@types/turndown@^5`. `docs/tools.md` created. 364/364 + 2 skipped ✅
+  (28 new). Typecheck ✅, biome ✅.
+- Next action: Phase 04 — Prompt 05 (TodoWrite + Task + NotebookEdit +
+  parity fixture + docs round-out — closes Phase 04). Fresh Claude session.
