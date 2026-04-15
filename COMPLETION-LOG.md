@@ -202,7 +202,7 @@
 - **Completed:** —
 - **Duration (actual):** ~0.5 day for Prompt 01
 - **Session count:** 1
-- **Commits:** (pending)
+- **Commits:** 338bb6e
 - **Tests passing:** 179/179 (32 new in `shared/`)
 - **Notes:**
   - ✅ Prompt 01 (research + types) — `@jellyclaw/shared` workspace created.
