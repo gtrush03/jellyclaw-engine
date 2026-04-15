@@ -3,8 +3,8 @@
 > Living doc. Update at the start and end of every working day.
 > If this file is stale, don't trust it.
 
-**Last updated:** 2026-04-15 (Phase 02 ✅ complete)
-**Current phase:** Phase 03 — Event stream adapter (next)
+**Last updated:** 2026-04-15 (Phase 03 Prompt 01 ✅ — schemas + docs landed)
+**Current phase:** Phase 03 — Event stream adapter (in progress)
 **Current milestone target:** M1 (Engine works) — projected week of May 18
 **Engine on:** n/a (not yet bootable)
 **Genie dispatcher:** Claurst (unchanged)
@@ -55,7 +55,7 @@ Budget ceiling for v1.0 (Phases 00–18): **TBD — pending Q2 answer.**
 
 | Metric | Count |
 |--------|-------|
-| Unit tests passing | 147 |
+| Unit tests passing | 179 |
 | Unit tests failing | 0 |
 | Integration tests passing | 0 |
 | Golden-prompt regression tests | 0 / 5 target |
@@ -134,5 +134,16 @@ Budget ceiling for v1.0 (Phases 00–18): **TBD — pending Q2 answer.**
   cache_control stripped unconditionally, warn-once for anthropic/* models),
   `router.ts` (pre-stream-only failover), `gate.ts`, `credential-pool.ts`,
   `docs/providers.md` (658 lines). 147/147 tests ✅. **Phase 02 ✅ COMPLETE.**
-- Next action: Phase 03 — Event stream adapter.
-  Fresh Claude session. Run `prompts/phase-03/01-<name>.md`.
+- Phase 03 Prompt 01 (schemas + mapping) landed: `@jellyclaw/shared` workspace
+  created (`shared/src/events.ts` — 15-variant `z.discriminatedUnion` + `Usage` +
+  minimal `Message`/`Block` shapes + `redactConfig` + factory-generated type
+  guards + `OUTPUT_FORMAT_EVENTS` downgrade table). `shared/src/events.test.ts`
+  (32 tests — round-trip per variant, unknown-type rejection, Usage defaults,
+  guard narrowing, exhaustive-switch compile-check, redactor). `docs/event-stream.md`
+  (upstream mapping table covering every observed OpenCode bus event + explicit
+  dropped-with-reason entries, output-format matrix, ordering invariants,
+  redaction rule list). Root `package.json` workspaces + `tsconfig.json` paths +
+  `vitest.config.ts` alias all updated. Smoke import from engine verified via
+  `engine/src/stream/smoke-import.ts`. 179/179 tests green, typecheck ✅,
+  `biome check shared/ engine/src/stream/` ✅.
+- Next action: Phase 03 Prompt 02 — adapter wiring. Fresh Claude session.

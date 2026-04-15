@@ -38,9 +38,11 @@
     "baseUrl": ".",
     "paths": {
       "@jellyclaw/engine": ["engine/src/index.ts"],
-      "@jellyclaw/engine/*": ["engine/src/*"]
+      "@jellyclaw/engine/*": ["engine/src/*"],
+      "@jellyclaw/shared": ["shared/src/index.ts"],
+      "@jellyclaw/shared/*": ["shared/src/*"]
     }
   },
-  "include": ["engine/src/**/*.ts", "test/**/*.ts"],
+  "include": ["engine/src/**/*.ts", "shared/src/**/*.ts", "test/**/*.ts"],
   "exclude": ["node_modules", "dist", "**/*.test.ts"]
 }
