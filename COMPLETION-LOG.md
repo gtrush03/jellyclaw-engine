@@ -1,7 +1,7 @@
 # Jellyclaw Engine — Completion Log
 
 **Last updated:** 2026-04-15
-**Current phase:** Phase 05 — Skills system (next)
+**Current phase:** Phase 05 — Skills system (in progress, prompt 01 done)
 
 ## Overall progress
 
@@ -669,14 +669,28 @@
     sessions — Phase 04 stays open.
 
 ### Phase 05 — Skills system
-- **Status:** ⏳ Not started
-- **Started:** —
+- **Status:** 🔄 In progress
+- **Started:** 2026-04-15
 - **Completed:** —
 - **Duration (actual):** —
-- **Session count:** —
-- **Commits:** —
-- **Tests passing:** —
-- **Notes:** —
+- **Session count:** 1
+- **Commits:** (pending)
+- **Tests passing:** 449/449 + 2 skipped (26 new in Phase 05)
+- **Notes:**
+  - ✅ Prompt 01 (discovery + loader) — `engine/src/skills/{types,parser,discovery,registry,index}.ts` +
+    matching `*.test.ts` files + `engine/scripts/skills-dump.ts` smoke script. Frontmatter Zod
+    schema (`name` kebab-case, `description` 1..1536, optional `trigger` + `allowed_tools`).
+    Body cap 8 KB **measured in bytes** (not chars). Discovery walks three roots in order
+    (`~/.jellyclaw/skills → cwd/.jellyclaw/skills → cwd/.claude/skills`), supports both
+    dir-per-skill (`<name>/SKILL.md`) and flat (`<name>.md`) layouts; dir-per-skill wins
+    inside a single root. Registry first-wins across sources with per-shadow warn log
+    (`{kept, shadowed, keptSource, shadowedSource}`); per-file parse errors are caught
+    and warned without aborting `loadAll`. `loadAll` kept async with biome-ignore to
+    preserve the contract for prompt 02's chokidar watcher. Deps added: `gray-matter@^4.0.3`,
+    `chokidar@^4.0.0` (chokidar pinned now, wired in prompt 02). Smoke script verified loads
+    the user-root `hello` skill. Typecheck ✅, biome ✅ on skills/, vitest 449/449 + 2 skipped ✅
+    (26 new: discovery 9, parser 10, registry 7). Progressive disclosure, `$ARGUMENTS`
+    substitution, and watcher land in prompt 02.
 
 ### Phase 06 — Subagent system + hook patch
 - **Status:** ⏳ Not started
@@ -822,6 +836,7 @@
 
 | Date | Session # | Phase | Sub-prompt | Outcome |
 |---|---|---|---|---|
+| 2026-04-15 | 14 | 05 | 01-discovery-and-loader | 🔄 Phase 05 Prompt 01 landed. `engine/src/skills/{types,parser,discovery,registry,index}.ts` + three `*.test.ts` + `engine/scripts/skills-dump.ts` smoke. Zod frontmatter (`name` kebab-case, `description` ≤1536), 8 KB body cap measured in **bytes**. Discovery walks `~/.jellyclaw/skills` → `cwd/.jellyclaw/skills` → `cwd/.claude/skills` (legacy), supporting both `<name>/SKILL.md` and `<name>.md` shapes with dir-per-skill winning inside a single root. Registry first-wins across sources with per-shadow warn log; per-file parse failures are caught + warned, rest of load proceeds. `loadAll` kept async (biome-ignore) for prompt 02's chokidar seam. Deps: `gray-matter@^4.0.3`, `chokidar@^4.0.0`. Smoke loads `~/.jellyclaw/skills/hello` as source=user. Typecheck ✅, biome ✅ on skills/, vitest 449/449 + 2 skipped ✅ (26 new: discovery 9, parser 10, registry 7). |
 | 2026-04-15 | 13 | 04 | 05-todowrite-task | ✅ **Phase 04 COMPLETE.** 3-agent parallel Opus team delivered TodoWrite (15 tests, full-list replace + single in_progress invariant + session.update delegation), Task (10 tests, thin pass-through to ctx.subagents.dispatch with Phase-04 stub `SubagentsNotImplementedError`), NotebookEdit (18 tests, nbformat v4 enforced, replace/insert/delete with output preservation + cell_type-change reset + atomic rename + read-before-edit invariant). Pre-authored contract: extended ToolContext with `session?` + `subagents?`, added `engine/src/subagents/{types,stub}.ts`, 6 new error classes, 3 schema fixtures + parity-allowed-drift.json. Parity suite (16 tests) asserts all 11 tools registered + names match Claude Code canon + every inputSchema deep-equals its JSON fixture + drift list empty. `docs/tools.md` rounded out with full 11-tool matrix + per-tool sections. Deps: `zod-to-json-schema@^3.25`. Typecheck ✅, biome ✅, vitest 423/423 + 2 skipped ✅ (59 new). Foundation group now 5/7. |
 | 2026-04-15 | 12 | 04 | 04-webfetch-websearch | 🔄 Phase 04 Prompt 04 landed via 2-agent parallel Opus team. `engine/src/tools/webfetch.ts` (19 tests): undici `request()` with manual redirect loop (≤5 hops, per-hop SSRF re-check), `ipaddr.js`-backed range classification (blocks loopback/private/link-local/ULA/multicast/unspecified/reserved with IPv4-mapped IPv6 unwrap), 10MB streaming cap from chunk counters, 30s timeouts, header whitelist (UA + Accept only — no auth/cookies), Turndown HTML→Markdown, text/JSON/XML (incl. +json/+xml) passthrough. Loopback-only override via `webfetch.localhost` permission. `engine/src/tools/websearch.ts` (9 tests): stub throws `WebSearchNotConfiguredError` unconditionally with MCP-config hint; one-time registration-warning helper exported for Phase 10 bootstrap. New error classes: `SsrfBlockedError`, `WebFetchProtocolError`, `WebFetchSizeError`, `WebSearchNotConfiguredError`. Registry updated alphabetically. `docs/tools.md` created with WebFetch + WebSearch sections. Deps: `undici@^8.1`, `turndown@^7.2`, `ipaddr.js@^2.3`, `@types/turndown@^5`. Typecheck ✅, biome ✅, vitest 364/364 + 2 skipped ✅. |
 | 2026-04-15 | 11 | 04 | 03-glob-grep | 🔄 Phase 04 Prompt 03 landed via 2-agent parallel Opus team. `engine/src/tools/glob.ts` (12 tests + 1 bench): tinyglobby-backed with `..`-segment refusal, `.gitignore` line-by-line filter (no negation), mtime-desc sort, cwd jail. `engine/src/tools/grep.ts` (17 tests + 1 bench): @vscode/ripgrep via spawn(argv[]) never shell, `--` terminator hardening, content/files_with_matches/count modes with discriminated union, O(log n) binary-search truncation at 50k chars, context cap 50. Registry updated alphabetically by both agents via re-read-before-edit coordination. Vitest config gained `test/**/*.bench.ts` include. Deps: `tinyglobby@^0.2`, `@vscode/ripgrep@^1.17`. Typecheck ✅, biome ✅, vitest 336/336 + 2 skipped ✅. Bench (BENCH=1) Glob 7ms (10k files, budget 500ms) + Grep 1937ms (100k files, budget 3000ms). |
