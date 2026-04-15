@@ -3,8 +3,8 @@
 > Living doc. Update at the start and end of every working day.
 > If this file is stale, don't trust it.
 
-**Last updated:** 2026-04-15 (Phase 02 research ✅ + Anthropic provider ✅; OpenRouter pending)
-**Current phase:** Phase 02 — Config + provider layer (Prompts 01+02 ✅, Prompt 03 ⏳)
+**Last updated:** 2026-04-15 (Phase 02 ✅ complete)
+**Current phase:** Phase 03 — Event stream adapter (next)
 **Current milestone target:** M1 (Engine works) — projected week of May 18
 **Engine on:** n/a (not yet bootable)
 **Genie dispatcher:** Claurst (unchanged)
@@ -55,7 +55,7 @@ Budget ceiling for v1.0 (Phases 00–18): **TBD — pending Q2 answer.**
 
 | Metric | Count |
 |--------|-------|
-| Unit tests passing | 93 |
+| Unit tests passing | 147 |
 | Unit tests failing | 0 |
 | Integration tests passing | 0 |
 | Golden-prompt regression tests | 0 / 5 target |
@@ -79,7 +79,7 @@ Budget ceiling for v1.0 (Phases 00–18): **TBD — pending Q2 answer.**
 
 - [x] ✅ Phase 00 — Repo scaffolding
 - [x] ✅ Phase 01 — OpenCode pinning + patching
-- [ ] Phase 02 — Config + provider layer
+- [x] ✅ Phase 02 — Config + provider layer
 - [ ] Phase 03 — Event stream adapter
 - [ ] Phase 04 — Tool parity
 - [ ] Phase 05 — Skills system
@@ -129,5 +129,10 @@ Budget ceiling for v1.0 (Phases 00–18): **TBD — pending Q2 answer.**
   SPEC §9 config shape authoritative; SPEC §7 cache_control plan pure-function;
   `anthropic-beta: extended-cache-ttl-2025-04-11` header auto-set on 1h TTL;
   own retry loop (3 attempts / 30s / jitter / Retry-After honored). 93/93 tests.
-- Next action: Phase 02 Prompt 03 — OpenRouter provider + router/fallback + docs.
-  Fresh Claude session.
+- Phase 02 Prompt 03 (OpenRouter provider + router/fallback + gate + pool + docs)
+  landed via a 5-agent parallel team. `openrouter.ts` (SSE hand-parsed,
+  cache_control stripped unconditionally, warn-once for anthropic/* models),
+  `router.ts` (pre-stream-only failover), `gate.ts`, `credential-pool.ts`,
+  `docs/providers.md` (658 lines). 147/147 tests ✅. **Phase 02 ✅ COMPLETE.**
+- Next action: Phase 03 — Event stream adapter.
+  Fresh Claude session. Run `prompts/phase-03/01-<name>.md`.
