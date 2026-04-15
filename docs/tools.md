@@ -1,8 +1,105 @@
 # Built-in tools
 
-jellyclaw ships a minimal set of built-in tools that mirror Claude Code's
-published schemas byte-for-byte. Everything else (search, notebooks, exotic
-integrations) is expected to arrive via MCP.
+jellyclaw ships **11 built-in tools** that mirror Claude Code's published
+schemas byte-for-byte (see `test/fixtures/tools/claude-code-schemas/`). The
+parity suite at `test/unit/tools/parity.test.ts` enforces this on every
+test run; the `parity-allowed-drift.json` file is the only legitimate
+escape hatch and currently lists zero deviations.
+
+Each tool overrides its OpenCode counterpart of the same name (i.e. the
+jellyclaw implementation wins inside an OpenCode session).
+
+## Tool matrix
+
+| Tool           | Claude Code | OpenCode | jellyclaw                    | Notes                                                         |
+| -------------- | :---------: | :------: | :--------------------------: | ------------------------------------------------------------- |
+| `Bash`         | ✅          | ✅       | ✅ override                  | env scrub, blocklist, background mode, `~/.jellyclaw/bash-bg` |
+| `Read`         | ✅          | ✅       | ✅ override                  | text + ipynb + PDF (pdfjs-dist) + image dispatch              |
+| `Write`        | ✅          | ✅       | ✅ override                  | atomic rename, read-before-overwrite, EOF newline preserved   |
+| `Edit`         | ✅          | ✅       | ✅ override                  | unique-match invariant, replace_all, 6-line diff preview      |
+| `Glob`         | ✅          | ✅       | ✅ override                  | tinyglobby, `.gitignore` filter, mtime-desc sort              |
+| `Grep`         | ✅          | ✅       | ✅ override                  | `@vscode/ripgrep` via `spawn(argv)` (never shell)             |
+| `WebFetch`     | ✅          | ✅       | ✅ override                  | undici, SSRF preflight, per-hop redirect re-check, 10MB cap   |
+| `WebSearch`    | ✅          | ➖       | 🟡 stub                      | always errors with MCP-config hint (Phase 06+ MCP shadowing)  |
+| `TodoWrite`    | ✅          | ✅       | ✅ override                  | full-list replace, single in_progress invariant               |
+| `Task`         | ✅          | ✅       | 🟡 stub                      | dispatch surface wired; real subagent engine lands Phase 06   |
+| `NotebookEdit` | ✅          | ✅       | ✅ override                  | nbformat v4, replace/insert/delete, output preservation       |
+
+Legend: ✅ = full implementation, 🟡 = stub (fails loudly with hint), ➖ = not present.
+
+## TodoWrite
+
+`TodoWrite` replaces the session-scoped todo list. It is **not** a delta tool —
+the model sends the full list on every call. Exactly one todo may be
+`in_progress` at a time; violating this raises `MultipleInProgressError`.
+
+The handler delegates to `ctx.session.update({ todos })`, which the engine
+session writer turns into a jellyclaw `session.update` event so consumers
+(Genie, the desktop shell, etc.) see todo state changes in their event
+stream.
+
+### Input schema
+
+```json
+{
+  "todos": [
+    { "content": "do the thing", "status": "in_progress", "activeForm": "doing the thing", "id": "t1" }
+  ]
+}
+```
+
+`status` ∈ `pending | in_progress | completed | cancelled`.
+
+## Task
+
+`Task` is the dispatch tool for subagents. **Phase 04 ships only the schema
+and a stub dispatcher.** The real subagent engine — child OpenCode session,
+event-stream pumping, summary roll-up — lands in Phase 06.
+
+Calling `Task` today returns `SubagentsNotImplementedError` (with a clear
+"Phase 06 required" hint) unless a real `SubagentService` is wired into
+`ctx.subagents`. The stub at `engine/src/subagents/stub.ts` makes the
+failure mode explicit so downstream code doesn't silently no-op.
+
+### Input schema
+
+```json
+{
+  "description": "find auth bug",
+  "prompt": "Investigate /api/auth and report the failure mode in <100 words.",
+  "subagent_type": "general-purpose"
+}
+```
+
+## NotebookEdit
+
+`NotebookEdit` edits a Jupyter notebook (`.ipynb`, `nbformat: 4`) cell.
+Three edit modes:
+
+- `replace` — replaces a cell's `source`. Outputs and `execution_count`
+  are **preserved** unless `clear_outputs: true`. Changing `cell_type`
+  resets both.
+- `insert` — inserts a new cell after the located cell, or at the end if
+  no locator is given. Requires `cell_type` and `new_source`.
+- `delete` — removes the located cell.
+
+Locators: `cell_id` (preferred — stable across edits) or `cell_number`
+(0-indexed). The notebook must have been Read in this session
+(`NotebookEditRequiresReadError` otherwise — same invariant as Write/Edit).
+
+Writes are atomic via `<path>.jellyclaw.tmp` → `renameSync`.
+
+### Input schema
+
+```json
+{
+  "notebook_path": "/abs/path.ipynb",
+  "cell_id": "abc123",
+  "edit_mode": "replace",
+  "new_source": "print('hi')",
+  "clear_outputs": false
+}
+```
 
 ## WebFetch
 

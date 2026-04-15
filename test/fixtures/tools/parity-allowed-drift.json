@@ -1,0 +1,4 @@
+{
+  "_doc": "Allowed deviations between jellyclaw tool input schemas and Claude Code's reference schemas. Every entry needs a justification. Parity tests check that drift is contained to this list.",
+  "tools": {}
+}

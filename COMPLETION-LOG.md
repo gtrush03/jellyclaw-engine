@@ -1,11 +1,11 @@
 # Jellyclaw Engine — Completion Log
 
 **Last updated:** 2026-04-15
-**Current phase:** Phase 04 — Tool parity (next)
+**Current phase:** Phase 05 — Skills system (next)
 
 ## Overall progress
 
-[████░░░░░░░░░░░░░░░░] 4/20 phases complete (20%)
+[█████░░░░░░░░░░░░░░░] 5/20 phases complete (25%)
 
 ## Phase checklist
 
@@ -14,7 +14,7 @@
 - [x] ✅ Phase 01 — OpenCode pinning and patching
 - [x] ✅ Phase 02 — Config + provider layer
 - [x] ✅ Phase 03 — Event stream adapter
-- [ ] Phase 04 — Tool parity
+- [x] ✅ Phase 04 — Tool parity
 - [ ] Phase 05 — Skills system
 - [ ] Phase 06 — Subagent system + hook patch
 
@@ -348,14 +348,79 @@
     backpressure test and the `GOLDEN_UPDATE=1` path.
 
 ### Phase 04 — Tool parity
-- **Status:** 🔄 In progress (Prompts 01 + 02 + 03 + 04 / 5 complete)
+- **Status:** ✅ Complete
 - **Started:** 2026-04-15
-- **Completed:** —
-- **Duration (actual):** —
-- **Session count:** 4
-- **Commits:** 4d1a0d0 (prompt 01), 8a7d71c (prompt 02), 53b734a (prompt 03), (this commit, prompt 04)
-- **Tests passing:** 364/364 + 2 bench (122 new in Phase 04 so far — Bash 16 + Read 13 + Write 9 + Edit 18 + Edit-property 2 + Edit-diagnostics 7 + Glob 12 + Grep 17 + WebFetch 19 + WebSearch 9)
+- **Completed:** 2026-04-15
+- **Duration (actual):** 1 day (5 sessions — one per prompt)
+- **Session count:** 5
+- **Commits:** 4d1a0d0 (prompt 01), 8a7d71c (prompt 02), 53b734a (prompt 03), 2efd998 (prompt 04), (this commit, prompt 05)
+- **Tests passing:** 423/423 + 2 bench (181 new in Phase 04 — Bash 16 + Read 13 + Write 9 + Edit 18 + Edit-property 2 + Edit-diagnostics 7 + Glob 12 + Grep 17 + WebFetch 19 + WebSearch 9 + TodoWrite 15 + Task 10 + NotebookEdit 18 + Parity 16)
 - **Notes:**
+  - ✅ Prompt 05 (TodoWrite + Task + NotebookEdit + parity suite +
+    docs round-out) — executed via a 3-agent parallel Opus team
+    against a pre-authored contract: extended `ToolContext` with
+    optional `session?: SessionHandle` and `subagents?: SubagentService`
+    handles, added `engine/src/subagents/{types,stub}.ts` (`SubagentService`
+    interface + `stubSubagentService` that always throws), added 6 new
+    error classes (`MultipleInProgressError`, `SessionUnavailableError`,
+    `SubagentsNotImplementedError`, `SubagentsUnavailableError`,
+    `NotebookEditRequiresReadError`, `InvalidNotebookError`), authored
+    3 schema fixtures + `parity-allowed-drift.json`, installed
+    `zod-to-json-schema@^3.25`.
+  - **TodoWrite** (`engine/src/tools/todowrite.ts`, 15 unit tests).
+    Full-list replace semantics (NOT delta — Claude Code parity).
+    Single in_progress invariant enforced with `MultipleInProgressError`.
+    Delegates state via `ctx.session.update({ todos })` which the
+    engine session writer (Phase 09+) will turn into outbound
+    `session.update` events. Empty list valid (clears todos).
+    `id` field normalized for `exactOptionalPropertyTypes` — omitted
+    rather than `undefined`.
+  - **Task** (`engine/src/tools/task.ts`, 10 unit tests). Thin
+    pass-through: zod-parse → check `ctx.subagents` → delegate to
+    `dispatch({ subagent_type, description, prompt })`. With the
+    Phase-04 stub: throws `SubagentsNotImplementedError` with a
+    clear "Phase 06 required" hint. With a real `SubagentService`
+    (mock in tests; real in Phase 06): returns the dispatcher's
+    `{ summary, status, usage }` result verbatim.
+  - **NotebookEdit** (`engine/src/tools/notebook-edit.ts`, 18 unit
+    tests). nbformat v4 enforced (`InvalidNotebookError` for v3+).
+    Three edit modes: `replace` (preserves outputs + execution_count
+    unless `clear_outputs: true`; changing cell_type resets both),
+    `insert` (after located cell or at end; requires `cell_type` +
+    `new_source`; auto-generates `id` via `crypto.randomUUID()`),
+    `delete` (splice). Locator: `cell_id` (preferred) or
+    `cell_number` (0-indexed). Read-before-edit invariant
+    (`NotebookEditRequiresReadError`). Atomic write via
+    `<path>.jellyclaw.tmp` → `renameSync`. Index signature
+    `[key: string]: unknown` on cells preserves unknown notebook
+    fields (kernelspec, language_info, metadata extensions) through
+    round-trip.
+  - **Parity suite** (`test/unit/tools/parity.test.ts`, 16 tests):
+    asserts (a) registry has exactly 11 tools, (b) names match the
+    Claude Code canon (Bash/Edit/Glob/Grep/NotebookEdit/Read/Task/
+    TodoWrite/WebFetch/WebSearch/Write), (c) every tool overrides
+    the OpenCode builtin and has a non-empty description, (d) the
+    `parity-allowed-drift.json` list is empty (Phase 04 ships zero
+    deviations), and (e) per-tool: `tool.inputSchema` deep-equals
+    the JSON fixture in
+    `test/fixtures/tools/claude-code-schemas/<name>.json`.
+  - **`docs/tools.md`** rounded out with the 11-tool matrix table
+    (Claude Code | OpenCode | jellyclaw with status legend) at the
+    top, plus dedicated sections for TodoWrite, Task, and
+    NotebookEdit alongside the existing WebFetch + WebSearch
+    sections.
+  - **All 11 tools registered** alphabetically in
+    `engine/src/tools/index.ts` (3 agents coordinated via
+    re-read-before-edit on a shared file): bash → edit → glob →
+    grep → notebook-edit → read → task → todowrite → webfetch →
+    websearch → write.
+  - **No deviations from Claude Code schemas** — parity-allowed-drift
+    is empty.
+  - Gates: `bunx tsc --noEmit` ✅, `bunx biome check` ✅,
+    `bun run test` 423 passed + 2 skipped ✅ (59 new in this prompt
+    — 15 + 10 + 18 + 16). Benches still green under `BENCH=1`.
+  - **Phase 04 ✅ COMPLETE.** Foundation group now 5/7 (00-04 done,
+    05-06 remaining).
   - ✅ Prompt 04 (WebFetch + WebSearch) — executed via a 2-agent parallel
     Opus team against a pre-authored contract (deps `undici@^8.1`,
     `turndown@^7.2`, `ipaddr.js@^2.3`, `@types/turndown@^5` installed;
@@ -757,6 +822,7 @@
 
 | Date | Session # | Phase | Sub-prompt | Outcome |
 |---|---|---|---|---|
+| 2026-04-15 | 13 | 04 | 05-todowrite-task | ✅ **Phase 04 COMPLETE.** 3-agent parallel Opus team delivered TodoWrite (15 tests, full-list replace + single in_progress invariant + session.update delegation), Task (10 tests, thin pass-through to ctx.subagents.dispatch with Phase-04 stub `SubagentsNotImplementedError`), NotebookEdit (18 tests, nbformat v4 enforced, replace/insert/delete with output preservation + cell_type-change reset + atomic rename + read-before-edit invariant). Pre-authored contract: extended ToolContext with `session?` + `subagents?`, added `engine/src/subagents/{types,stub}.ts`, 6 new error classes, 3 schema fixtures + parity-allowed-drift.json. Parity suite (16 tests) asserts all 11 tools registered + names match Claude Code canon + every inputSchema deep-equals its JSON fixture + drift list empty. `docs/tools.md` rounded out with full 11-tool matrix + per-tool sections. Deps: `zod-to-json-schema@^3.25`. Typecheck ✅, biome ✅, vitest 423/423 + 2 skipped ✅ (59 new). Foundation group now 5/7. |
 | 2026-04-15 | 12 | 04 | 04-webfetch-websearch | 🔄 Phase 04 Prompt 04 landed via 2-agent parallel Opus team. `engine/src/tools/webfetch.ts` (19 tests): undici `request()` with manual redirect loop (≤5 hops, per-hop SSRF re-check), `ipaddr.js`-backed range classification (blocks loopback/private/link-local/ULA/multicast/unspecified/reserved with IPv4-mapped IPv6 unwrap), 10MB streaming cap from chunk counters, 30s timeouts, header whitelist (UA + Accept only — no auth/cookies), Turndown HTML→Markdown, text/JSON/XML (incl. +json/+xml) passthrough. Loopback-only override via `webfetch.localhost` permission. `engine/src/tools/websearch.ts` (9 tests): stub throws `WebSearchNotConfiguredError` unconditionally with MCP-config hint; one-time registration-warning helper exported for Phase 10 bootstrap. New error classes: `SsrfBlockedError`, `WebFetchProtocolError`, `WebFetchSizeError`, `WebSearchNotConfiguredError`. Registry updated alphabetically. `docs/tools.md` created with WebFetch + WebSearch sections. Deps: `undici@^8.1`, `turndown@^7.2`, `ipaddr.js@^2.3`, `@types/turndown@^5`. Typecheck ✅, biome ✅, vitest 364/364 + 2 skipped ✅. |
 | 2026-04-15 | 11 | 04 | 03-glob-grep | 🔄 Phase 04 Prompt 03 landed via 2-agent parallel Opus team. `engine/src/tools/glob.ts` (12 tests + 1 bench): tinyglobby-backed with `..`-segment refusal, `.gitignore` line-by-line filter (no negation), mtime-desc sort, cwd jail. `engine/src/tools/grep.ts` (17 tests + 1 bench): @vscode/ripgrep via spawn(argv[]) never shell, `--` terminator hardening, content/files_with_matches/count modes with discriminated union, O(log n) binary-search truncation at 50k chars, context cap 50. Registry updated alphabetically by both agents via re-read-before-edit coordination. Vitest config gained `test/**/*.bench.ts` include. Deps: `tinyglobby@^0.2`, `@vscode/ripgrep@^1.17`. Typecheck ✅, biome ✅, vitest 336/336 + 2 skipped ✅. Bench (BENCH=1) Glob 7ms (10k files, budget 500ms) + Grep 1937ms (100k files, budget 3000ms). |
 | 2026-04-15 | 10 | 04 | 02-edit | 🔄 Phase 04 Prompt 02 landed. 1 Opus agent delivered `engine/src/tools/edit.ts` (unique-match invariant + `replace_all` + atomic rename + EOF newline preservation + 6-line unified-diff preview), `engine/src/tools/edit-diagnostics.ts` (pure `explainMissingMatch` with 6 ordered branches, bounded ≤400 chars), and 3 test files: `edit.test.ts` (18), `edit.property.test.ts` (2 props × 100 runs, seed 42), `edit-diagnostics.test.ts` (7). New error classes `EditRequiresReadError / NoMatchError / AmbiguousMatchError / NoOpEditError` added to `types.ts`. Registry updated alphabetically. Deps: `diff@^9` + `@types/diff@^8` + `fast-check@^4`. Typecheck ✅, biome ✅, vitest 307/307 ✅ (27 new). |

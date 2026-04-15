@@ -16,6 +16,7 @@
 
 import type { z } from "zod";
 import type { Logger } from "../logger.js";
+import type { SubagentService } from "../subagents/types.js";
 
 export type JsonSchema = {
   readonly $schema?: string;
@@ -39,6 +40,35 @@ export interface ToolContext {
   readonly abort: AbortSignal;
   readonly logger: Logger;
   readonly permissions: PermissionService;
+  /**
+   * Session-state handle. Tools that mutate session-scoped state (TodoWrite)
+   * read/write through this interface; the engine session writer turns
+   * `update()` calls into outbound jellyclaw `session.update` events.
+   */
+  readonly session?: SessionHandle;
+  /**
+   * Subagent dispatch surface. The Task tool delegates here. Phase 04 ships a
+   * stub implementation (`engine/src/subagents/stub.ts`); Phase 06 replaces
+   * it with the real subagent engine.
+   */
+  readonly subagents?: SubagentService;
+}
+
+export interface SessionHandle {
+  readonly state: SessionState;
+  /** Merge a partial update into session state and emit a `session.update` event. */
+  update(patch: Partial<SessionState>): void;
+}
+
+export interface SessionState {
+  readonly todos: ReadonlyArray<TodoItem>;
+}
+
+export interface TodoItem {
+  readonly content: string;
+  readonly status: "pending" | "in_progress" | "completed" | "cancelled";
+  readonly activeForm: string;
+  readonly id?: string;
 }
 
 /**
@@ -153,12 +183,71 @@ export class WebFetchProtocolError extends ToolError {
 
 export class WebFetchSizeError extends ToolError {
   constructor(url: string, maxBytes: number) {
-    super(
-      "WebFetchSize",
-      `WebFetch refused: ${url} exceeded ${maxBytes} byte limit.`,
-      { url, maxBytes },
-    );
+    super("WebFetchSize", `WebFetch refused: ${url} exceeded ${maxBytes} byte limit.`, {
+      url,
+      maxBytes,
+    });
     this.name = "WebFetchSizeError";
+  }
+}
+
+export class MultipleInProgressError extends ToolError {
+  constructor(count: number) {
+    super("MultipleInProgress", `Exactly one todo may be in_progress at a time; got ${count}.`, {
+      count,
+    });
+    this.name = "MultipleInProgressError";
+  }
+}
+
+export class SessionUnavailableError extends ToolError {
+  constructor(tool: string) {
+    super(
+      "SessionUnavailable",
+      `${tool} requires ctx.session; none was provided. The engine session writer must inject one.`,
+      { tool },
+    );
+    this.name = "SessionUnavailableError";
+  }
+}
+
+export class SubagentsNotImplementedError extends ToolError {
+  constructor() {
+    super(
+      "SubagentsNotImplemented",
+      "Task tool: subagent dispatch is not wired in Phase 04. The real implementation lands in Phase 06 (subagent system + hook patch). Until then, the Task tool's stub returns this error so callers fail loudly instead of silently.",
+      {},
+    );
+    this.name = "SubagentsNotImplementedError";
+  }
+}
+
+export class SubagentsUnavailableError extends ToolError {
+  constructor() {
+    super(
+      "SubagentsUnavailable",
+      "Task tool requires ctx.subagents; none was provided. Inject a SubagentService (or the Phase-04 stub) when constructing ToolContext.",
+      {},
+    );
+    this.name = "SubagentsUnavailableError";
+  }
+}
+
+export class NotebookEditRequiresReadError extends ToolError {
+  constructor(path: string) {
+    super(
+      "NotebookEditRequiresRead",
+      `Notebook has not been Read in this session: ${path}. Read it first, then NotebookEdit.`,
+      { path },
+    );
+    this.name = "NotebookEditRequiresReadError";
+  }
+}
+
+export class InvalidNotebookError extends ToolError {
+  constructor(path: string, reason: string) {
+    super("InvalidNotebook", `Invalid notebook ${path}: ${reason}`, { path, reason });
+    this.name = "InvalidNotebookError";
   }
 }
 
@@ -186,11 +275,11 @@ export class EditRequiresReadError extends ToolError {
 
 export class NoMatchError extends ToolError {
   constructor(path: string, oldStringPreview: string, diagnostic: string) {
-    super(
-      "NoMatch",
-      `old_string not found in ${path}. ${diagnostic}`,
-      { path, old_string_preview: oldStringPreview, diagnostic },
-    );
+    super("NoMatch", `old_string not found in ${path}. ${diagnostic}`, {
+      path,
+      old_string_preview: oldStringPreview,
+      diagnostic,
+    });
     this.name = "NoMatchError";
   }
 }

@@ -47,7 +47,8 @@
     "tinyglobby": "^0.2.16",
     "turndown": "^7.2.4",
     "undici": "^8.1.0",
-    "zod": "^3.23.0"
+    "zod": "^3.23.0",
+    "zod-to-json-schema": "^3.25.2"
   },
   "devDependencies": {
     "@biomejs/biome": "latest",
