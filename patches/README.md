@@ -1,49 +1,68 @@
 # Jellyclaw Patches
 
-This directory holds unified-diff patches applied to the vendored OpenCode sources during the jellyclaw build. Patches are the right tool when:
-
-- the change is small and localized (a function or two),
-- we expect to upstream the fix eventually,
-- maintaining a full fork would obscure what we actually changed versus upstream.
-
-Larger or structural changes live in `engine/src/` as first-class jellyclaw code and replace upstream modules via the build step.
+> **Current state (April 2026):** this directory currently holds **zero
+> active patches** against `opencode-ai`. The `patch-package` toolchain
+> is retained for future non-binary dependencies, but every Phase 01
+> control that was originally planned as a patch has been reimplemented
+> as first-class jellyclaw code under `engine/src/`. Read "Why the pivot"
+> below before adding anything here.
 
 ---
 
-## How this directory works
+## Why the pivot — `opencode-ai` ships a compiled binary
 
-1. Upstream OpenCode is vendored via `npm` into `node_modules/@sst/opencode` (or the pinned commit in `engine/opencode.rev`).
-2. On `npm install`, the `postinstall` script runs `patch-package` (see `package.json`).
-3. `patch-package` reads every `*.patch` file in this directory in **lexicographic order** and applies it against the vendored tree.
-4. If any patch fails to apply, the install aborts with a loud error. Do not ignore this — a failed patch means upstream drift, and the patch must be rebased.
+Initial Phase 01 research assumed `opencode-ai` on npm would unpack as
+TypeScript sources under `node_modules/opencode-ai/packages/opencode/src/…`,
+so we could diff its handful of hot files with `patch-package` on
+`postinstall` and call it done.
+
+That assumption is wrong. The npm distribution of `opencode-ai@1.4.5` is
+a **compiled Bun-built standalone binary**. There is no consumer-side
+TypeScript to diff. `patch-package` has nothing to write hunks against,
+and even if it did, a diff against a binary is not a thing that exists.
+See `engine/opencode-research-notes.md` §1, §3.3, §5, §6.1, and §6.2 for
+the full investigation and the v1.4.5 source audit that established this.
+
+The three originally-planned patches have therefore been reimplemented as
+first-class code. Nothing under `patches/` runs against `opencode-ai`
+today:
+
+| Original patch                              | Replaced by                                                        |
+|---------------------------------------------|--------------------------------------------------------------------|
+| `001-subagent-hook-fire.patch`              | `engine/src/plugin/agent-context.ts` (jellyclaw plugin)            |
+| `002-bind-localhost-only.patch`             | `engine/src/bootstrap/opencode-server.ts` (hostname-locked spawn + `getsockname`-equivalent assertion) |
+| `003-secret-scrub-tool-results.patch`       | `engine/src/plugin/secret-scrub.ts` (jellyclaw plugin)             |
+
+The three original `.patch` files have been renamed to `.design.md` and
+kept in this directory as historical design-intent records. They are no
+longer applied by any tool. Each has a `STATUS: superseded` block at the
+top pointing to its live implementation.
+
+`patch-package` remains a dependency. Its `postinstall` hook still runs
+on every `npm ci`, but it has nothing to apply against `opencode-ai`. It
+is available for future non-binary dependencies that may legitimately
+need small diffs.
+
+---
+
+## How patch-package still works (for future patches)
+
+If a future non-binary dependency does need a patch:
+
+1. Upstream source is vendored via `npm` into `node_modules/<pkg>/…`.
+2. On `npm install`, the `postinstall` script runs `patch-package`
+   (see `package.json`).
+3. `patch-package` reads every `*.patch` file in this directory in
+   **lexicographic order** and applies it against the vendored tree.
+4. If any patch fails to apply, the install aborts with a loud error.
+   Do not ignore this — a failed patch means upstream drift.
 5. Applied patches are idempotent: re-running `npm install` is safe.
 
-To verify after install:
+Verify after install:
 
 ```bash
 npm run verify:patches
 ```
-
-This re-runs `patch-package --dry-run` and confirms every hunk is already applied.
-
----
-
-## Adding a new patch
-
-1. Edit the vendored file under `node_modules/@sst/opencode/...` directly. Get the behavior you want.
-2. Run `npx patch-package @sst/opencode --patch-dir patches`.
-3. Rename the generated file to the next numeric prefix: `NNN-short-kebab-description.patch`.
-4. Open the file and prepend a comment header (see the "Patch naming" section) explaining intent.
-5. Run `npm run verify:patches` to confirm.
-6. Commit both the patch and any ancillary changes in one PR.
-
-If your change is more than ~50 lines across more than one file, reconsider: it probably belongs in `engine/src/` as a first-class override, not as a patch.
-
----
-
-## Using patch-package
-
-We use [`patch-package`](https://www.npmjs.com/package/patch-package) (the Ds/Ds variant, not the Expo one). It's declared as a regular dependency, not devDependency, so that downstream consumers who install jellyclaw via `npm` also get the patches applied.
 
 Relevant `package.json` bits:
 
@@ -54,71 +73,106 @@ Relevant `package.json` bits:
     "verify:patches": "patch-package --patch-dir patches --dry-run"
   },
   "dependencies": {
-    "@sst/opencode": "1.1.10",
     "patch-package": "^8.0.0"
   }
 }
 ```
 
-The `--error-on-fail` flag is load-bearing. Without it, a silently-failed patch becomes a latent security regression.
+The `--error-on-fail` flag is load-bearing. Without it, a silently-failed
+patch becomes a latent security regression.
 
 ---
 
-## Upstream-contribution strategy
+## How to add a real patch
 
-Patches fall into three buckets. The header of each patch declares which bucket it's in (see naming).
+If and only if a future non-binary dependency needs one:
 
-**`[upstream-candidate]`** — We intend to PR this to OpenCode upstream. It's a general-purpose fix that benefits everyone. Example: `001-subagent-hook-fire.patch` (bug, not Genie-specific). Once upstream merges and we bump the pin, we delete the patch.
+1. Edit the vendored file under `node_modules/<pkg>/...` directly. Get
+   the behavior you want.
+2. Run `npx patch-package <pkg> --patch-dir patches`.
+3. Rename the generated file to the next numeric prefix:
+   `NNN-short-kebab-description.patch`. Never reuse a number, even if a
+   patch is deleted — this keeps lexicographic apply order stable.
+4. Open the file and prepend a comment header declaring the taxonomy tag
+   (below) and the reason.
+5. Run `npm run verify:patches` to confirm.
+6. Commit the patch alongside any ancillary changes in one PR.
 
-**`[upstream-unlikely]`** — Good for jellyclaw, but upstream has a different philosophy. Example: `002-bind-localhost-only.patch` enforces a stricter default than upstream is willing to ship. We maintain this locally indefinitely.
+If your change is more than ~50 lines across more than one file,
+reconsider: it probably belongs in `engine/src/` as a first-class module,
+not as a patch.
 
-**`[genie-specific]`** — Hooks for Genie dispatcher plumbing that have no meaning outside the Genie stack. Example: a patch that teaches the OpenCode config loader where Genie's per-user config lives. These stay local forever.
-
-When PRing upstream, we lift the patch as-is, drop the header comment, and open a PR against `sst/opencode`. The PR description links back to the jellyclaw patch file so upstream can see our motivation and test harness.
-
----
-
-## Patch naming convention
+### Naming
 
 ```
 NNN-short-kebab-description.patch
 ```
 
-- `NNN` — three-digit zero-padded sequence number, monotonic. Never reused even if a patch is deleted. This keeps lexicographic apply order stable.
+- `NNN` — three-digit zero-padded sequence, monotonic.
 - `short-kebab-description` — at most 40 chars, describes *what* not *why*.
 
-Every patch starts with a header block (before the first `diff --git` line) that `patch-package` and `git apply` both ignore:
+### Header block
 
 ```
-# [upstream-candidate] Fire plugin hooks for subagent tool calls
+# [upstream-candidate] Short one-line summary
 #
-# Closes OpenCode #5894. Threads the parent plugin registry into the
-# subagent loop in task.ts, and adjusts processor.ts to look up the
-# hook chain from the subagent context rather than the (empty) root.
+# Longer paragraph of motivation. Link the upstream issue or PR.
 #
-# Jellyclaw issue: SEC-002
+# Jellyclaw issue: SEC-XXX
 # Upstream PR: (pending)
 ```
 
-Valid tags: `[upstream-candidate]`, `[upstream-unlikely]`, `[genie-specific]`, `[security]`, `[temporary]` (for known-short-lived patches that track an upstream RC).
+---
+
+## Upstream-contribution taxonomy
+
+Every patch header declares one of these tags. The taxonomy is preserved
+from the pre-pivot era so that when we *do* take on a real patch we
+already know where it fits.
+
+**`[upstream-candidate]`** — We intend to PR this to the upstream
+project. General-purpose fix that benefits everyone. Once upstream merges
+and we bump the pin, we delete the patch.
+
+**`[upstream-unlikely]`** — Good for jellyclaw, but upstream has a
+different philosophy (e.g. stricter defaults than upstream is willing to
+ship). We maintain this locally indefinitely.
+
+**`[genie-specific]`** — Hooks for Genie dispatcher plumbing that have
+no meaning outside the Genie stack. These stay local forever.
+
+Additional qualifiers that may appear alongside a primary tag:
+`[security]`, `[temporary]` (tracks an upstream RC), `[doc-only]`.
 
 ---
 
-## Current patches
+## Historical design-intent records
 
-| File | Tag | Purpose |
-|------|-----|---------|
-| `001-subagent-hook-fire.patch` | upstream-candidate, security | Make `tool.execute.*` hooks fire for subagent tool calls |
-| `002-bind-localhost-only.patch` | upstream-unlikely, security | Force `127.0.0.1` bind and mandatory auth token |
-| `003-secret-scrub-tool-results.patch` | upstream-candidate, security | Redact credential patterns from tool results |
-| `004-playwright-mcp-pin.md` | doc-only | Explains the pinned `@playwright/mcp` version |
+These `.design.md` files document Phase 01's original patch plan, before
+the compiled-binary discovery. They are no longer applied by any tool.
+Retained for provenance and so the next engineer can see what we thought
+we were going to build and why we changed course.
+
+| File                                          | Superseded by                                   |
+|-----------------------------------------------|--------------------------------------------------|
+| `001-subagent-hook-fire.design.md`            | `engine/src/plugin/agent-context.ts`             |
+| `002-bind-localhost-only.design.md`           | `engine/src/bootstrap/opencode-server.ts`        |
+| `003-secret-scrub-tool-results.design.md`     | `engine/src/plugin/secret-scrub.ts`              |
+| `004-playwright-mcp-pin.md`                   | (doc-only; Playwright MCP version pin rationale) |
 
 ---
 
 ## Troubleshooting
 
-**"patch failed to apply"** — upstream OpenCode drifted. Check `opencode.rev` against the patch's target revision, rebase the patch manually, bump the target comment in the header, commit.
+**"patch failed to apply"** — upstream source drifted against a patch
+(only possible once we take on a real patch again). Check the target
+revision, rebase manually, update the target comment in the header,
+commit.
 
-**"patch applied twice"** — `patch-package` detects this and no-ops. If you see it repeatedly, something is running `postinstall` outside the normal flow. Check CI.
+**"patch applied twice"** — `patch-package` detects this and no-ops. If
+it recurs, something is running `postinstall` outside the normal flow.
+Check CI.
 
-**"changes disappear after `npm install`"** — you edited `node_modules/` without running `npx patch-package` to capture. Your edits were wiped. Re-do them and capture the patch.
+**"changes disappear after `npm install`"** — you edited `node_modules/`
+without running `npx patch-package` to capture. Your edits were wiped.
+Re-do them and capture the patch.

@@ -140,32 +140,44 @@ jellyclaw surfaces OpenCode's plugin hook interface unchanged: `tool.execute.bef
 `event`. Plugins are TypeScript modules resolved from `~/.jellyclaw/plugins/*`
 and `<repo>/.jellyclaw/plugins/*`, loaded at session boot.
 
-### 5.1 Issue #5894 mitigation (subagent hook bypass)
+### 5.1 Issue #5894 mitigation (subagent hook observability gap)
 
-Upstream OpenCode does not invoke `tool.execute.before/after` for tools called
-from within a subagent spawned via the `task` tool. This breaks any permission
-or observability plugin for multi-agent workflows. jellyclaw fixes this with a
-**two-layer defense**, both landing in Phase 1:
+Original research assumed upstream OpenCode silently skipped
+`tool.execute.before/after` for tools called from within a subagent spawned
+via the `task` tool. A v1.4.5 audit (see `engine/opencode-research-notes.md`
+§3) corrected this: plugins are Instance-scoped via `plugin/index.ts`'s
+`InstanceState.get(state)` path, and `task.ts` re-enters the same in-process
+prompt loop through `ops.prompt(...)`, so hooks **do** fire for subagent tool
+calls. What is missing is *identity* — the three `plugin.trigger("tool.execute.*", …)`
+call sites in `packages/opencode/src/session/prompt.ts` (built-in tool, MCP
+tool, and task tool) ship an envelope with `{ tool, sessionID, callID }` but
+no `agent`, `parentSessionID`, or `agentChain`, so downstream permission and
+audit plugins cannot tell *which* agent made a given call. jellyclaw closes
+this gap with a **two-layer defense**, both landing in Phase 1:
 
-**Layer A — patch file.** `engine/patches/opencode-subagent-hooks.patch`
-applied to the installed `opencode-ai` package at postinstall:
+**Layer A — jellyclaw plugin, not a source patch.**
+`engine/src/plugin/agent-context.ts` is a first-party jellyclaw plugin that
+runs ahead of every user plugin in the hook chain. On each `tool.execute.before`
+and `tool.execute.after` invocation it enriches the envelope with `agent`,
+`parentSessionID`, and `agentChain` fields derived from the session graph the
+plugin itself maintains (indexed on `sessionID`/`callID`). Downstream user
+plugins — permissions, audit logging, rate-limiters — therefore see a fully
+qualified envelope and can reason about root vs. subagent calls without
+needing an upstream change.
 
-- `packages/opencode/src/tool/task.ts` — wrap the nested tool dispatcher so it
-  calls the same `Plugin.trigger("tool.execute.before", …)` path as the top
-  level, with the subagent's session id propagated.
-- `packages/opencode/src/session/processor.ts` — thread the plugin chain
-  context through `spawnChild()` so the child session inherits the parent's
-  plugin registry (not a fresh empty one).
+Why a plugin and not a patch? `opencode-ai` ships a compiled Bun-built
+standalone binary on npm — there is no consumer-side TypeScript for
+`patch-package` to diff against. The plugin path is the only consumer-side
+seam into the hook pipeline. See §15 for the toolchain consequences and
+`engine/opencode-research-notes.md` §3.3, §5.1, §6.1, §6.2 for the full
+investigation.
 
-Patch size target: ≤30 LOC net diff. Applied via `patch-package` in the
-engine's `postinstall` script. Verified in CI by a regression test that asserts
-a `before` hook fires for a tool call nested two subagents deep.
-
-**Layer B — permission ruleset enforcement.** Independent of hooks, jellyclaw
-evaluates a declarative permission ruleset (`permissions.ts`) on every tool
-invocation inside the provider wrapper — a layer that subagents cannot bypass
-because they route through the same provider call. This is the load-bearing
-safety net if the patch is ever dropped or upstreamed in a different shape.
+**Layer B — declarative permission ruleset enforced at the provider wrapper.**
+**Unchanged.** jellyclaw evaluates `permissions.ts` on every tool invocation
+inside the provider wrapper, a layer that subagents cannot bypass because
+they route through the same provider call. Layer B remains the load-bearing
+safety net and the final authority — even if Layer A were ever lost to a
+plugin-loader regression, Layer B still denies the call.
 
 Both layers are required. Neither is deferred.
 
@@ -405,6 +417,15 @@ Pin rationale:
 - **`@anthropic-ai/sdk ^0.40.0`** — first line with stable 1h cache TTL beta.
 
 `npm ci` with a committed lockfile is the only supported install path.
+
+**Patch-package posture.** `patch-package` is retained as a dependency and
+its `postinstall` hook still runs on every install, but the `patches/`
+directory currently holds no active patches; `opencode-ai` ships a compiled
+binary so all controls live in `engine/src/plugin/` and
+`engine/src/bootstrap/` instead. See `patches/README.md` for the rationale
+and the historical design-intent records for the three originally-planned
+patches. The tool stays in the toolchain for future non-binary dependencies
+that may need small diffs.
 
 ---
 

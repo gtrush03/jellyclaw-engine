@@ -1,3 +1,10 @@
+> **STATUS: superseded by `engine/src/bootstrap/opencode-server.ts`.** This file was authored
+> when we believed opencode-ai would be patchable at the source level. The npm
+> distribution is a compiled binary, so the patch is not applicable. This document
+> is retained as the design-intent record; the live implementation is at
+> `engine/src/bootstrap/opencode-server.ts` (hostname-locked spawn plus a
+> `getsockname`-equivalent assertion after listen).
+
 # [upstream-unlikely][security] Force 127.0.0.1 bind; mandatory auth token
 #
 # Context: CVE-2026-22812. OpenCode <1.0.216 bound to all interfaces with
