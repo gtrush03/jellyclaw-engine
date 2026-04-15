@@ -348,14 +348,79 @@
     backpressure test and the `GOLDEN_UPDATE=1` path.
 
 ### Phase 04 — Tool parity
-- **Status:** 🔄 In progress (Prompts 01 + 02 + 03 / 5 complete)
+- **Status:** 🔄 In progress (Prompts 01 + 02 + 03 + 04 / 5 complete)
 - **Started:** 2026-04-15
 - **Completed:** —
 - **Duration (actual):** —
-- **Session count:** 3
-- **Commits:** 4d1a0d0 (prompt 01), 8a7d71c (prompt 02), (this commit, prompt 03)
-- **Tests passing:** 336/336 + 2 bench (94 new in Phase 04 so far — Bash 16 + Read 13 + Write 9 + Edit 18 + Edit-property 2 + Edit-diagnostics 7 + Glob 12 + Grep 17)
+- **Session count:** 4
+- **Commits:** 4d1a0d0 (prompt 01), 8a7d71c (prompt 02), 53b734a (prompt 03), (this commit, prompt 04)
+- **Tests passing:** 364/364 + 2 bench (122 new in Phase 04 so far — Bash 16 + Read 13 + Write 9 + Edit 18 + Edit-property 2 + Edit-diagnostics 7 + Glob 12 + Grep 17 + WebFetch 19 + WebSearch 9)
 - **Notes:**
+  - ✅ Prompt 04 (WebFetch + WebSearch) — executed via a 2-agent parallel
+    Opus team against a pre-authored contract (deps `undici@^8.1`,
+    `turndown@^7.2`, `ipaddr.js@^2.3`, `@types/turndown@^5` installed;
+    new error classes `SsrfBlockedError`, `WebFetchProtocolError`,
+    `WebFetchSizeError`, `WebSearchNotConfiguredError` added to
+    `engine/src/tools/types.ts`; `{webfetch,websearch}.json` schema
+    fixtures authored; engine package.json updated).
+  - **WebFetch** (`engine/src/tools/webfetch.ts`, 19 unit tests). Input
+    `{ url, prompt }`. URL must be `http:` or `https:` — `file:`,
+    `data:`, `javascript:`, `gopher:`, `ftp:` rejected with
+    `WebFetchProtocolError`. SSRF preflight via
+    `dns.promises.lookup({ all: true, verbatim: true })` + `ipaddr.js`
+    range labels: blocks `loopback`, `private`, `linkLocal`,
+    `uniqueLocal`, `unspecified`, `multicast`, `reserved`. IPv4-mapped
+    IPv6 unwrapped before classification. **Loopback-only override**
+    via `webfetch.localhost` permission key — RFC1918, link-local,
+    ULA are NEVER skippable, by design. `undici.request()` with
+    `maxRedirections: 0`; manual redirect loop (≤5 hops) re-runs
+    SSRF preflight on every hop (closes redirect-SSRF). Outgoing
+    headers whitelist: only User-Agent
+    (`jellyclaw/0.x (+https://github.com/gtrush03/jellyclaw-engine)`)
+    + Accept — `authorization`, `cookie`, `proxy-authorization` never
+    leave the process. Streaming size cap 10MB enforced from chunk
+    counters (no trust in `Content-Length`); 30s timeouts. Content-type
+    dispatch: `text/html` → Turndown (atx headings, fenced code) →
+    Markdown; `text/plain`/`text/markdown`/`application/json`/
+    `application/ld+json`/`application/xml`/`text/xml` (incl.
+    `+json`/`+xml` suffixes) → passthrough; anything else →
+    `ToolError("UnsupportedContentType")`. Returns
+    `{ content, final_url, content_type, bytes }`. `prompt` field
+    accepted for schema parity but only logged at debug level.
+    Discarded response bodies drained via `body.dump()` to avoid
+    AbortError noise.
+  - **WebSearch** (`engine/src/tools/websearch.ts`, 9 unit tests).
+    Stub tool — handler always throws `WebSearchNotConfiguredError`
+    UNCONDITIONALLY (zod `.parse()` deliberately skipped so even
+    invalid input still gets the actionable hint pointing to MCP
+    config). Exports `emitWebSearchRegistrationWarning(logger)`
+    helper that fires-once-per-process via a closure flag and is
+    suppressed by `JELLYCLAW_WARN_WEBSEARCH=false` env. Companion
+    `_resetWebSearchWarning()` test helper. `index.ts` carries a
+    TODO to wire the warning into the engine bootstrap when
+    Phase 10 lands (kept off module-load to avoid library
+    import side effects).
+  - **Registry** (`engine/src/tools/index.ts`): both tools added
+    alphabetically (bash → edit → glob → grep → read → webfetch →
+    websearch → write). Two agents coordinated via re-read-before-edit;
+    no conflicts.
+  - **`docs/tools.md`** created with `## WebFetch` (purpose, schema,
+    SSRF guarantees + blocked-range list, override key semantics,
+    size + timeout caps, content-type dispatch, header whitelist
+    policy) and `## WebSearch` (why-stub, MCP wiring example,
+    shadowing note for future phase work, `JELLYCLAW_WARN_WEBSEARCH`
+    env). Future prompts (05) will append Glob/Grep/Bash/etc.
+    sections to bring full tool matrix.
+  - **DNS-rebinding caveat:** preflight resolves once and undici
+    resolves again on connect — TOCTOU window theoretically open.
+    Mitigation requires a custom dispatcher with fixed-IP connect
+    override; punted to a follow-up phase (low practical risk for
+    a developer-machine engine).
+  - Gates: `bunx tsc --noEmit` ✅, `bunx biome check` ✅,
+    `bun run test` 364 passed + 2 skipped ✅ (28 new — 19 + 9).
+  - Remaining Phase 04 prompts: 05 (TodoWrite + Task stub +
+    NotebookEdit + parity fixture + docs/tools.md round-out) — one
+    final prompt closes Phase 04.
   - ✅ Prompt 03 (Glob + Grep) — executed via a 2-agent parallel Opus team
     against a pre-authored contract (tinyglobby + @vscode/ripgrep
     installed, schema fixtures `{glob,grep}.json` authored, engine
@@ -692,6 +757,7 @@
 
 | Date | Session # | Phase | Sub-prompt | Outcome |
 |---|---|---|---|---|
+| 2026-04-15 | 12 | 04 | 04-webfetch-websearch | 🔄 Phase 04 Prompt 04 landed via 2-agent parallel Opus team. `engine/src/tools/webfetch.ts` (19 tests): undici `request()` with manual redirect loop (≤5 hops, per-hop SSRF re-check), `ipaddr.js`-backed range classification (blocks loopback/private/link-local/ULA/multicast/unspecified/reserved with IPv4-mapped IPv6 unwrap), 10MB streaming cap from chunk counters, 30s timeouts, header whitelist (UA + Accept only — no auth/cookies), Turndown HTML→Markdown, text/JSON/XML (incl. +json/+xml) passthrough. Loopback-only override via `webfetch.localhost` permission. `engine/src/tools/websearch.ts` (9 tests): stub throws `WebSearchNotConfiguredError` unconditionally with MCP-config hint; one-time registration-warning helper exported for Phase 10 bootstrap. New error classes: `SsrfBlockedError`, `WebFetchProtocolError`, `WebFetchSizeError`, `WebSearchNotConfiguredError`. Registry updated alphabetically. `docs/tools.md` created with WebFetch + WebSearch sections. Deps: `undici@^8.1`, `turndown@^7.2`, `ipaddr.js@^2.3`, `@types/turndown@^5`. Typecheck ✅, biome ✅, vitest 364/364 + 2 skipped ✅. |
 | 2026-04-15 | 11 | 04 | 03-glob-grep | 🔄 Phase 04 Prompt 03 landed via 2-agent parallel Opus team. `engine/src/tools/glob.ts` (12 tests + 1 bench): tinyglobby-backed with `..`-segment refusal, `.gitignore` line-by-line filter (no negation), mtime-desc sort, cwd jail. `engine/src/tools/grep.ts` (17 tests + 1 bench): @vscode/ripgrep via spawn(argv[]) never shell, `--` terminator hardening, content/files_with_matches/count modes with discriminated union, O(log n) binary-search truncation at 50k chars, context cap 50. Registry updated alphabetically by both agents via re-read-before-edit coordination. Vitest config gained `test/**/*.bench.ts` include. Deps: `tinyglobby@^0.2`, `@vscode/ripgrep@^1.17`. Typecheck ✅, biome ✅, vitest 336/336 + 2 skipped ✅. Bench (BENCH=1) Glob 7ms (10k files, budget 500ms) + Grep 1937ms (100k files, budget 3000ms). |
 | 2026-04-15 | 10 | 04 | 02-edit | 🔄 Phase 04 Prompt 02 landed. 1 Opus agent delivered `engine/src/tools/edit.ts` (unique-match invariant + `replace_all` + atomic rename + EOF newline preservation + 6-line unified-diff preview), `engine/src/tools/edit-diagnostics.ts` (pure `explainMissingMatch` with 6 ordered branches, bounded ≤400 chars), and 3 test files: `edit.test.ts` (18), `edit.property.test.ts` (2 props × 100 runs, seed 42), `edit-diagnostics.test.ts` (7). New error classes `EditRequiresReadError / NoMatchError / AmbiguousMatchError / NoOpEditError` added to `types.ts`. Registry updated alphabetically. Deps: `diff@^9` + `@types/diff@^8` + `fast-check@^4`. Typecheck ✅, biome ✅, vitest 307/307 ✅ (27 new). |
 | 2026-04-15 | 9 | 04 | 01-bash-read-write | 🔄 Phase 04 Prompt 01 landed. 3-agent parallel Opus team delivered `engine/src/tools/{bash,read,write}.ts` + matching tests in `test/unit/tools/` (Bash 16 + Read 13 + Write 9 = 38 new tests). Shared `types.ts` + `permissions.ts` + 3 Claude-Code JSON-Schema fixtures pre-authored for contract alignment. Registry `engine/src/tools/index.ts` exports `listTools()` / `getTool()`. Bash: blocklist (rm-rf, curl|sh, fork bomb, dd), bash-c bypass guard, env scrub, 30k-char truncation, background mode with `~/.jellyclaw/bash-bg/<pid>.log`. Read: absolute-path jail, ipynb + PDF (pdfjs-dist) + image + text dispatch, pages range with >10-page gate + >20-page refusal, readCache population. Write: read-before-overwrite invariant, atomic rename, trailing-newline preservation, outside-cwd gate. Deps: `pdfjs-dist@^5.6.0`. Typecheck ✅, biome ✅, vitest 280/280 ✅. Remaining Phase 04 prompts queued. |

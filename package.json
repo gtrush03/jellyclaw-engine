@@ -38,12 +38,15 @@
     "eventsource-parser": "^3",
     "execa": "latest",
     "hono": "latest",
+    "ipaddr.js": "^2.3.0",
     "opencode-ai": "1.4.5",
     "patch-package": "^8.0.0",
     "pdfjs-dist": "^5.6.0",
     "pino": "latest",
     "pino-pretty": "latest",
     "tinyglobby": "^0.2.16",
+    "turndown": "^7.2.4",
+    "undici": "^8.1.0",
     "zod": "^3.23.0"
   },
   "devDependencies": {
@@ -51,6 +54,7 @@
     "@types/better-sqlite3": "latest",
     "@types/diff": "^8.0.0",
     "@types/node": "latest",
+    "@types/turndown": "^5.0.6",
     "@vitest/coverage-v8": "latest",
     "fast-check": "^4.6.0",
     "tsup": "latest",

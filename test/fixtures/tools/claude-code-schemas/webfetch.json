@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "url": {
+      "description": "The URL to fetch content from",
+      "type": "string",
+      "format": "uri"
+    },
+    "prompt": {
+      "description": "The prompt to run on the fetched content",
+      "type": "string"
+    }
+  },
+  "required": ["url", "prompt"]
+}
