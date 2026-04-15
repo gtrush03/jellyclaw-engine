@@ -4,33 +4,35 @@
   "description": "jellyclaw engine — typed event-driven wrapper around OpenCode",
   "type": "module",
   "license": "MIT",
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "sideEffects": false,
+  "bin": {
+    "jellyclaw": "bin/jellyclaw",
+    "jellyclaw-serve": "bin/jellyclaw-serve"
+  },
   "exports": {
     ".": {
-      "types": "./src/index.ts",
-      "import": "./src/index.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./internal": {
+      "types": "./dist/internal.d.ts",
+      "import": "./dist/internal.js"
     },
     "./events": {
-      "types": "./src/events.ts",
-      "import": "./src/events.ts"
+      "types": "./dist/events.d.ts",
+      "import": "./dist/events.js"
     },
     "./config": {
-      "types": "./src/config.ts",
-      "import": "./src/config.ts"
-    },
-    "./providers/anthropic": {
-      "types": "./src/providers/anthropic.ts",
-      "import": "./src/providers/anthropic.ts"
-    },
-    "./providers/openrouter": {
-      "types": "./src/providers/openrouter.ts",
-      "import": "./src/providers/openrouter.ts"
+      "types": "./dist/config.d.ts",
+      "import": "./dist/config.js"
     }
   },
   "files": [
-    "src",
-    "README.md"
+    "dist",
+    "bin",
+    "patches"
   ],
   "scripts": {
     "test": "vitest run"
@@ -38,14 +40,21 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.40.0",
     "@modelcontextprotocol/sdk": "^1",
+    "@opentui/core": "0.1.99",
+    "@opentui/solid": "0.1.99",
+    "@solid-primitives/event-bus": "1.1.2",
     "@vscode/ripgrep": "^1.15.0",
+    "better-sqlite3": "^11",
     "chokidar": "^4.0.0",
     "diff": "^9.0.0",
     "gray-matter": "^4.0.3",
     "ipaddr.js": "^2.3.0",
     "opencode-ai": "1.4.5",
+    "opentui-spinner": "0.0.6",
     "patch-package": "^8.0.0",
     "pdfjs-dist": "^5.6.0",
+    "solid-js": "^1.9.10",
+    "strip-ansi": "^7.1.2",
     "tinyglobby": "^0.2.0",
     "turndown": "^7.2.0",
     "undici": "^8.1.0",
@@ -53,6 +62,7 @@
     "zod-to-json-schema": "^3.25.0"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
     "@types/diff": "^8.0.0",
     "@types/turndown": "^5.0.0",
     "fast-check": "^4.6.0"
