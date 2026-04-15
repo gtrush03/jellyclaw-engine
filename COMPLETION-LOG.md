@@ -59,14 +59,25 @@
   `test` / `build` all exit 0 from a fresh `rm -rf node_modules dist`. Tag `v0.0.0-scaffold` set.
 
 ### Phase 01 — OpenCode pinning and patching
-- **Status:** ⏳ Not started
-- **Started:** —
+- **Status:** 🔄 In progress
+- **Started:** 2026-04-15
 - **Completed:** —
 - **Duration (actual):** —
-- **Session count:** —
-- **Commits:** —
+- **Session count:** 1
+- **Commits:** dcb0601
 - **Tests passing:** —
-- **Notes:** —
+- **Notes:**
+  - ✅ Prompt 01 (research) — `engine/opencode-research-notes.md` landed (950 lines).
+    Pin target confirmed: `opencode-ai@1.4.5` (dist-tag latest, commit dfc72838).
+    Two CVEs documented (22812 unauth RCE, 22813 web-UI XSS→RCE). Issue #5894
+    audited against v1.4.5: auto-closed with no PR; original SPEC §5.1 patch
+    plan is obsolete (plugins now Instance-scoped, hooks already fire for
+    subagents). Revised patch plan keys all three patches to
+    `packages/opencode/src/session/prompt.ts` (not `processor.ts` as SPEC
+    claims — drift flagged for Prompt 02 to fix). Patch 001 rescoped from
+    "thread plugin registry" to "add `agent` context to hook envelope."
+    Patch 002 (bind lockdown) and 003 (secret scrub) scopes unchanged.
+  - ⏳ Prompt 02 (implementation) — pending new session.
 
 ### Phase 02 — Config + provider layer
 - **Status:** ⏳ Not started
@@ -253,6 +264,7 @@
 | Date | Session # | Phase | Sub-prompt | Outcome |
 |---|---|---|---|---|
 | 2026-04-15 | 1 | 00 | 01-verify-scaffolding | ✅ Phase 00 complete — toolchain green, tag v0.0.0-scaffold, commit 6644aaf |
+| 2026-04-15 | 2 | 01 | 01-research | 🔄 Research note landed (engine/opencode-research-notes.md, 950 lines). Commit dcb0601. Phase 01 NOT complete — awaits Prompt 02 implementation. |
 
 ## Blockers & decisions
 
