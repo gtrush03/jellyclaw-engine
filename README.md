@@ -64,10 +64,25 @@ bun install
 bun run build
 
 export ANTHROPIC_API_KEY=sk-ant-...
-./dist/cli.js run "hello world"
+node engine/dist/cli/main.js run "hello world"
 ```
 
+> For the HTTP server use `jellyclaw-serve` (node) — `jellyclaw serve` under
+> bun hits a known SSE chunked-encoding bug in `@hono/node-server`.
+
 For the full Day 1 walkthrough see [`scripts/day-1.md`](scripts/day-1.md).
+
+## Interactive TUI
+
+`jellyclaw tui` opens a Claude-Code-shaped interactive terminal UI backed
+by the same engine the CLI and HTTP server use — streaming tokens,
+tool-call cards, permission prompts, session sidebar, slash-command
+palette, and diff viewer, rebranded with a purple-primary `jellyclaw`
+theme and jellyfish spinner. It boots the engine HTTP server in-process
+on a random loopback port, mints a Bearer token, and tears everything
+down cleanly on `Ctrl-C`. Use `jellyclaw attach <url>` to point the TUI
+at an already-running server instead. See [`docs/tui.md`](docs/tui.md)
+for flags, env vars, exit codes, and the vendor upgrade procedure.
 
 ## Repo layout
 

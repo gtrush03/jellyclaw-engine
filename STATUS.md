@@ -3,8 +3,8 @@
 > Living doc. Update at the start and end of every working day.
 > If this file is stale, don't trust it.
 
-**Last updated:** 2026-04-15 (Phase 99 Prompt 02 ✅ — real agent loop + 12 tests)
-**Current phase:** Phase 99 — Unfucking (2/8 prompts complete; Phase 11 queued behind it).
+**Last updated:** 2026-04-15 (Phase 99 Prompt 03 ✅ — RunManager + CLI wired to real Anthropic; live smoke pong received)
+**Current phase:** Phase 99 — Unfucking (3/8 prompts complete; Phase 11 queued behind it).
 **Current milestone target:** M1 (Engine works) — projected week of May 18
 **Engine on:** n/a (not yet bootable)
 **Genie dispatcher:** Claurst (unchanged)
@@ -97,7 +97,7 @@ Budget ceiling for v1.0 (Phases 00–18): **TBD — pending Q2 answer.**
 - [x] ✅ Phase 09 — Session persistence + resume
 - [x] ✅ Phase 10 — CLI + HTTP server + library
 - [x] ✅ Phase 10.5 — Interactive TUI (4/4 prompts — 01 ✅, 02 ✅, 03 ✅, 04 ✅)
-- [ ] 🔄 Phase 99 — Unfucking (2/8 — 01 ✅ adapter, 02 ✅ agent loop)
+- [ ] 🔄 Phase 99 — Unfucking (3/8 — 01 ✅ adapter, 02 ✅ loop, 03 ✅ wire + live smoke)
 - [ ] Phase 11 — Testing harness
 - [ ] Phase 12 — Genie integration behind flag
 - [ ] Phase 13 — Make jellyclaw default in Genie

@@ -1,0 +1,8 @@
+#!/usr/bin/env node
+// Node-only shim for `jellyclaw serve` — Bun's chunked-encoding is
+// incompatible with Hono's streamSSE helper as of @hono/node-server
+// 1.19.x. Until upstream fixes it, launch the HTTP server under node.
+import("../dist/cli/main.js").catch((e) => {
+  process.stderr.write(`${String(e?.stack ?? e)}\n`);
+  process.exit(1);
+});

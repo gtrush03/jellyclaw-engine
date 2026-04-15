@@ -11,7 +11,8 @@
     "url": "https://github.com/gtrush03/jellyclaw-engine.git"
   },
   "bin": {
-    "jellyclaw": "./dist/cli.js"
+    "jellyclaw": "./engine/bin/jellyclaw",
+    "jellyclaw-serve": "./engine/bin/jellyclaw-serve"
   },
   "scripts": {
     "build": "tsup",
@@ -25,18 +26,20 @@
     "typecheck": "tsc --noEmit",
     "postinstall": "patch-package --patch-dir patches --error-on-fail",
     "verify:patches": "patch-package --patch-dir patches --dry-run",
-    "clean": "rm -rf dist node_modules/.cache"
+    "clean": "rm -rf dist node_modules/.cache",
+    "tui": "node engine/dist/cli.js tui",
+    "tui:vendored": "cd engine/src/tui/_vendored && bun install && cd opencode && bun run src/index.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.40.0",
+    "@hono/node-server": "^1",
     "@modelcontextprotocol/sdk": "latest",
-    "@opencode-ai/plugin": "latest",
-    "@opencode-ai/sdk": "latest",
     "@openrouter/ai-sdk-provider": "latest",
     "@vscode/ripgrep": "^1.17.1",
     "better-sqlite3": "latest",
     "better-sse": "latest",
     "chokidar": "^4.0",
+    "commander": "^12",
     "diff": "^9.0.0",
     "eventsource-parser": "^3",
     "execa": "latest",
@@ -74,11 +77,74 @@
     "node": ">=20.6",
     "bun": ">=1.1"
   },
-  "workspaces": [
-    "shared",
-    "engine",
-    "desktop",
-    "integration"
-  ],
-  "packageManager": "bun@1.1.0"
+  "workspaces": {
+    "packages": [
+      "shared",
+      "engine",
+      "desktop",
+      "integration"
+    ],
+    "catalog": {
+      "@effect/opentelemetry": "4.0.0-beta.48",
+      "@effect/platform-node": "4.0.0-beta.48",
+      "@types/bun": "1.3.11",
+      "@types/cross-spawn": "6.0.6",
+      "@octokit/rest": "22.0.0",
+      "@hono/zod-validator": "0.4.2",
+      "ulid": "3.0.1",
+      "@kobalte/core": "0.13.11",
+      "@types/luxon": "3.7.1",
+      "@types/node": "22.13.9",
+      "@types/semver": "7.7.1",
+      "@tsconfig/node22": "22.0.2",
+      "@tsconfig/bun": "1.0.9",
+      "@cloudflare/workers-types": "4.20251008.0",
+      "@openauthjs/openauth": "0.0.0-20250322224806",
+      "@pierre/diffs": "1.1.0-beta.18",
+      "@solid-primitives/storage": "4.3.3",
+      "@tailwindcss/vite": "4.1.11",
+      "diff": "8.0.2",
+      "dompurify": "3.3.1",
+      "drizzle-kit": "1.0.0-beta.19-d95b7a4",
+      "drizzle-orm": "1.0.0-beta.19-d95b7a4",
+      "effect": "4.0.0-beta.48",
+      "ai": "6.0.158",
+      "cross-spawn": "7.0.6",
+      "hono": "4.10.7",
+      "hono-openapi": "1.1.2",
+      "fuzzysort": "3.1.0",
+      "luxon": "3.6.1",
+      "marked": "17.0.1",
+      "marked-shiki": "1.2.1",
+      "remend": "1.3.0",
+      "@playwright/test": "1.59.1",
+      "typescript": "5.8.2",
+      "@typescript/native-preview": "7.0.0-dev.20251207.1",
+      "zod": "4.1.8",
+      "remeda": "2.26.0",
+      "shiki": "3.20.0",
+      "solid-list": "0.3.0",
+      "tailwindcss": "4.1.11",
+      "virtua": "0.42.3",
+      "vite": "7.1.4",
+      "@solidjs/meta": "0.29.4",
+      "@solidjs/router": "0.15.4",
+      "@solidjs/start": "https://pkg.pr.new/@solidjs/start@dfb2020",
+      "solid-js": "1.9.10",
+      "vite-plugin-solid": "2.11.10",
+      "@lydell/node-pty": "1.2.0-beta.10"
+    }
+  },
+  "packageManager": "bun@1.1.0",
+  "trustedDependencies": [
+    "esbuild",
+    "node-pty",
+    "@lydell/node-pty",
+    "protobufjs",
+    "tree-sitter",
+    "tree-sitter-bash",
+    "tree-sitter-powershell",
+    "web-tree-sitter",
+    "better-sqlite3"
+  ]
 }
