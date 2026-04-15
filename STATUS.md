@@ -3,8 +3,8 @@
 > Living doc. Update at the start and end of every working day.
 > If this file is stale, don't trust it.
 
-**Last updated:** 2026-04-15 (Phase 06 ✅ COMPLETE — subagent system + hook regression gate shipped)
-**Current phase:** Phase 07 — MCP client integration (next)
+**Last updated:** 2026-04-15 (Phase 07 Prompt 01 ✅ — stdio MCP client + credential scrubber + registry landed)
+**Current phase:** Phase 07 — MCP client integration (Prompt 01 ✅; 02–03 pending)
 **Current milestone target:** M1 (Engine works) — projected week of May 18
 **Engine on:** n/a (not yet bootable)
 **Genie dispatcher:** Claurst (unchanged)
@@ -55,7 +55,7 @@ Budget ceiling for v1.0 (Phases 00–18): **TBD — pending Q2 answer.**
 
 | Metric | Count |
 |--------|-------|
-| Unit tests passing | 558 (+3 skipped, +2 benches under BENCH=1) |
+| Unit tests passing | 586 (+3 skipped, +2 benches under BENCH=1) |
 | Integration tests passing | 11 (subagent hook-fire regression) |
 | Unit tests failing | 0 |
 | Integration tests passing | 0 |
@@ -225,3 +225,19 @@ Budget ceiling for v1.0 (Phases 00–18): **TBD — pending Q2 answer.**
   11-tool matrix table + per-tool sections. 423/423 + 2 skipped ✅
   (59 new). Typecheck ✅, biome ✅. **Phase 04 ✅ COMPLETE.**
 - Next action: Phase 05 — Skills system. Fresh Claude session.
+- Phase 07 Prompt 01 (stdio MCP client) landed via 2-agent parallel Opus team.
+  `@modelcontextprotocol/sdk@^1` installed (1.29.0). (A) `credential-strip.ts`
+  (12 tests) — `buildCredentialScrubber` over env values, longest-first,
+  metachar-escaped, <6-char / empty skipped via `onSkipped`, identity fallback.
+  (B) `client-stdio.ts` (6 tests) — SDK `Client` over `StdioClientTransport`,
+  serialized `#enqueue`, 10 s connect timeout, cancellable [0.5/1/2/4/8]s × 5
+  reconnect → `dead`, SIGTERM→SIGKILL (3 s grace), credential scrubber on
+  stderr/errors/timeouts/listener-errors, zero `env` logging.
+  (C) `registry.ts` (10 tests) — `McpRegistry` parallel connect, DI
+  `clientFactory`, 30 s background retry rebuilds dead clients, snapshot,
+  namespaced routing, `McpUnknownServerError`/`McpNotReadyError`. Barrel +
+  fixture (`echo-server.ts`) + smoke script (`engine/scripts/mcp-list.ts`,
+  verified end-to-end: `mcp: 1 live, 0 dead, 0 retrying` + `mcp__echo__echo`).
+  Typecheck ✅, biome ✅, vitest 586/589 + 3 skipped ✅ (+28 new). Root
+  `JellyclawConfig.mcp` schema left untouched — Prompt 02 owns the
+  transport-discriminant extension with HTTP+SSE + OAuth.
