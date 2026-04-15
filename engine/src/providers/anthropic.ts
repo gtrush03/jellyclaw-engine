@@ -1,120 +1,238 @@
 /**
- * Anthropic direct provider.
+ * Anthropic-direct provider.
  *
- * Status: SKELETON — Phase 2 lands the full implementation.
+ * Implements `Provider` (see `types.ts`). Wraps `@anthropic-ai/sdk` and:
+ *   - Applies cache_control breakpoints via `planBreakpoints` (research-notes §3).
+ *   - Sets the `anthropic-beta: extended-cache-ttl-2025-04-11` header when any
+ *     breakpoint uses ttl=1h (research-notes §3.3).
+ *   - Wraps the stream call in OUR retry loop (research-notes §4.3) — the SDK's
+ *     built-in retry is disabled via `maxRetries: 0` because it hides state
+ *     the router needs (failure count, elapsed time, last error body).
+ *   - Pipes raw `RawMessageStreamEvent` values through unchanged. The Phase 03
+ *     event adapter translates to jellyclaw's semantic `AgentEvent`.
  *
- * Why Anthropic direct is the recommended primary provider:
- *
- *   - `cache_control: { type: "ephemeral" }` blocks give us prompt caching with
- *     up to 4 breakpoints per request. Correctly placed, cache hits cut input
- *     tokens by 90 % on long sessions.
- *   - Extended thinking is natively supported.
- *   - Tool use streaming emits structured input_json_delta blocks we can map to
- *     AgentEvent.tool.called without regex parsing.
- *
- * Cache breakpoint strategy (auto mode):
- *
- *   1. After the system prompt (stable across session)
- *   2. After the tools array (stable across session)
- *   3. After the most-recent assistant turn (stable across next user turn)
- *   4. Reserved — hooks/agents may place their own when they inject content
- *
- * All four breakpoints are marked `cache_control: { type: "ephemeral" }`.
- * When `manual` mode is selected via config, the caller is responsible.
+ * NEVER logs API keys. NEVER uses `new Date()` — tests inject a clock.
  */
 
-import type Anthropic from "@anthropic-ai/sdk";
-import type { AnthropicProviderConfig } from "../config.js";
-import type { AgentEvent } from "../events.js";
-import type { Logger } from "../logger.js";
+import Anthropic from "@anthropic-ai/sdk";
+import type { Logger } from "pino";
+import {
+  type BreakpointOptions,
+  defaultBreakpointOptions,
+  planBreakpoints,
+} from "./cache-breakpoints.js";
+import type { Provider, ProviderChunk, ProviderRequest } from "./types.js";
+
+/**
+ * Beta header required for `cache_control.ttl = "1h"` on the Messages API.
+ * Verified current as of 2026-04-15 (research-notes §3.3 Appendix B).
+ * Do not change without re-verification.
+ */
+export const BETA_EXTENDED_CACHE_TTL = "extended-cache-ttl-2025-04-11";
 
 export interface AnthropicProviderDeps {
-  config: AnthropicProviderConfig;
+  apiKey: string;
+  baseURL?: string;
   logger: Logger;
-  /** Injected for tests. Production code passes a real Anthropic SDK client. */
+  cache?: BreakpointOptions;
+  /** Injected for tests (no `new Date()` in domain code). */
+  clock?: () => number;
+  /** Injected for tests — lets us supply a stubbed Anthropic client. */
   client?: Anthropic;
+  /** Retry budget overrides (tests lower these to keep vitest fast). */
+  retry?: Partial<RetryPolicy>;
 }
 
-export interface StreamRequest {
-  model: string;
-  system: string;
-  messages: Array<{ role: "user" | "assistant"; content: string }>;
-  tools: unknown[];
-  maxTokens: number;
+export interface RetryPolicy {
+  /** Max attempts INCLUDING the initial attempt. Default 3. */
+  maxAttempts: number;
+  /** Total wall-time budget in ms across all attempts. Default 30_000. */
+  budgetMs: number;
+  /** Base backoff in ms. Default 500. */
+  baseMs: number;
+  /** Backoff cap in ms. Default 8_000. */
+  capMs: number;
 }
 
-export class AnthropicProvider {
+const defaultRetry: RetryPolicy = {
+  maxAttempts: 3,
+  budgetMs: 30_000,
+  baseMs: 500,
+  capMs: 8_000,
+};
+
+const RETRYABLE_STATUS = new Set([429, 500, 502, 503, 504]);
+const NON_RETRYABLE_STATUS = new Set([400, 401, 403, 404, 413, 422]);
+
+function isRetryable(err: unknown): boolean {
+  if (err instanceof Anthropic.APIError) {
+    if (NON_RETRYABLE_STATUS.has(err.status ?? 0)) return false;
+    if (RETRYABLE_STATUS.has(err.status ?? 0)) return true;
+    if (err instanceof Anthropic.APIConnectionError) return true;
+    return false;
+  }
+  const code = (err as { code?: string })?.code;
+  if (code === "ECONNRESET" || code === "ETIMEDOUT" || code === "EPIPE") return true;
+  return false;
+}
+
+function parseRetryAfter(err: unknown): number | undefined {
+  if (!(err instanceof Anthropic.APIError)) return undefined;
+  const raw =
+    (err.headers as Record<string, string | undefined> | undefined)?.["retry-after"] ??
+    (err.headers as Record<string, string | undefined> | undefined)?.["Retry-After"];
+  if (!raw) return undefined;
+  const secs = Number.parseInt(raw, 10);
+  if (!Number.isFinite(secs) || secs < 0) return undefined;
+  return secs * 1000;
+}
+
+function jitteredBackoff(attempt: number, policy: RetryPolicy): number {
+  const exp = Math.min(policy.capMs, policy.baseMs * 2 ** attempt);
+  return Math.floor(Math.random() * exp);
+}
+
+const delay = (ms: number, signal?: AbortSignal): Promise<void> =>
+  new Promise((res, rej) => {
+    if (signal?.aborted) {
+      rej(signal.reason ?? new Error("aborted"));
+      return;
+    }
+    const t = setTimeout(res, ms);
+    signal?.addEventListener(
+      "abort",
+      () => {
+        clearTimeout(t);
+        rej(signal.reason ?? new Error("aborted"));
+      },
+      { once: true },
+    );
+  });
+
+export class AnthropicProvider implements Provider {
   readonly name = "anthropic" as const;
 
-  constructor(private readonly deps: AnthropicProviderDeps) {}
+  private readonly client: Anthropic;
+  private readonly logger: Logger;
+  private readonly cache: BreakpointOptions;
+  private readonly clock: () => number;
+  private readonly retry: RetryPolicy;
 
-  /**
-   * Resolve the effective API key: explicit config → ANTHROPIC_API_KEY env.
-   * Throws if neither is present.
-   */
-  apiKey(): string {
-    const fromConfig = this.deps.config.apiKey;
-    const fromEnv = process.env.ANTHROPIC_API_KEY;
-    const key = fromConfig ?? fromEnv;
-    if (!key) {
-      throw new Error(
-        "Anthropic provider: no API key found. Set ANTHROPIC_API_KEY or provider.apiKey.",
-      );
-    }
-    return key;
+  constructor(deps: AnthropicProviderDeps) {
+    this.client =
+      deps.client ??
+      new Anthropic({
+        apiKey: deps.apiKey,
+        ...(deps.baseURL !== undefined ? { baseURL: deps.baseURL } : {}),
+        maxRetries: 0, // our retry loop owns this — see header comment
+      });
+    this.logger = deps.logger;
+    this.cache = deps.cache ?? defaultBreakpointOptions;
+    this.clock = deps.clock ?? ((): number => Date.now());
+    this.retry = { ...defaultRetry, ...(deps.retry ?? {}) };
   }
 
-  /**
-   * Compute cache_control breakpoints for a request payload.
-   * Returns an array of (block index, block kind) pairs where cache_control should be
-   * applied. `auto` mode is implemented here; `manual` returns [].
-   */
-  computeCacheBreakpoints(req: StreamRequest): ReadonlyArray<{
-    index: number;
-    kind: "system" | "tools" | "last_assistant";
-  }> {
-    if (this.deps.config.cache.enabled === false) return [];
-    if (this.deps.config.cache.breakpoints === "manual") return [];
+  async *stream(req: ProviderRequest, signal?: AbortSignal): AsyncIterable<ProviderChunk> {
+    const planned = planBreakpoints(req, this.cache);
 
-    const breakpoints: Array<{
-      index: number;
-      kind: "system" | "tools" | "last_assistant";
-    }> = [];
+    const body: Anthropic.Messages.MessageStreamParams = {
+      model: req.model,
+      max_tokens: req.maxOutputTokens,
+      ...(planned.system.length > 0
+        ? { system: planned.system as unknown as Anthropic.Messages.TextBlockParam[] }
+        : {}),
+      messages: planned.messages,
+      ...(planned.tools ? { tools: planned.tools } : {}),
+      ...(req.thinking ? { thinking: req.thinking } : {}),
+    };
 
-    // 1. System prompt — always a breakpoint when non-empty
-    if (req.system.length > 0) breakpoints.push({ index: 0, kind: "system" });
-
-    // 2. Tools — always a breakpoint when non-empty
-    if (req.tools.length > 0) breakpoints.push({ index: 0, kind: "tools" });
-
-    // 3. Last assistant turn — if one exists
-    const lastAssistantIdx = findLastIndex(req.messages, (m) => m.role === "assistant");
-    if (lastAssistantIdx >= 0) {
-      breakpoints.push({ index: lastAssistantIdx, kind: "last_assistant" });
+    const baseHeaders: Record<string, string> = {};
+    if (planned.hasOneHourBreakpoint) {
+      baseHeaders["anthropic-beta"] = BETA_EXTENDED_CACHE_TTL;
     }
 
-    // Anthropic API caps at 4 breakpoints. We never exceed 3 in auto mode.
-    return breakpoints;
-  }
+    const t0 = this.clock();
+    let attempt = 0;
+    let lastErr: unknown;
 
-  /**
-   * Stream a completion. Phase 2 wires this to the real SDK.
-   */
-  // biome-ignore lint/suspicious/useAwait: stub
-  // biome-ignore lint/correctness/useYield: stub
-  async *stream(_req: StreamRequest): AsyncGenerator<AgentEvent, void, void> {
-    this.deps.logger.warn(
-      { provider: "anthropic" },
-      "AnthropicProvider.stream called in Phase 0 — not implemented",
-    );
-    throw new Error("AnthropicProvider.stream not yet implemented (lands Phase 2)");
-  }
-}
+    while (attempt < this.retry.maxAttempts) {
+      if (signal?.aborted) throw signal.reason ?? new Error("aborted");
+      const elapsed = this.clock() - t0;
+      if (elapsed >= this.retry.budgetMs) {
+        throw lastErr ?? new Error("retry budget exhausted before first attempt");
+      }
 
-function findLastIndex<T>(arr: readonly T[], pred: (x: T) => boolean): number {
-  for (let i = arr.length - 1; i >= 0; i--) {
-    const item = arr[i];
-    if (item !== undefined && pred(item)) return i;
+      try {
+        const opts: { headers?: Record<string, string>; signal?: AbortSignal } = {};
+        if (Object.keys(baseHeaders).length > 0) opts.headers = baseHeaders;
+        if (signal) opts.signal = signal;
+
+        const stream = this.client.messages.stream(body, opts);
+
+        this.logger.debug(
+          {
+            provider: "anthropic",
+            model: req.model,
+            attempt: attempt + 1,
+            plan: planned.plan,
+            beta: baseHeaders["anthropic-beta"],
+          },
+          "anthropic.stream.begin",
+        );
+
+        for await (const event of stream) {
+          // Raw event passthrough. The Phase 03 adapter handles semantic
+          // translation; here we stay at the SDK wire layer.
+          yield event as unknown as ProviderChunk;
+        }
+        return;
+      } catch (err) {
+        lastErr = err;
+        if (signal?.aborted) throw err;
+        if (!isRetryable(err)) {
+          this.logger.warn(
+            { provider: "anthropic", status: (err as { status?: number })?.status },
+            "anthropic.stream.fatal",
+          );
+          throw err;
+        }
+
+        attempt++;
+        if (attempt >= this.retry.maxAttempts) {
+          this.logger.warn(
+            { provider: "anthropic", attempts: attempt },
+            "anthropic.stream.retries_exhausted",
+          );
+          throw err;
+        }
+
+        const remaining = this.retry.budgetMs - (this.clock() - t0);
+        const retryAfter = parseRetryAfter(err);
+        if (retryAfter !== undefined && retryAfter > remaining) {
+          this.logger.warn(
+            { provider: "anthropic", retryAfter, remaining },
+            "anthropic.stream.retry_after_exceeds_budget",
+          );
+          throw err;
+        }
+        const wait = Math.max(
+          0,
+          Math.min(remaining, retryAfter ?? jitteredBackoff(attempt, this.retry)),
+        );
+
+        this.logger.info(
+          {
+            provider: "anthropic",
+            attempt,
+            wait_ms: wait,
+            status: (err as { status?: number })?.status,
+          },
+          "anthropic.stream.retry",
+        );
+        await delay(wait, signal);
+      }
+    }
+
+    throw lastErr ?? new Error("exhausted retries");
   }
-  return -1;
 }

@@ -21,6 +21,8 @@ const DEFAULT_REDACT = [
   "*.password",
   "headers.authorization",
   "headers.Authorization",
+  "headers.x-api-key",
+  "headers['x-api-key']",
 ];
 
 export interface CreateLoggerOptions {

@@ -212,8 +212,18 @@ async function resolveConfig(options: CreateEngineOptions): Promise<JellyclawCon
 
 function makeProvider(config: JellyclawConfig, logger: Logger): Provider {
   switch (config.provider.type) {
-    case "anthropic":
-      return new AnthropicProvider({ config: config.provider, logger });
+    case "anthropic": {
+      // Phase 0 stub path: run() never actually calls provider.stream().
+      // We deliberately construct even without an API key so the phase-0
+      // smoke test keeps working. The provider's stream() call will fail
+      // at request time if the key is missing. Phase 10 replaces this glue.
+      const apiKey = config.provider.apiKey ?? process.env.ANTHROPIC_API_KEY ?? "missing";
+      return new AnthropicProvider({
+        apiKey,
+        ...(config.provider.baseURL !== undefined ? { baseURL: config.provider.baseURL } : {}),
+        logger,
+      });
+    }
     case "openrouter":
       return new OpenRouterProvider({ config: config.provider, logger });
   }
