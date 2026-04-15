@@ -14,7 +14,17 @@ export {
   type PlannedRequest,
   planBreakpoints,
 } from "./cache-breakpoints.js";
+export {
+  AllKeysDeadError,
+  type CredentialPool,
+  type ResolveCredentialsOptions,
+  resolveCredentials,
+} from "./credential-pool.js";
+export { CachingGateError, enforceCachingGate } from "./gate.js";
+export type { OpenRouterProviderDeps } from "./openrouter.js";
 export { OpenRouterProvider } from "./openrouter.js";
+export type { ProviderRouterDeps } from "./router.js";
+export { ProviderRouter, shouldFailover } from "./router.js";
 export type {
   CacheControlInput,
   MemoryContext,

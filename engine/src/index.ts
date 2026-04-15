@@ -224,8 +224,16 @@ function makeProvider(config: JellyclawConfig, logger: Logger): Provider {
         logger,
       });
     }
-    case "openrouter":
-      return new OpenRouterProvider({ config: config.provider, logger });
+    case "openrouter": {
+      // Phase 0 stub path: see the anthropic arm above. Constructs even
+      // without a real key so run()'s stub keeps working.
+      const apiKey = config.provider.apiKey ?? process.env.OPENROUTER_API_KEY ?? "missing";
+      return new OpenRouterProvider({
+        apiKey,
+        ...(config.provider.baseURL !== undefined ? { baseURL: config.provider.baseURL } : {}),
+        logger,
+      });
+    }
   }
 }
 

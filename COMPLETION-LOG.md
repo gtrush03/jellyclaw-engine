@@ -1,18 +1,18 @@
 # Jellyclaw Engine — Completion Log
 
 **Last updated:** 2026-04-15
-**Current phase:** Phase 02 — Config + provider layer (next)
+**Current phase:** Phase 03 — Event stream adapter (next)
 
 ## Overall progress
 
-[██░░░░░░░░░░░░░░░░░░] 2/20 phases complete (10%)
+[███░░░░░░░░░░░░░░░░░] 3/20 phases complete (15%)
 
 ## Phase checklist
 
 ### Foundation
 - [x] ✅ Phase 00 — Repo scaffolding
 - [x] ✅ Phase 01 — OpenCode pinning and patching
-- [ ] Phase 02 — Config + provider layer
+- [x] ✅ Phase 02 — Config + provider layer
 - [ ] Phase 03 — Event stream adapter
 - [ ] Phase 04 — Tool parity
 - [ ] Phase 05 — Skills system
@@ -117,13 +117,13 @@
     what the name suggests in this binary.
 
 ### Phase 02 — Config + provider layer
-- **Status:** 🔄 In progress (Prompts 01+02 ✅; 03 remaining)
+- **Status:** ✅ Complete
 - **Started:** 2026-04-15
-- **Completed:** —
-- **Duration (actual):** —
-- **Session count:** 2 (ongoing)
-- **Commits:** 53cf19d (research), (this commit: anthropic provider)
-- **Tests passing:** 93/93 (45 new in Prompt 02: 24 schema/loader, 13 cache-breakpoints, 8 anthropic provider)
+- **Completed:** 2026-04-15
+- **Duration (actual):** 1 day (3 sessions — research + anthropic + openrouter-via-team)
+- **Session count:** 3
+- **Commits:** 53cf19d (research), ca2ec15 (anthropic), (this commit: openrouter + router + gate + pool + docs)
+- **Tests passing:** 147/147 (99 new in Phase 02 total: 24 schema/loader, 13 cache-breakpoints, 8 anthropic provider, 14 openrouter, 13 router, 15 gate, 12 credential-pool)
 - **Notes:**
   - ✅ Prompt 02 (anthropic provider) — `engine/src/config/{schema,loader}.ts`
     + `engine/src/providers/{types,cache-breakpoints,anthropic,index}.ts`
@@ -163,9 +163,38 @@
     radius. §10 decision table: `acknowledgeCachingLimits` gate (default
     false) blocks `anthropic/*` models via OR unless explicitly flipped;
     non-Anthropic via OR proceeds with cache_control strip.
-  - Prompts 02 (anthropic provider), 03 (openrouter provider), 04
-    (router/fallback), 05 (config schema + loader), 06 (tests + docs)
-    remain.
+  - ✅ Prompt 03 (openrouter provider + router/fallback + gate + pool + docs)
+    — executed via a 5-agent team in parallel:
+    - `engine/src/providers/openrouter.ts` (659 lines) — `OpenRouterProvider`
+      with hand-rolled SSE parser (no new deps), recursive `stripCacheControl`
+      (zero emits — test walks the captured body and asserts), OpenAI-compat
+      body translation (tool schema `input_schema`→`parameters`, tool_use↔
+      tool_calls, tool_result→tool role), Anthropic-shape chunk emission so
+      the Phase 03 event adapter doesn't branch, module-level `warned` guard
+      with exported reset for tests, 402-added-to-non-retryable, mirror
+      Anthropic retry loop (3/30s/jitter/Retry-After).
+    - `engine/src/providers/router.ts` (147 lines) — provider-agnostic
+      `ProviderRouter` with pre-stream-only failover (tracks
+      `yieldedFromPrimary`), duck-typed error classification, AbortError
+      propagation without failover, `shouldFailover(err)` helper exported.
+    - `engine/src/providers/gate.ts` (40 lines) — `enforceCachingGate(config,
+      model)` with explicit model arg (not config.model) for
+      dispatch-time override checks. Reuses existing `CachingGateError` from
+      `config/loader.ts`.
+    - `engine/src/providers/credential-pool.ts` (216 lines) — contiguous
+      `_1..N` scan, config-key beats env-pool, round-robin skipping dead
+      slots, `rotateOnRateLimit()` + `markCurrentDead()`, `AllKeysDeadError`,
+      keys in closure so `JSON.stringify(pool)` cannot leak.
+    - `docs/providers.md` (658 lines) — selection matrix, caching matrix,
+      breakpoint rules, `anthropic-beta` header, OR caveat with issue URLs,
+      `acknowledgeCachingLimits` gate decision table, pooling docs,
+      retry/failover rules, 3 JSON config examples, 8 pitfalls, 10 FAQ.
+    - `engine/src/providers/index.ts` (barrel) extended. `engine/src/types.ts`
+      gained `"router"` to the provider name union. `engine/src/index.ts`
+      `makeProvider` now maps openrouter the same way it maps anthropic.
+  - Gates: typecheck ✅, biome ✅ (clean on all provider files post-autofix
+    + a handful of biome-ignore comments on async generators in tests where
+    the rule misfires), vitest 147/147 ✅ (incl. live opencode-ai e2e), build ✅.
 
 ### Phase 03 — Event stream adapter
 - **Status:** ⏳ Not started
@@ -343,6 +372,7 @@
 |---|---|---|---|---|
 | 2026-04-15 | 1 | 00 | 01-verify-scaffolding | ✅ Phase 00 complete — toolchain green, tag v0.0.0-scaffold, commit 6644aaf |
 | 2026-04-15 | 2 | 01 | 01-research | 🔄 Research note landed (engine/opencode-research-notes.md, 950 lines). Commit dcb0601. Phase 01 NOT complete — awaits Prompt 02 implementation. |
+| 2026-04-15 | 6 | 02 | 03-openrouter-provider | ✅ Phase 02 COMPLETE. 5-agent parallel team produced `openrouter.ts` (with SSE parser + cache_control strip + warn-once) + `router.ts` + `gate.ts` + `credential-pool.ts` + `docs/providers.md`. Main session reconciled barrel exports, updated `engine/src/index.ts` `makeProvider`, fixed 5 linter misfires on async generators in tests. 147/147 tests green (54 new). Typecheck ✅, build ✅, biome ✅. |
 | 2026-04-15 | 5 | 02 | 02-anthropic-provider | 🔄 Config schema+loader, Provider interface, pure `planBreakpoints`, `AnthropicProvider` with real SDK streaming + SPEC §7 cache_control placement + `anthropic-beta` 1h header + own retry loop all landed. 93/93 tests green (45 new). Phase 02 still open — Prompt 03 (OpenRouter + router/fallback + docs) remains. |
 | 2026-04-15 | 4 | 02 | 01-research | 🔄 `engine/provider-research-notes.md` landed (1753 lines). Beta header `extended-cache-ttl-2025-04-11` verified current. Min-cache-tokens table refreshed. OR #1245 + #17910 deep-dives completed with primary + mirror citations. `acknowledgeCachingLimits` gate decision table authored (§10). Phase 02 NOT complete — Prompts 02-06 still ahead. |
 | 2026-04-15 | 3 | 01 | 02-implement | ✅ Phase 01 complete via PIVOT. opencode-ai@1.4.5 is a compiled binary → three planned source patches reimplemented as engine/src/plugin/{agent-context,secret-scrub}.ts + engine/src/bootstrap/opencode-server.ts. 48/48 tests green (incl. live e2e against opencode-ai child). SPEC §5.1/§15 + CVE-MITIGATION §1.4/§2.1 + patches/README + phases/PHASE-01 synced. Commits 06d7d8a (pin+lock), 8a380dd (code), (this commit) (docs+log). |

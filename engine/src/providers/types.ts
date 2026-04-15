@@ -49,7 +49,7 @@ export interface ProviderChunk {
 }
 
 export interface Provider {
-  readonly name: "anthropic" | "openrouter";
+  readonly name: "anthropic" | "openrouter" | "router";
   stream(req: ProviderRequest, signal?: AbortSignal): AsyncIterable<ProviderChunk>;
   close?(): Promise<void>;
 }
