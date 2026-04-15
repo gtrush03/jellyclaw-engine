@@ -1,11 +1,11 @@
 # Jellyclaw Engine — Completion Log
 
 **Last updated:** 2026-04-15
-**Current phase:** Phase 08 — Permission engine + hooks (next)
+**Current phase:** Phase 09 — Session persistence + resume (next)
 
 ## Overall progress
 
-[████████░░░░░░░░░░░░] 8/20 phases complete (40%)
+[█████████░░░░░░░░░░░] 9/20 phases complete (45%)
 
 ## Phase checklist
 
@@ -20,7 +20,7 @@
 
 ### Core engine
 - [x] ✅ Phase 07 — MCP client integration
-- [ ] Phase 08 — Permission engine + hooks
+- [x] ✅ Phase 08 — Permission engine + hooks
 - [ ] Phase 09 — Session persistence + resume
 - [ ] Phase 10 — CLI + HTTP server + library
 - [ ] Phase 11 — Testing harness
@@ -955,14 +955,183 @@
     Phase 08 — permission engine + hooks.
 
 ### Phase 08 — Permission engine + hooks
-- **Status:** ⏳ Not started
-- **Started:** —
-- **Completed:** —
-- **Duration (actual):** —
-- **Session count:** —
-- **Commits:** —
-- **Tests passing:** —
-- **Notes:** —
+- **Status:** ✅ Complete
+- **Started:** 2026-04-15
+- **Completed:** 2026-04-15
+- **Duration (actual):** 1 day (3 sub-prompts, 4 sessions)
+- **Session count:** 4
+- **Commits:** (08.01+08.02 bundled commit), (this commit: 08.03 rate-limiter + scrub)
+- **Tests passing:** 895/903 (+243 new across Phase 08 total: 72 in 08.01 + 98 in 08.02 + 73 in 08.03 — 34 ratelimit + 32 security + 3 scrub-e2e + 4 schema)
+- **Notes:**
+  - [x] 08.01 — Permission modes + rule matcher ✅ landed via 2-agent parallel
+    Opus team. Main session pre-authored `engine/src/permissions/types.ts`
+    (frozen contract — `PermissionMode`, `PermissionRule`, `PermissionDecision`,
+    `ToolCall`, `CompiledPermissions`, `DecideOptions`, `AskHandler`,
+    `READ_ONLY_TOOLS`, `EDIT_TOOLS`, `PLAN_MODE_DENY_TOOLS`). Agent A owned
+    `rules.ts` (parser + matcher — picomatch `{dot:true,nonegate:true}`,
+    naked-tool short-circuit identity predicate, MCP server-name-exact
+    wildcard, arg-string derivation per tool category with `path.normalize`
+    for path-taking tools, JSON.stringify fallback for MCP) + `rules.test.ts`
+    (39 tests inc. negation-safety `Bash(!rm*)` invariant). Agent B owned
+    `engine.ts` (decide pipeline: bypass → plan-refusal → deny → ask → allow
+    → mode default; deny-wins invariant with dedicated regression test;
+    ask-flow denies when no handler or handler throws — NEVER silent allow;
+    `defaultIsSideEffectFree` falls back to `READ_ONLY_TOOLS` + `mcpTools`
+    readonly hints; `defaultAuditSink` writes to `~/.jellyclaw/logs/permissions.jsonl`
+    via `os.homedir()`; `redactInputForAudit` longest-first string-replace of
+    secrets ≥6 chars mirroring Phase-07 credential scrubbing), `prompt.ts`
+    (stdin ask-handler — non-TTY returns deny immediately, no hang, no deps
+    beyond `readline`), `index.ts` barrel, `engine.test.ts` (28 tests inc.
+    deny-wins, plan-mode × 6, ask-handler DI × 5, audit-redaction × 3),
+    `config/schema.ts` REPLACED record-shape `permissions` with structured
+    `PermissionsBlock` (`mode` + `allow[]` + `deny[]` + `ask[]` + `mcpTools`)
+    — no downstream consumers of old shape (`ctx.permissions.isAllowed` is
+    the intra-tool service under `engine/src/tools/types.ts`, untouched),
+    `config/schema.test.ts` +5 tests (29 total), `docs/permissions.md`
+    (practitioner doc — modes table, grammar, argument-string mapping,
+    deny-wins call-out, plan-mode + mcpTools opt-in, example config, audit-
+    log location + redaction note, hooks/CLI flags marked "coming"),
+    `engine/scripts/permissions-matrix.ts` (128-row decision dump). Deps:
+    `picomatch@^4`, `@types/picomatch`. Typecheck ✅, 96/96 permissions+config
+    tests ✅, full suite 724/732 ✅, biome 0 errors on owned files (103
+    pre-existing errors in `dashboard/` unrelated). **Deviation (documented
+    in docs):** picomatch `*` does not cross `/` — `Bash(rm *)` matches
+    `rm foo` but NOT `rm -rf /`; rule-test suite pins this Claude-Code-parity
+    semantics. Hooks wiring (08.02) + rate limiter/secret scrub (08.03) come
+    next.
+  - [x] 08.02 — Hooks engine ✅ landed via 3-agent parallel Opus team against
+    a pre-authored `engine/src/hooks/types.ts` contract (10 event kinds:
+    `SessionStart`, `InstructionsLoaded`, `UserPromptSubmit`, `PreToolUse`,
+    `PostToolUse`, `SubagentStart`, `SubagentStop`, `PreCompact`, `Stop`,
+    `Notification` — extends phase doc's 8 by adding `InstructionsLoaded` +
+    `Notification` to match current Claude Code surface; `HookConfig`,
+    `CompiledHook`, `HookOutcome`, `HookRunResult`, `HookAuditEntry`,
+    `RunHooksOptions`, `BLOCKING_EVENTS` set, `MODIFIABLE_EVENTS` set).
+    Agent A: `runner.ts` + `runner.test.ts` (18 tests, 11 bash-fixture
+    scripts materialized via `beforeAll`) — `spawn` with `shell: false`,
+    NO interpolation; argv-only; stdin JSON; SIGTERM→SIGKILL 1s grace;
+    1 MB stdout/stderr cap with truncated flags; 30s default timeout
+    clamped to 120s max; exit 2 = deny-with-stderr-reason ONLY on blocking
+    events (downgrade to neutral + warn otherwise); `modify` decision
+    honored ONLY on `PreToolUse` + `UserPromptSubmit` (downgrade elsewhere);
+    relative-command warns PATH-shift risk; never throws. Agent B:
+    `events.ts` (10 `.strict()` Zod schemas, `HOOK_PAYLOAD_SCHEMAS`,
+    `validateModifiedPayload`, `truncateToolResultForHook` 256KB cap with
+    preview, 10 factory helpers, 28 tests) + `registry.ts` (`HookRegistry`
+    class with compile-time matcher grammar reusing permissions
+    `selectArgString`/`matchRule` for PreToolUse/PostToolUse, picomatch
+    `{dot:true, nonegate:true}` over first 256 chars of prompt for
+    `UserPromptSubmit`, invalid grammar → `warnings` + `match:()=>false`
+    fail-closed; `runHooksWith(runner, opts)` test seam chosen over
+    `_runner?` private param because `RunHooksOptions` is in frozen
+    types.ts; `runHooks(opts)` production wrapper lazy-imports runner;
+    composition: first-deny-wins, last-write-wins for modify, allow only
+    meaningful for blocking events, non-blocking PostToolUse `blocking:false`
+    hooks fire-and-forget with stub outcome `warn:"blocking=false"`, 17
+    tests) + `index.ts` barrel with `@deprecated` tag on `HookRecorder`
+    re-export (Phase 11 removes). Agent C: `audit-log.ts` (`defaultHookAuditSink`,
+    `rotateIfNeeded` — 50MB × 5 generations, `resolveHooksLogPath` with
+    `HOOKS_LOG_PATH_OVERRIDE` env for tests, `createMemoryAuditSink`, file
+    mode 0600 on create, 100ms stat cache to amortize size check, 14 tests)
+    + `config/schema.ts` MOD (`HookConfigSchema` + `HooksBlock` array wired
+    into `Config`; timeout capped at 120_000, command non-empty, 7 new
+    schema tests) + `permissions/engine.ts` MOD (added `decideWithHooks()`
+    + `DecideWithHooksOptions` as PURE SUPERSET — existing `decide()`
+    signature/behavior unchanged; `HookRunResult` imported type-only to
+    avoid runtime coupling; hook composition: bypass still fires hook for
+    deny-wins, plan-refusal bypasses hook observation, hook-deny is
+    authoritative, hook-modify rebuilds ToolCall for downstream rule
+    evaluation, hook-allow is advisory — rules can still deny) +
+    `permissions/hooks-integration.test.ts` (10 fake-runner tests) +
+    `hooks/permissions-hooks-integration.test.ts` (4 real-bash e2e tests)
+    + `docs/hooks.md` (~280 lines — 10 events table, stdin/stdout/exit-2
+    contract, matcher grammar, composition order, audit log + rotation,
+    SECURITY call-out, per-event examples, troubleshooting table). Deps:
+    none new (picomatch already pinned in 08.01). Typecheck ✅, full suite
+    822/830 ✅ (+98 new: 18 runner + 28 events + 17 registry + 14 audit +
+    10 perms-integ + 4 e2e + 7 schema), biome 0 errors on owned files.
+    **Structural note (Agent C flagged):** `z.infer<HookConfigSchema>` is
+    covariantly compatible with `HookConfig` interface (mutable→readonly
+    widening) — no cast site needed today; callers can `satisfies HookConfig`
+    if they ever need the exact readonly shape. **Wiring gap (non-blocking):**
+    registry's default `audit` is a local no-op rather than `defaultHookAuditSink`
+    — integration layer (Phase 10 CLI bootstrap) wires them explicitly via
+    `audit: defaultHookAuditSink`. Call-out in docs/hooks.md.
+  - [x] 08.03 — Rate limiter + secret scrub ✅ landed via 2-agent parallel Opus
+    team + main-session reconcile.
+    - **Rate limiter** (Agent A, `engine/src/ratelimit/`): `token-bucket.ts`
+      (329 lines) with FIFO-fair reservations, `tryAcquire` synchronous
+      path, cancellable `acquire({tokens, maxWaitMs, signal})` rejecting
+      `DOMException("Aborted","AbortError")` on abort, monotonic clock
+      injected. `registry.ts` (86 lines) — per-key lazy pool with
+      LRU eviction on `maxKeys` overflow, `configure()` returning `null`
+      means unlimited (stored as `null` entry so the factory isn't
+      re-invoked). `policies.ts` (145 lines) — `resolveRateLimitKey(call,
+      policy, session)` derives `browser:<hostname>` from
+      `mcp__playwright__browser_navigate.input.url` (invalid URL → warn
+      + `{key:null}`); other browser tools inherit `session.lastBrowserHost`
+      with `browser:_unknown` fallback (sentinel ensures pre-navigate
+      browser tools still hit the default bucket rather than bypassing);
+      `noteBrowserHost()` updates state only on valid-URL navigate.
+      34 tests (17 bucket + 6 registry + 11 policies). Deviation:
+      actual `ToolCall` shape is `{name, input}` not the speculative
+      `{name, input, env, mcpTools}` in the prompt — used real shape.
+    - **Secret scrubber** (Agent B, `engine/src/security/`):
+      `secret-patterns.ts` (209 lines) — 12 built-in snake_case-named
+      `/g` regex patterns (narrow-first: `anthropic_api_key`,
+      `openrouter_api_key`, `openai_api_key`, `aws_access_key_id`,
+      `github_pat_fine`, `github_pat_legacy`, `stripe_live`,
+      `stripe_test`, `slack_bot_token`, `jwt`, `authorization_bearer`
+      ordered BEFORE `jwt` so Bearer headers aren't half-redacted,
+      `generic_password_assignment`); `compileUserPatterns(specs)` with
+      1 MB `"a".repeat(1<<20)` ReDoS probe (> 50ms rejected via
+      `ReDoSRejectedError`), `\1..\9` backreference scan (rejected via
+      `InvalidPatternError`), auto-`/g` flag; `mergePatterns(builtins,
+      user, runtime_literals)` dedup-by-name + ordered builtins → user →
+      `runtime_literal` so the minted server password + MCP env
+      values are one source of truth. `scrub.ts` (84 lines) —
+      `scrubString(text, patterns, {minLength=8, fast=false})` with
+      in-order pattern application (earlier narrow consumes bytes).
+      `apply-scrub.ts` (152 lines) — JSON-tree walker; clones objects/
+      arrays (input never mutated); WeakSet cycle-safe → `"[CYCLE]"`;
+      depth cap (32) → `"[TRUNCATED]"` + `truncated:true`; soft
+      `budgetMs` (100) → warn log, continues; injectable `now()`;
+      skips strings < `minLength`. 32 tests (13 patterns + 11 scrub +
+      8 apply-scrub). Deviation: `fast:true` interpreted as "stop
+      after first match total" (one marker), not "first per pattern".
+    - **Config schema** (main session, `engine/src/config/schema.ts` +
+      `schema.test.ts`): new `RateLimitsBlock` (`browser.default` +
+      `browser.perDomain[host]` via `BucketSpec: {capacity, refillPerSecond}`
+      + `strict` + `maxWaitMs` max 60s) and `SecretsBlock` (`patterns:
+      UserSecretPatternSpec[]` with snake_case name regex, `minLength`,
+      `fast`). 4 new schema tests — defaults populate, per-domain
+      bucket spec round-trips, rejects zero capacity + maxWaitMs > 60s,
+      rejects non-snake_case pattern names, accepts well-formed user
+      patterns.
+    - **E2E integration** (`test/integration/scrub-e2e.test.ts`, 3 tests):
+      simulates the tool-result pipeline (handler → `applyScrub` → three
+      observers: event stream + hook payload + session JSONL on disk);
+      asserts a GitHub PAT appears only as `[REDACTED:github_pat_legacy]`
+      in all three sinks; multi-secret fan-out asserts distinct
+      pattern names; non-secret passthrough has zero hits.
+    - **Sentinel** (`scripts/verify-scrub-patch.ts`, `bun run test:scrub-patch`):
+      two-step check mirroring `verify-hook-patch.ts` — static surface
+      (design record STATUS: superseded, both plugin + engine modules
+      present with expected exports) + dynamic (e2e test passes under
+      vitest). Wired into `package.json` scripts.
+    - **Docs:** `docs/rate-limit-and-scrub.md` covers config shapes,
+      built-in pattern table, user-extended safety guards, runtime-literal
+      merge, JSON walker semantics, what-is-not-scrubbed call-outs,
+      sentinel runbook.
+    - **Deferred to Phase 10:** wiring the rate-limit `acquire()` call
+      as a post-hook pre-execute step in the permission engine
+      pipeline; wiring `applyScrub` into the actual tool-result emission
+      path. Both modules are standalone today; the e2e test pins the
+      contract so the Phase 10 wiring cannot regress silently.
+    - Gates: typecheck ✅, `biome check` on all owned files ✅ (one
+      format autofix on sentinel script), vitest **895/903** ✅ (+73
+      new in 08.03 vs the 822 baseline), `bun run test:scrub-patch` ✅.
+  - **Phase 08 ✅ COMPLETE.**
 
 ### Phase 09 — Session persistence + resume
 - **Status:** ⏳ Not started
@@ -1078,6 +1247,9 @@
 
 | Date | Session # | Phase | Sub-prompt | Outcome |
 |---|---|---|---|---|
+| 2026-04-15 | 24 | 08 | 03-rate-limiter-and-scrub | ✅ **Phase 08 COMPLETE.** 2-agent parallel Opus team + main-session reconcile. Agent A: `engine/src/ratelimit/{token-bucket,registry,policies,index}.ts` (560+ lines) with FIFO-fair cancellable bucket, LRU-evicting registry, hostname-keyed browser policy + session-inherited fallback, 34 tests. Agent B: `engine/src/security/{secret-patterns,scrub,apply-scrub,index}.ts` (460+ lines) — 12 built-in narrow-first `/g` patterns, `compileUserPatterns` with 1MB ReDoS probe + `\1..\9` backref rejection + auto-`/g`, `mergePatterns(builtins,user,literals)` one-source-of-truth, JSON-tree walker with clone + cycle (`[CYCLE]`) + depth (`[TRUNCATED]`) + budget-warn semantics, 32 tests. Main: `config/schema.ts` `RateLimitsBlock` + `SecretsBlock` + 4 new tests; `test/integration/scrub-e2e.test.ts` (3 tests) simulates handler→scrub→3-observer fan-out; `scripts/verify-scrub-patch.ts` sentinel (static + dynamic) wired as `bun run test:scrub-patch`; `docs/rate-limit-and-scrub.md`. Typecheck ✅, biome ✅ on all owned files, vitest **895/903** ✅ (+73 new). **Deferred to Phase 10 CLI:** wiring rate-limit `acquire()` into pre-execute pipeline and `applyScrub` into tool-result emission path (modules standalone today; e2e pins the contract). |
+| 2026-04-15 | 23 | 08 | 02-hooks-engine | 🔄 Phase 08 Prompt 02 landed via 3-agent parallel Opus team against a pre-authored `engine/src/hooks/types.ts` contract. **10 event kinds** (8 from phase doc + `InstructionsLoaded` + `Notification` to match current Claude Code surface). Agent A: `runner.ts` + 18 tests via 11 materialized bash fixtures — `spawn` with `shell:false` NO INTERPOLATION, argv-only, SIGTERM→SIGKILL 1s grace, 1MB stdout/stderr cap, 30s default timeout (120s max), exit 2 = deny ONLY on `BLOCKING_EVENTS` (downgrade to neutral + warn otherwise), `modify` honored ONLY on `PreToolUse`/`UserPromptSubmit`, relative-command PATH-shift warn, never throws. Agent B: `events.ts` (10 `.strict()` Zod schemas + `validateModifiedPayload` + `truncateToolResultForHook` 256KB + 10 factories, 28 tests) + `registry.ts` (`HookRegistry` reusing permissions `selectArgString`/`matchRule` for Pre/PostToolUse matchers, picomatch against prompt prefix for `UserPromptSubmit`, `runHooksWith(runner, opts)` test seam chosen over `_runner?` private param because `RunHooksOptions` is frozen; first-deny-wins + last-write-wins modify + non-blocking PostToolUse fire-and-forget with `warn:"blocking=false"`, 17 tests) + `index.ts` barrel with `@deprecated` on `HookRecorder`. Agent C: `audit-log.ts` (50MB × 5-gen rotation, 0600 mode on create, 100ms stat cache, `HOOKS_LOG_PATH_OVERRIDE` env for tests, 14 tests) + `config/schema.ts` MOD (`HookConfigSchema` + `HooksBlock`, +7 tests) + `permissions/engine.ts` MOD (`decideWithHooks()` as PURE SUPERSET — existing `decide()` unchanged; `HookRunResult` type-only import; bypass still fires hook for deny-wins; plan-refusal bypasses hook observation; hook-deny authoritative; hook-modify rebuilds `ToolCall` for rule eval; hook-allow advisory) + `permissions/hooks-integration.test.ts` (10 fake-runner) + `hooks/permissions-hooks-integration.test.ts` (4 real-bash e2e) + `docs/hooks.md` (~280 lines). Typecheck ✅, vitest 822/830 ✅ (+98 new), biome 0 errors on owned files. **Structural note:** `z.infer<HookConfigSchema>` covariantly compatible with frozen `HookConfig` (mutable→readonly widening) — no cast needed today. **Wiring gap (deferred to Phase 10 CLI):** registry's implicit default audit is a local no-op; integration layer will explicitly pass `audit: defaultHookAuditSink`. Next: 08.03 rate limiter + secret scrub + `jellyclaw config check` rule linter. |
+| 2026-04-15 | 22 | 08 | 01-permission-modes-rule-matcher | 🔄 Phase 08 Prompt 01 landed via 2-agent parallel Opus team against a pre-authored `engine/src/permissions/types.ts` contract (`PermissionMode`, `PermissionRule`, `PermissionDecision`, `ToolCall`, `CompiledPermissions`, `DecideOptions`, `AskHandler`, `READ_ONLY_TOOLS`, `EDIT_TOOLS`, `PLAN_MODE_DENY_TOOLS`). Agent A owned `rules.ts` + `rules.test.ts` (39 tests) — `parseRule`/`compilePermissions`/`matchRule`/`firstMatch`/`selectArgString`; picomatch `{dot:true, nonegate:true}` (negation-safety test pins `Bash(!rm*)` never flips deny→allow); naked `Bash` → identity predicate short-circuit (avoids picomatch-`**`-doesn't-match-empty-string gotcha); MCP `mcp__<server>__*` server-name-exact wildcard on `call.name`; arg-string derivation per tool category with `path.normalize` for path-taking tools, JSON.stringify fallback for MCP; bad rules → warnings not errors (future-proof for not-yet-connected MCP servers). Agent B owned `engine.ts` + `prompt.ts` + `index.ts` + `engine.test.ts` (28 tests) + `config/schema.ts` mod + `config/schema.test.ts` (+5, 29 total) + `docs/permissions.md` + `engine/scripts/permissions-matrix.ts` (128-row dump). `decide()` pipeline: bypass → plan-refusal (non-readonly) → deny-hit → ask-hit → allow-hit → mode fallback; **deny-wins invariant** with dedicated regression test + code comment; ask-flow denies when no handler / handler throws / non-TTY — **never silent allow**; `defaultIsSideEffectFree` returns true iff tool in `READ_ONLY_TOOLS` OR MCP with `mcpTools[name] === "readonly"`; `defaultAuditSink` appends JSONL to `~/.jellyclaw/logs/permissions.jsonl` via `os.homedir()`; `redactInputForAudit` longest-first string-scrub of secrets ≥6 chars (mirrors Phase-07 credential scrubbing). `createStdinAskHandler` — `readline`-based, non-TTY returns deny with stderr warn (no hang). Config schema REPLACED record-shape `permissions` with structured `PermissionsBlock` (`mode`+`allow[]`+`deny[]`+`ask[]`+`mcpTools`) — no downstream consumers of old shape (`ctx.permissions.isAllowed` is the intra-tool service in `engine/src/tools/types.ts`, untouched). Deps: `picomatch@^4`, `@types/picomatch`. Typecheck ✅, vitest 724/732 ✅ (+72 new: 39 rules + 28 engine + 5 schema), biome 0 errors on owned files. **Documented deviation:** picomatch `*` does not cross `/` — `Bash(rm *)` matches `rm foo` but NOT `rm -rf /`; rule-test suite pins this Claude-Code-parity semantics, `docs/permissions.md` argument-string mapping table calls it out. **Script-run:** `bun engine/scripts/permissions-matrix.ts` (not `bun run tsx …` — `tsx` not installed) produces 128-row human-readable matrix. Next: 08.02 hooks engine (8 event kinds + stdin/stdout JSON + exit-code contract + 30s timeout). |
 | 2026-04-15 | 21 | 07 | 03-playwright-mcp-integration | ✅ **Phase 07 COMPLETE.** Phase 07 Prompt 03 landed as **config-only** integration — zero code under `engine/src/mcp/`, proving the Phase 07.02 transport abstraction is correct. `package.json` pins `@playwright/mcp@0.0.41` exact (no caret) per `patches/004-playwright-mcp-pin.md`. `scripts/playwright-test-chrome.sh` spawns headless Chrome on `JELLYCLAW_TEST_CHROME_PORT` (default 9333), waits ≤15s for CDP, pidfile + datadirfile sentinels, SIGTERM→SIGKILL 3s grace on stop, whole-port-token regex refuses 9222 (exit 64). `test/fixtures/mcp/playwright.test-config.json` hard-wires `127.0.0.1:9333`. `test/integration/playwright-mcp.test.ts` (5 tests): refuses 9222 configs; registers all 21 namespaced tools (asserts `browser_navigate` + `browser_take_screenshot`, logs full list to stderr for upstream-rename diff); navigates to `example.com` + screenshots with valid PNG magic (`89 50 4E 47`) under `$TMPDIR/jellyclaw-test-artifacts/`; confirms datadir cleanup; TCP-probe 9222 never-speaks guard. `assertNoForbiddenPort` called on every produced string. `docs/mcp.md` Playwright section; `docs/playwright-setup.md` full walkthrough. **Deviation:** Playwright suite gated behind `JELLYCLAW_PW_MCP_TEST=1` — ~45s real Chrome work starved opencode-server e2e's 20s internal timeout under CPU contention; mirrors `.bench.ts`/`BENCH=1` pattern, Phase 11 CI will flip the flag. Default `bun run test` → 652/660 + 8 skipped; `JELLYCLAW_PW_MCP_TEST=1 bun run test` → 657/660 + 3 skipped (5 Playwright tests included). Typecheck ✅, biome ✅, manual helper-script smoke passed (pid/datadir/CDP-up/clean teardown), 9222 refusal smoke exit=64. Core-engine group 1/5. Next: Phase 08 permission engine + hooks. |
 | 2026-04-15 | 20 | 07 | 02-mcp-client-http-sse | 🔄 Phase 07 Prompt 02 landed via 5-agent parallel Opus team. Root `JellyclawConfig.mcp` is now a `z.discriminatedUnion` on `transport: "stdio"|"http"|"sse"` with `OAuthConfig` sub-schema. (A) `token-store.ts` (20 tests) — 0600-mode `~/.jellyclaw/mcp-tokens.json`, `stat.mode & 0o077` pre-read check, atomic `.tmp`+rename+chmod, token-scrubbed errors. (B) `oauth.ts` (20 tests) — implements SDK's `OAuthClientProvider` with PKCE S256, loopback callback `awaitOAuthCallback()` on `127.0.0.1:47419`, state-verification + `OAuthStateMismatchError`, `OAuthCallbackPortInUseError` on bind conflict, AbortSignal cancel, cross-platform browser opener + stderr fallback. (C) `client-http.ts` (6 tests) — wraps `StreamableHTTPClientTransport`; `exactOptionalPropertyTypes` friction on `Client.connect` handled via single-point cast. (D) `client-sse.ts` (6 tests) — wraps deprecated `SSEClientTransport` + shared OAuth plumbing + `[500,1000,2000,4000,8000]`ms×5 reconnect. **SDK limitation documented**: SSE `onclose` does not fire from server-side stream drops; test uses a module-scope monkey-patch to force the signal so the reconnect contract is still exercised. (E) `namespacing.ts` (14 tests) — extracted from types.ts, stricter `[a-z0-9-]+` server names + `InvalidServerNameError`/`InvalidToolNameError`; legacy aliases re-exported from types.ts. Fixtures: `http-echo.ts` (StreamableHTTP with `requireAuth`/`rejectWithStatus`) + `oauth-provider.ts` (minimal OAuth 2.1 AS, PKCE S256 verification, rotating refresh, `issueTokenDirectly` + `lastAuthorizeRequest`). Registry dispatch switch extended; `mcp-list.ts` smoke `mcp: 1 live, 0 dead, 0 retrying` + `mcp__echo__echo`. `docs/mcp.md` authored. Deviations: `eventsource@^2` skipped (SDK 1.29.0 bundles v3); `mcp-oauth-demo.ts` omitted (covered by oauth.test.ts). Typecheck ✅, biome ✅, vitest 652/655 + 3 skipped (+66 net new). Next: 07.03 Playwright MCP integration smoke. |
 | 2026-04-15 | 19 | 07 | 01-mcp-client-stdio | 🔄 Phase 07 Prompt 01 landed via 2-agent parallel Opus team against a pre-authored `engine/src/mcp/types.ts` contract. `@modelcontextprotocol/sdk@^1` installed (1.29.0). (A) `credential-strip.ts` (12 tests) — `buildCredentialScrubber` over `Object.values(env)`, longest-first, metachar-escaped, <6-char / empty secrets skipped via `onSkipped`, identity fallback, `REDACTED` constant. (B) `client-stdio.ts` (6 tests) — `createStdioMcpClient` wraps SDK `Client` over `StdioClientTransport` with serialized `#enqueue` queue, 10 s connect timeout, cancellable `[500, 1_000, 2_000, 4_000, 8_000]` × 5 backoff → `dead`, SIGTERM→SIGKILL (3 s grace), credential scrubber on stderr/callTool-errors/timeouts/reconnect-reasons/listener-errors, `__testPid__` accessor for kill tests, zero `env` logging. (C) `registry.ts` (10 tests) — `McpRegistry` with `Promise.allSettled` parallel connect, DI `clientFactory`, 30 s background retry rebuilding dead clients, snapshot(`live`/`dead`/`retrying`), namespaced routing, `McpUnknownServerError`/`McpNotReadyError`. Barrel `index.ts`; fixture `test/fixtures/mcp/echo-server.ts`; smoke `engine/scripts/mcp-list.ts` (prints `mcp: 1 live, 0 dead, 0 retrying` + `mcp__echo__echo` against `~/.jellyclaw/jellyclaw.json`). Typecheck ✅, biome ✅, vitest 586/589 + 3 skipped ✅ (+28 new). Root `JellyclawConfig.mcp` schema deliberately left untouched — Prompt 02 owns the transport-discriminant extension. Next: 07.02 HTTP+SSE transports + OAuth. |

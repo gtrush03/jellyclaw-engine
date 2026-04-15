@@ -3,8 +3,8 @@
 > Living doc. Update at the start and end of every working day.
 > If this file is stale, don't trust it.
 
-**Last updated:** 2026-04-15 (Phase 07 ✅ COMPLETE — Playwright MCP via CDP:9333 landed config-only)
-**Current phase:** Phase 08 — Permission engine + hooks (next)
+**Last updated:** 2026-04-15 (Phase 08 ✅ COMPLETE — 08.03 rate limiter + secret scrub landed)
+**Current phase:** Phase 09 — Session persistence + resume (next)
 **Current milestone target:** M1 (Engine works) — projected week of May 18
 **Engine on:** n/a (not yet bootable)
 **Genie dispatcher:** Claurst (unchanged)
@@ -55,7 +55,7 @@ Budget ceiling for v1.0 (Phases 00–18): **TBD — pending Q2 answer.**
 
 | Metric | Count |
 |--------|-------|
-| Unit tests passing | 652 default / 657 opt-in (+3 skipped, +2 benches under BENCH=1, +5 Playwright under JELLYCLAW_PW_MCP_TEST=1) |
+| Unit tests passing | 895 default / 900 opt-in (+8 skipped, +2 benches under BENCH=1, +5 Playwright under JELLYCLAW_PW_MCP_TEST=1) |
 | Integration tests passing | 11 (subagent hook-fire regression) |
 | Unit tests failing | 0 |
 | Integration tests passing | 0 |
@@ -86,7 +86,7 @@ Budget ceiling for v1.0 (Phases 00–18): **TBD — pending Q2 answer.**
 - [x] ✅ Phase 05 — Skills system
 - [x] ✅ Phase 06 — Subagents + hook patch
 - [x] ✅ Phase 07 — MCP client integration
-- [ ] Phase 08 — Permission engine + hooks
+- [x] ✅ Phase 08 — Permission engine + hooks
 - [ ] Phase 09 — Session persistence + resume
 - [ ] Phase 10 — CLI + HTTP server + library
 - [ ] Phase 11 — Testing harness
@@ -108,7 +108,53 @@ Budget ceiling for v1.0 (Phases 00–18): **TBD — pending Q2 answer.**
 - Next action: George executes the 10-item checklist at the end of
   `MASTER-PLAN.md`.
 
-### 2026-04-15
+### 2026-04-15 (Phase 08.02 session)
+- Phase 08 Prompt 02 (hooks engine — 10 event kinds) landed via 3-agent
+  parallel Opus team against pre-authored `engine/src/hooks/types.ts`
+  (frozen contract: 10 event payload interfaces, `HookConfig`,
+  `CompiledHook`, `HookOutcome`, `HookRunResult`, `HookAuditEntry`,
+  `BLOCKING_EVENTS`, `MODIFIABLE_EVENTS`). Agent A: `runner.ts` + 18 tests
+  via 11 bash fixtures — `spawn` with `shell:false` NO INTERPOLATION,
+  argv-only, SIGTERM→SIGKILL 1s grace, 1MB stdout/stderr cap, 30s default
+  (120s max), exit 2 = deny only on blocking events, `modify` only on
+  Pre/UserPromptSubmit, never throws. Agent B: `events.ts` (10 `.strict()`
+  Zod schemas + `truncateToolResultForHook` 256KB, 28 tests) +
+  `registry.ts` (`HookRegistry` reusing permissions matcher grammar,
+  `runHooksWith(runner, opts)` test seam; first-deny-wins +
+  last-write-wins modify + non-blocking PostToolUse fire-and-forget,
+  17 tests) + `index.ts` barrel. Agent C: `audit-log.ts` (50MB×5
+  rotation, 0600 file mode, 14 tests) + config `HookConfigSchema`/
+  `HooksBlock` (+7 tests) + `permissions/engine.ts` added
+  `decideWithHooks()` as PURE SUPERSET — existing `decide()` unchanged;
+  hook-deny authoritative, hook-modify rebuilds ToolCall, hook-allow
+  advisory; bypass still fires hook for deny-wins + perms-integ 10 tests
+  + e2e 4 real-bash tests + `docs/hooks.md` (~280 lines). Typecheck ✅,
+  vitest 822/830 ✅ (+98 new), biome 0 errors on owned files. **Deferred
+  to Phase 10:** registry's default audit sink is a local no-op — CLI
+  bootstrap will wire `defaultHookAuditSink` explicitly. Next: 08.03
+  rate limiter + secret scrub + config-check rule linter.
+
+### 2026-04-15 (Phase 08.01 session)
+- Phase 08 Prompt 01 (permission modes + rule matcher) landed via 2-agent
+  parallel Opus team against a pre-authored `engine/src/permissions/types.ts`
+  contract. Agent A: `rules.ts` + `rules.test.ts` (39 tests) — picomatch
+  `{dot:true, nonegate:true}`, naked-tool identity predicate, MCP
+  server-exact wildcards, per-tool arg-string derivation with
+  `path.normalize`; bad rules → warnings not errors. Agent B: `engine.ts` +
+  `prompt.ts` + `index.ts` + `engine.test.ts` (28 tests) + `config/schema.ts`
+  REPLACED record-shape with structured `PermissionsBlock` +
+  `schema.test.ts` (+5) + `docs/permissions.md` + `engine/scripts/permissions-matrix.ts`
+  (128-row dump). **Deny-wins invariant** with dedicated regression test.
+  Ask-flow denies on no-handler/throw/non-TTY — never silent allow.
+  `defaultAuditSink` writes to `~/.jellyclaw/logs/permissions.jsonl`;
+  `redactInputForAudit` mirrors Phase-07 credential scrubbing. Deps:
+  `picomatch@^4`, `@types/picomatch`. Typecheck ✅, vitest 724/732 ✅
+  (+72 new), biome clean on owned files. **Documented deviation:**
+  picomatch `*` doesn't cross `/` — `Bash(rm *)` matches `rm foo` but NOT
+  `rm -rf /`; test suite pins Claude-Code-parity semantics, docs call it out.
+  Next: 08.02 hooks engine (8 event kinds + stdin/stdout JSON contract).
+
+### 2026-04-15 (earlier)
 - Phase 00 verified. `bun install / typecheck / lint / test / build` all green from a
   fresh `rm -rf node_modules dist`. 6/6 smoke tests pass. Git initialized, first commit
   `6644aaf` created, tag `v0.0.0-scaffold` set. Minor drift fixes: workspace stubs,

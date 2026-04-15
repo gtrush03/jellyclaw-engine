@@ -18,6 +18,7 @@
     "dev": "tsup --watch",
     "test": "vitest run",
     "test:hook-patch": "bun run scripts/verify-hook-patch.ts",
+    "test:scrub-patch": "bun run scripts/verify-scrub-patch.ts",
     "test:watch": "vitest",
     "lint": "biome check .",
     "format": "biome format --write .",

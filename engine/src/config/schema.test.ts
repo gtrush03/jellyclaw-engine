@@ -26,6 +26,49 @@ describe("schema", () => {
     expect(c.telemetry.enabled).toBe(false);
     expect(c.acknowledgeCachingLimits).toBe(false);
     expect(c.openrouter.baseURL).toBe("https://openrouter.ai/api/v1");
+    // Phase 08.03 blocks: defaults populate.
+    expect(c.rateLimits.strict).toBe(false);
+    expect(c.rateLimits.maxWaitMs).toBe(5_000);
+    expect(c.rateLimits.browser).toBeUndefined();
+    expect(c.secrets.patterns).toEqual([]);
+    expect(c.secrets.minLength).toBe(8);
+    expect(c.secrets.fast).toBe(false);
+  });
+
+  it("rateLimits block accepts per-domain bucket spec", () => {
+    const c = parseConfig({
+      rateLimits: {
+        browser: {
+          default: { capacity: 5, refillPerSecond: 1 },
+          perDomain: { "example.com": { capacity: 10, refillPerSecond: 2 } },
+        },
+        strict: true,
+      },
+    });
+    expect(c.rateLimits.browser?.default?.capacity).toBe(5);
+    expect(c.rateLimits.browser?.perDomain["example.com"]?.refillPerSecond).toBe(2);
+    expect(c.rateLimits.strict).toBe(true);
+  });
+
+  it("rateLimits rejects zero/negative capacity and maxWaitMs > 60s", () => {
+    expect(() =>
+      parseConfig({ rateLimits: { browser: { default: { capacity: 0, refillPerSecond: 1 } } } }),
+    ).toThrow();
+    expect(() => parseConfig({ rateLimits: { maxWaitMs: 60_001 } })).toThrow();
+  });
+
+  it("secrets block rejects non-snake_case pattern names", () => {
+    expect(() =>
+      parseConfig({ secrets: { patterns: [{ name: "MyCorpKey", regex: "MYCORP[A-Z0-9]+" }] } }),
+    ).toThrow();
+  });
+
+  it("secrets block accepts well-formed user patterns", () => {
+    const c = parseConfig({
+      secrets: { patterns: [{ name: "mycorp_key", regex: "MYCORP[A-Z0-9]{16,}" }] },
+    });
+    expect(c.secrets.patterns).toHaveLength(1);
+    expect(c.secrets.patterns[0]?.name).toBe("mycorp_key");
   });
 
   it("rejects unknown provider enum value", () => {

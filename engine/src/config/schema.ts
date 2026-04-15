@@ -109,6 +109,63 @@ export type HookConfigInput = z.infer<typeof HookConfigSchema>;
 export const HooksBlock = z.array(HookConfigSchema).default([]);
 export type HooksBlock = z.infer<typeof HooksBlock>;
 
+// ---------------------------------------------------------------------------
+// Rate limits (Phase 08.03). Browser rate limits protect against
+// runaway Playwright driving; future non-browser categories will slot
+// in here. Policy resolver lives at engine/src/ratelimit/policies.ts.
+// ---------------------------------------------------------------------------
+export const BucketSpec = z.object({
+  capacity: z.number().int().positive(),
+  refillPerSecond: z.number().positive(),
+});
+export type BucketSpec = z.infer<typeof BucketSpec>;
+
+export const BrowserRateLimits = z
+  .object({
+    default: BucketSpec.optional(),
+    perDomain: z.record(z.string(), BucketSpec).default({}),
+  })
+  .default({});
+export type BrowserRateLimits = z.infer<typeof BrowserRateLimits>;
+
+export const RateLimitsBlock = z
+  .object({
+    browser: BrowserRateLimits.optional(),
+    /** If true, empty-bucket → deny immediately rather than awaiting refill. */
+    strict: z.boolean().default(false),
+    /** Cap on awaitable refill time before returning a rate-limited error. */
+    maxWaitMs: z.number().int().positive().max(60_000).default(5_000),
+  })
+  .default({});
+export type RateLimitsBlock = z.infer<typeof RateLimitsBlock>;
+
+// ---------------------------------------------------------------------------
+// Secrets block (Phase 08.03). User-extended scrub patterns layered on
+// top of the built-in set in engine/src/security/secret-patterns.ts.
+// Regex compilation + ReDoS probe happens at engine boot — invalid
+// patterns surface as warnings, not fatal.
+// ---------------------------------------------------------------------------
+export const UserSecretPatternSpec = z.object({
+  name: z
+    .string()
+    .min(1)
+    .regex(/^[a-z0-9_]+$/, "name must be snake_case (lowercase letters, digits, underscores)"),
+  regex: z.string().min(1),
+  flags: z.string().optional(),
+});
+export type UserSecretPatternSpec = z.infer<typeof UserSecretPatternSpec>;
+
+export const SecretsBlock = z
+  .object({
+    patterns: z.array(UserSecretPatternSpec).default([]),
+    /** Skip scrubbing strings shorter than this. Default 8 (no real secret fits). */
+    minLength: z.number().int().nonnegative().default(8),
+    /** Short-circuit after first hit per string. Default false. */
+    fast: z.boolean().default(false),
+  })
+  .default({});
+export type SecretsBlock = z.infer<typeof SecretsBlock>;
+
 export const Config = z.object({
   provider: Provider.default("anthropic"),
   model: z.string().default("claude-sonnet-4-6"),
@@ -119,6 +176,8 @@ export const Config = z.object({
   telemetry: TelemetryBlock,
   permissions: PermissionsBlock,
   hooks: HooksBlock,
+  rateLimits: RateLimitsBlock,
+  secrets: SecretsBlock,
   /**
    * Safety gate. When false (default), the router MUST reject any request
    * that routes an `anthropic/*` model via the `openrouter` provider.
