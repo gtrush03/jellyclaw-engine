@@ -348,14 +348,68 @@
     backpressure test and the `GOLDEN_UPDATE=1` path.
 
 ### Phase 04 — Tool parity
-- **Status:** 🔄 In progress (Prompt 01 / 5 complete)
+- **Status:** 🔄 In progress (Prompts 01 + 02 / 5 complete)
 - **Started:** 2026-04-15
 - **Completed:** —
 - **Duration (actual):** —
-- **Session count:** 1
-- **Commits:** (this commit)
-- **Tests passing:** 280/280 (38 new in Prompt 01 — Bash 16 + Read 13 + Write 9)
+- **Session count:** 2
+- **Commits:** 4d1a0d0 (prompt 01), (this commit, prompt 02)
+- **Tests passing:** 307/307 (65 new in Phase 04 so far — Bash 16 + Read 13 + Write 9 + Edit 18 + Edit-property 2 + Edit-diagnostics 7)
 - **Notes:**
+  - ✅ Prompt 02 (Edit tool + diagnostics + property tests) — executed via a
+    single Opus agent against a shared contract authored in main session
+    (new error classes `EditRequiresReadError`, `NoMatchError`,
+    `AmbiguousMatchError`, `NoOpEditError` added to `engine/src/tools/types.ts`;
+    `test/fixtures/tools/claude-code-schemas/edit.json` authored;
+    `diff@^9.0.0` + `@types/diff@^8.0.0` + `fast-check@^4.6.0` installed
+    and wired into engine/package.json).
+  - **Edit** (`engine/src/tools/edit.ts`, 18 unit tests). Input
+    `{ file_path, old_string, new_string, replace_all?: false }`.
+    Preconditions: absolute path, cwd jail (with `edit.outside_cwd`
+    override), `readCache` membership (or `EditRequiresReadError`),
+    file existence (Edit never creates — use Write), `old ≠ new` (or
+    `NoOpEditError`), and `replace_all + empty old_string` rejected
+    as infinite match. Replacement uses occurrence counting via
+    `split(old).length - 1` (avoids regex-metachar pitfalls); single
+    replacement via `indexOf` + slice (handles `$` in new_string
+    safely); `replace_all` via `split().join()`. EOF newline
+    preserved in both directions. Atomic write via
+    `<path>.jellyclaw.tmp` → `renameSync` with tmp cleanup on
+    failure. `diff_preview` is a 6-line body extract from
+    `createPatch` (header stripped) — 6-line body from `diff`
+    package's unified-diff output. Returns
+    `{ file_path, occurrences_replaced, diff_preview }`.
+  - **Diagnostics** (`engine/src/tools/edit-diagnostics.ts`, 7 tests).
+    Pure `explainMissingMatch(content, oldString)` helper with six
+    ordered branches: empty old_string, line-number-prefix hint
+    (matches `^\d+\t`), CRLF-in-file-vs-LF-in-old, LF-in-file-vs-
+    CRLF-in-old, whitespace-only mismatch (via `\s+` collapse), and
+    a genuinely-absent fall-through. Diagnostic is bounded ≤ 400
+    chars regardless of file size (privacy — no raw file contents
+    leaked into error messages).
+  - **Property tests** (`test/unit/tools/edit.property.test.ts`,
+    fast-check seeded `{ seed: 42, numRuns: 100 }`). Property 1:
+    unique-marker replacement correctness — for random `prefix`,
+    `suffix`, `marker ∈ [A-Z]{3,10}`, `replacement`, Edit returns
+    `prefix + replacement + suffix`. Property 2: ambiguous-match
+    count correctness — for random `marker` and `k ∈ [2, 8]`,
+    content `(marker + " ").repeat(k)` raises `AmbiguousMatchError`
+    with `.count === k`. Real disk I/O per iteration via tmp dir
+    setup/teardown in the property body (≤ ~2s total).
+  - **Registry** (`engine/src/tools/index.ts`): `editTool` registered
+    alphabetically between bash and read; `export { editTool }`
+    added. `getTool("Edit")` smoke-tested.
+  - **Minor deviation from spec:** agent reworded the line-number-
+    prefix diagnostic from the literal ``` `${lineNo}\t${content}` ```
+    template-placeholder string (which trips Biome's
+    `noTemplateCurlyInString` rule) to `"<lineNo>\t<content>"` —
+    semantics unchanged, tests assert the `"line-number prefix"`
+    substring so callers see the same hint.
+  - Gates: `bunx tsc --noEmit` ✅, `bunx biome check` ✅,
+    `bun run test` 307/307 ✅ (27 new — 18 + 2 + 7).
+  - Remaining Phase 04 prompts: 03 (Glob + Grep), 04 (WebFetch +
+    TodoWrite + Task stub + NotebookEdit), 05 (parity fixture +
+    docs/tools.md) — each on its own fresh session.
   - ✅ Prompt 01 (Bash + Read + Write) — executed via a 3-agent parallel Opus
     team. Shared `engine/src/tools/types.ts` (Tool/ToolContext/PermissionService
     interfaces + typed error taxonomy: ToolError, InvalidInputError,
@@ -585,6 +639,7 @@
 
 | Date | Session # | Phase | Sub-prompt | Outcome |
 |---|---|---|---|---|
+| 2026-04-15 | 10 | 04 | 02-edit | 🔄 Phase 04 Prompt 02 landed. 1 Opus agent delivered `engine/src/tools/edit.ts` (unique-match invariant + `replace_all` + atomic rename + EOF newline preservation + 6-line unified-diff preview), `engine/src/tools/edit-diagnostics.ts` (pure `explainMissingMatch` with 6 ordered branches, bounded ≤400 chars), and 3 test files: `edit.test.ts` (18), `edit.property.test.ts` (2 props × 100 runs, seed 42), `edit-diagnostics.test.ts` (7). New error classes `EditRequiresReadError / NoMatchError / AmbiguousMatchError / NoOpEditError` added to `types.ts`. Registry updated alphabetically. Deps: `diff@^9` + `@types/diff@^8` + `fast-check@^4`. Typecheck ✅, biome ✅, vitest 307/307 ✅ (27 new). |
 | 2026-04-15 | 9 | 04 | 01-bash-read-write | 🔄 Phase 04 Prompt 01 landed. 3-agent parallel Opus team delivered `engine/src/tools/{bash,read,write}.ts` + matching tests in `test/unit/tools/` (Bash 16 + Read 13 + Write 9 = 38 new tests). Shared `types.ts` + `permissions.ts` + 3 Claude-Code JSON-Schema fixtures pre-authored for contract alignment. Registry `engine/src/tools/index.ts` exports `listTools()` / `getTool()`. Bash: blocklist (rm-rf, curl|sh, fork bomb, dd), bash-c bypass guard, env scrub, 30k-char truncation, background mode with `~/.jellyclaw/bash-bg/<pid>.log`. Read: absolute-path jail, ipynb + PDF (pdfjs-dist) + image + text dispatch, pages range with >10-page gate + >20-page refusal, readCache population. Write: read-before-overwrite invariant, atomic rename, trailing-newline preservation, outside-cwd gate. Deps: `pdfjs-dist@^5.6.0`. Typecheck ✅, biome ✅, vitest 280/280 ✅. Remaining Phase 04 prompts queued. |
 | 2026-04-15 | 8 | 03 | 02-implement-adapter | ✅ Phase 03 COMPLETE. 2-agent parallel team delivered `engine/src/adapters/opencode-events.ts` (940 lines, 7 tests — happy path + late-start ordering + orphan-end timeout + parse-error tolerance + subagent nesting + AbortController + backpressure) and `engine/src/stream/emit.ts` (200 lines, 54 vitest cases — writeEvent/drain, all 3 format downgrades, claude-code-compat delta coalescing, claurst-min flat-shape rewrite, stateless `downgrade()` matrix, backpressure). Golden replay via `test/golden/replay.test.ts` + `hello.opencode.jsonl` + `hello.jellyclaw.jsonl` (regenerable via `GOLDEN_UPDATE=1`; narrow normaliser proven by mutation test). Scratch smoke `engine/scratch/emit-hello.ts` hand-verified all 3 output formats produce distinct correct output. `eventsource-parser@^3` added. Main session reconciled: added 4 targeted `biome-ignore useAwait` comments on async generators. Typecheck ✅, biome ✅, vitest 242/242 ✅. |
 | 2026-04-15 | 7 | 03 | 01-research-and-types | 🔄 `@jellyclaw/shared` workspace created: 15-variant `z.discriminatedUnion` + `Usage` + `Message`/`Block` + `redactConfig` + factory type guards + `OUTPUT_FORMAT_EVENTS` downgrade table. 32 new tests (179 total). `docs/event-stream.md` maps every observed OpenCode bus event to a jellyclaw event or marks it dropped with reason; §4 downgrade matrix; §5 ordering invariants; §6 redaction rules. Smoke import from engine verified. Phase 03 still open — Prompts 02 (adapter) + 03 (emitter) remain. |
