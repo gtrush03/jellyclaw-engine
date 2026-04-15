@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  com.jellyclaw.dashboard — macOS launchd agent for the jellyclaw engine dashboard.
+
+  Install:
+    cp launchd/com.jellyclaw.dashboard.plist ~/Library/LaunchAgents/
+    launchctl load -w ~/Library/LaunchAgents/com.jellyclaw.dashboard.plist
+
+  Uninstall:
+    launchctl unload ~/Library/LaunchAgents/com.jellyclaw.dashboard.plist
+    rm ~/Library/LaunchAgents/com.jellyclaw.dashboard.plist
+
+  Restart:
+    launchctl kickstart -k gui/$(id -u)/com.jellyclaw.dashboard
+
+  Logs:
+    tail -f /tmp/jellyclaw-dashboard.log
+    tail -f /tmp/jellyclaw-dashboard.err.log
+
+  Notes:
+    - Runs as the current user on login (LaunchAgent, not LaunchDaemon).
+    - Uses /bin/bash -lc so shell profile (nvm, homebrew PATH) is loaded.
+    - KeepAlive with ThrottleInterval=30 → if start.sh crashes, relaunches after 30s.
+    - If you use nvm, make sure your ~/.bash_profile or ~/.zprofile sources it; launchd does NOT inherit your interactive shell env.
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.jellyclaw.dashboard</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>-lc</string>
+        <string>exec /Users/gtrush/Downloads/jellyclaw-engine/dashboard/start.sh</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/gtrush/Downloads/jellyclaw-engine/dashboard</string>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <true/>
+
+    <key>ThrottleInterval</key>
+    <integer>30</integer>
+
+    <key>ProcessType</key>
+    <string>Interactive</string>
+
+    <key>StandardOutPath</key>
+    <string>/tmp/jellyclaw-dashboard.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/tmp/jellyclaw-dashboard.err.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+        <key>NODE_ENV</key>
+        <string>development</string>
+    </dict>
+</dict>
+</plist>

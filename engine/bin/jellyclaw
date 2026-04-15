@@ -1,0 +1,8 @@
+#!/usr/bin/env bun
+// Shim; everything lives in engine/dist/cli/main.js. We run under bun (not
+// node) because the `tui` command dynamically imports vendored TSX that
+// node cannot parse. Bun runs both .js and .tsx natively.
+import("../dist/cli/main.js").catch((e) => {
+  process.stderr.write(`${String(e?.stack ?? e)}\n`);
+  process.exit(1);
+});

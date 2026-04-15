@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Jellyclaw Engine — JC monogram favicon.
+  ViewBox sized 0 0 64 64 so it scales cleanly to 16, 32, 192, 512 via CSS/manifest.
+  Black obsidian ground + warm gold monogram with a soft radial glow.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Jellyclaw">
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="50%" r="55%">
+      <stop offset="0%" stop-color="#928466" stop-opacity="0.45"/>
+      <stop offset="60%" stop-color="#928466" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="#928466" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#d4bf8f"/>
+      <stop offset="55%" stop-color="#928466"/>
+      <stop offset="100%" stop-color="#6b6146"/>
+    </linearGradient>
+    <filter id="soft" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="0.6"/>
+    </filter>
+  </defs>
+
+  <!-- obsidian ground with rounded square -->
+  <rect x="0" y="0" width="64" height="64" rx="12" ry="12" fill="#050505"/>
+
+  <!-- subtle gold glow -->
+  <circle cx="32" cy="32" r="26" fill="url(#glow)"/>
+
+  <!-- monogram strokes. J + C intertwined, 4px stroke, round caps -->
+  <g fill="none" stroke="url(#gold)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <!-- J: top bar, stem, hook -->
+    <path d="M20 18 H34" opacity="0.95"/>
+    <path d="M27 18 V40 Q27 46 21 46 Q16 46 15 41" opacity="0.95" filter="url(#soft)"/>
+    <!-- C: arc -->
+    <path d="M49 22 Q38 18 36 32 Q38 46 49 42" opacity="0.95" filter="url(#soft)"/>
+  </g>
+
+  <!-- crisp overlay of the same strokes, no blur, so shapes stay sharp at 16px -->
+  <g fill="none" stroke="url(#gold)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M20 18 H34"/>
+    <path d="M27 18 V40 Q27 46 21 46 Q16 46 15 41"/>
+    <path d="M49 22 Q38 18 36 32 Q38 46 49 42"/>
+  </g>
+
+  <!-- tiny gold dot tying the two letters together -->
+  <circle cx="32" cy="32" r="1.6" fill="#d4bf8f"/>
+</svg>

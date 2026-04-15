@@ -180,14 +180,24 @@ export type SubagentReturnedEvent = z.infer<typeof SubagentReturnedEvent>;
 // ---------------------------------------------------------------------------
 // 14. usage.updated
 // ---------------------------------------------------------------------------
-export const UsageUpdatedEvent = EventBase.extend({
-  type: z.literal("usage.updated"),
+
+/**
+ * Token counts + cost for a single usage update. Exposed publicly (via
+ * `public-types.ts`) so library consumers can type their own usage handlers
+ * without pulling in the full `UsageUpdatedEvent` envelope.
+ */
+export const UsageSchema = z.object({
   input_tokens: z.number().int().nonnegative(),
   output_tokens: z.number().int().nonnegative(),
   cache_read_tokens: z.number().int().nonnegative().default(0),
   cache_write_tokens: z.number().int().nonnegative().default(0),
   cost_usd: z.number().nonnegative().optional(),
 });
+export type Usage = z.infer<typeof UsageSchema>;
+
+export const UsageUpdatedEvent = EventBase.extend({
+  type: z.literal("usage.updated"),
+}).merge(UsageSchema);
 export type UsageUpdatedEvent = z.infer<typeof UsageUpdatedEvent>;
 
 // ---------------------------------------------------------------------------

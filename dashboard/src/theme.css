@@ -1,0 +1,226 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg: #050505;
+  --color-surface: rgba(15, 15, 15, 0.6);
+  --color-surface-solid: #0c0c0c;
+  --color-gold: #928466;
+  --color-gold-bright: #b8a67f;
+  --color-gold-subtle: rgba(146, 132, 102, 0.2);
+  --color-gold-faint: rgba(146, 132, 102, 0.08);
+  --color-text: #e8e6e1;
+  --color-text-muted: #6b6760;
+  --color-success: #4a7a5a;
+  --color-warning: #d4a04a;
+  --color-danger: #c75454;
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "ss01", "cv11";
+}
+
+.glass {
+  background: var(--color-surface);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  border: 1px solid var(--color-gold-subtle);
+}
+
+.glass-solid {
+  background: var(--color-surface-solid);
+  border: 1px solid var(--color-gold-subtle);
+}
+
+.gold-glow {
+  box-shadow: 0 0 24px -8px rgba(146, 132, 102, 0.45);
+}
+
+.hairline {
+  border-color: var(--color-gold-subtle);
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(146, 132, 102, 0.2);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(146, 132, 102, 0.4);
+}
+
+.shiki-wrapper pre {
+  background: transparent !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.shiki-wrapper code {
+  font-family: var(--font-mono);
+}
+
+.prose-gold h1,
+.prose-gold h2,
+.prose-gold h3,
+.prose-gold h4 {
+  color: var(--color-gold-bright);
+  font-family: var(--font-sans);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.prose-gold h1 {
+  font-size: 1.5rem;
+  margin-top: 1.75rem;
+  margin-bottom: 0.75rem;
+}
+.prose-gold h2 {
+  font-size: 1.2rem;
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+.prose-gold h3 {
+  font-size: 1rem;
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.prose-gold p {
+  line-height: 1.7;
+  margin-bottom: 0.9rem;
+  color: var(--color-text);
+}
+
+.prose-gold ul,
+.prose-gold ol {
+  margin-bottom: 0.9rem;
+  padding-left: 1.5rem;
+}
+
+.prose-gold ul li {
+  list-style: none;
+  position: relative;
+}
+
+.prose-gold ul li::before {
+  content: "•";
+  color: var(--color-gold);
+  position: absolute;
+  left: -1rem;
+  font-family: var(--font-mono);
+}
+
+.prose-gold ol {
+  list-style: decimal;
+  font-variant-numeric: tabular-nums;
+}
+
+.prose-gold ol li::marker {
+  color: var(--color-gold);
+  font-family: var(--font-mono);
+}
+
+.prose-gold a {
+  color: var(--color-gold-bright);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--color-gold-subtle);
+  transition: text-decoration-color 120ms ease;
+}
+
+.prose-gold a:hover {
+  text-decoration-color: var(--color-gold);
+}
+
+.prose-gold blockquote {
+  border-left: 2px solid var(--color-gold);
+  padding-left: 1rem;
+  margin: 1rem 0;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.prose-gold table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1rem 0;
+  background: var(--color-gold-faint);
+  font-size: 13px;
+}
+
+.prose-gold th,
+.prose-gold td {
+  border: 1px solid var(--color-gold-subtle);
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+}
+
+.prose-gold th {
+  background: var(--color-gold-faint);
+  color: var(--color-gold-bright);
+  font-weight: 600;
+}
+
+.prose-gold :not(pre) > code {
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+  background: var(--color-gold-faint);
+  color: var(--color-gold-bright);
+  padding: 0.1em 0.35em;
+  border-radius: 3px;
+  border: 1px solid var(--color-gold-subtle);
+}
+
+.prose-gold hr {
+  border: none;
+  border-top: 1px solid var(--color-gold-subtle);
+  margin: 1.5rem 0;
+}
+
+.html-comment {
+  display: block;
+  background: var(--color-gold-faint);
+  border: 1px dashed var(--color-gold-subtle);
+  color: var(--color-text-muted);
+  padding: 0.5rem 0.75rem;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  border-radius: 4px;
+  margin: 0.5rem 0;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}

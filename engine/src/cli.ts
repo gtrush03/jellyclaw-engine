@@ -11,7 +11,7 @@
  *   jellyclaw help              print help
  */
 
-import { run } from "./index.js";
+import { run } from "./internal.js";
 import { createLogger } from "./logger.js";
 
 const VERSION = "0.0.1";
@@ -19,9 +19,13 @@ const VERSION = "0.0.1";
 const USAGE = `jellyclaw ${VERSION}
 
 USAGE
-  jellyclaw run <wish>         Dispatch a wish; stream AgentEvent JSON to stdout.
-  jellyclaw version            Print version and exit.
-  jellyclaw help               Print this message and exit.
+  jellyclaw run <wish>                         Dispatch a wish; stream AgentEvent JSON to stdout.
+  jellyclaw sessions list [--project <h>|--all]  List sessions (default: current project).
+  jellyclaw sessions search "<q>"              Full-text search across messages.
+  jellyclaw sessions show <id>                 Pretty-print a session transcript.
+  jellyclaw sessions rm <id>                   Archive a session (move files to .trash/).
+  jellyclaw version                            Print version and exit.
+  jellyclaw help                               Print this message and exit.
 
 FLAGS (for \`run\`)
   --agent <name>               Agent name (default: "default").
@@ -35,7 +39,6 @@ ENV
   JELLYCLAW_LOG_LEVEL          trace|debug|info|warn|error|fatal|silent (default: info).
 `;
 
-// biome-ignore lint/suspicious/useAwait: Phase 2 will introduce awaited work
 async function main(argv: readonly string[]): Promise<number> {
   const [command, ...rest] = argv;
 
@@ -51,6 +54,11 @@ async function main(argv: readonly string[]): Promise<number> {
 
   if (command === "run") {
     return runCommand(rest);
+  }
+
+  if (command === "sessions") {
+    const { sessionsCommand } = await import("./cli/sessions.js");
+    return sessionsCommand(rest);
   }
 
   process.stderr.write(`unknown command: ${command}\n\n${USAGE}`);

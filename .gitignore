@@ -1,5 +1,6 @@
 # Dependencies
 node_modules/
+engine/src/tui/_vendored/**/node_modules/
 .pnp
 .pnp.js
 bun.lockb

@@ -1,0 +1,14 @@
+{
+  "extends": "../../../tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": "../../..",
+    "baseUrl": "../../..",
+    "paths": {
+      "@jellyclaw/engine": ["engine/src/index.ts"],
+      "@jellyclaw/engine/*": ["engine/src/*"]
+    }
+  },
+  "include": ["./types-smoke.ts"],
+  "exclude": ["../../../node_modules", "../../../dist", "**/*.test.ts"]
+}

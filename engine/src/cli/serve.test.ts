@@ -1,0 +1,295 @@
+/**
+ * Phase 10.02 — `jellyclaw serve` flag resolution tests.
+ *
+ * No real HTTP server; we inject all dependencies into `createServeAction`
+ * and assert on token precedence, bind safety, stdout/stderr side-effects,
+ * and SIGTERM shutdown plumbing.
+ */
+
+import { EventEmitter } from "node:events";
+import type { Server as HttpServer } from "node:http";
+
+import { describe, expect, it, vi } from "vitest";
+
+import { createLogger } from "../logger.js";
+import {
+  AuthTokenMissingError,
+  BindSafetyError,
+  type CorsOrigin,
+  type RunManager,
+  type RunManagerSnapshot,
+} from "../server/types.js";
+import {
+  createServeAction,
+  isLoopback,
+  parsePort,
+  resolveAuthToken,
+  type ServeActionDeps,
+  type ServeCliOptions,
+} from "./serve.js";
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function fakeServer(): HttpServer {
+  const em = new EventEmitter() as unknown as HttpServer & {
+    close: (cb?: (e?: Error) => void) => void;
+  };
+  (em as unknown as { close: (cb?: (e?: Error) => void) => void }).close = (cb) => {
+    process.nextTick(() => cb?.());
+  };
+  return em;
+}
+
+function fakeApp(): import("hono").Hono<{ Variables: import("../server/types.js").AppVariables }> {
+  // Returned app is never driven in these tests; the stub `startServer` is a noop.
+  return {} as never;
+}
+
+function fakeRunManager(): RunManager {
+  const snap: RunManagerSnapshot = { activeRuns: 0, totalRuns: 0, completedRuns: 0 };
+  return {
+    create() {
+      return Promise.reject(new Error("not used in serve.test"));
+    },
+    get() {
+      return undefined;
+    },
+    cancel() {
+      return false;
+    },
+    steer() {
+      return false;
+    },
+    resume() {
+      return Promise.reject(new Error("not used"));
+    },
+    snapshot() {
+      return snap;
+    },
+    async shutdown() {
+      /* noop */
+    },
+  };
+}
+
+interface Harness {
+  deps: ServeActionDeps;
+  stdout: string[];
+  stderr: string[];
+  signals: Map<"SIGINT" | "SIGTERM", () => void>;
+  generateToken: ReturnType<typeof vi.fn>;
+}
+
+function makeHarness(env: NodeJS.ProcessEnv = {}, generated = "genhex"): Harness {
+  const stdout: string[] = [];
+  const stderr: string[] = [];
+  const signals = new Map<"SIGINT" | "SIGTERM", () => void>();
+  const generateToken = vi.fn(() => generated);
+  const deps: ServeActionDeps = {
+    env,
+    stdout: {
+      write: (chunk: string | Uint8Array) => void stdout.push(String(chunk)),
+    } as unknown as NodeJS.WritableStream,
+    stderr: {
+      write: (chunk: string | Uint8Array) => void stderr.push(String(chunk)),
+    } as unknown as NodeJS.WritableStream,
+    createRunManager: () => fakeRunManager(),
+    buildApp: () => fakeApp(),
+    startServer: async ({ config }) => ({ server: fakeServer(), port: config.port }),
+    parseCorsOrigins: (csv: string): readonly CorsOrigin[] => {
+      if (csv.length === 0) return [];
+      return csv
+        .split(",")
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0)
+        .map((v): CorsOrigin => ({ kind: "exact", value: v }));
+    },
+    onSignal: (signal, handler) => {
+      signals.set(signal, handler);
+      return () => signals.delete(signal);
+    },
+    generateToken,
+    createLogger: (opts) => createLogger({ ...opts, level: "silent" }),
+    version: "0.0.0-test",
+  };
+  return { deps, stdout, stderr, signals, generateToken };
+}
+
+function fireSignalAndWait(h: Harness, sig: "SIGINT" | "SIGTERM"): void {
+  const handler = h.signals.get(sig);
+  if (!handler) throw new Error(`no handler for ${sig}`);
+  handler();
+}
+
+// ---------------------------------------------------------------------------
+// Pure helpers
+// ---------------------------------------------------------------------------
+
+describe("isLoopback", () => {
+  it("matches 127.0.0.1, ::1, localhost", () => {
+    expect(isLoopback("127.0.0.1")).toBe(true);
+    expect(isLoopback("::1")).toBe(true);
+    expect(isLoopback("localhost")).toBe(true);
+    expect(isLoopback("LocalHost")).toBe(true);
+  });
+  it("rejects external", () => {
+    expect(isLoopback("0.0.0.0")).toBe(false);
+    expect(isLoopback("10.0.0.1")).toBe(false);
+    expect(isLoopback("example.com")).toBe(false);
+  });
+});
+
+describe("parsePort", () => {
+  it("defaults to 8765", () => {
+    expect(parsePort(undefined)).toBe(8765);
+  });
+  it("parses valid port", () => {
+    expect(parsePort("3000")).toBe(3000);
+  });
+  it("rejects invalid", () => {
+    expect(() => parsePort("0")).toThrow();
+    expect(() => parsePort("70000")).toThrow();
+    expect(() => parsePort("abc")).toThrow();
+  });
+});
+
+describe("resolveAuthToken", () => {
+  it("prefers --flag > OPENCODE_SERVER_PASSWORD > JELLYCLAW_TOKEN > auto", () => {
+    const gen = () => "AUTO";
+    expect(
+      resolveAuthToken("FLAG", { OPENCODE_SERVER_PASSWORD: "OPC", JELLYCLAW_TOKEN: "JT" }, gen),
+    ).toMatchObject({ token: "FLAG", source: "flag", autoGenerated: false });
+    expect(
+      resolveAuthToken(undefined, { OPENCODE_SERVER_PASSWORD: "OPC", JELLYCLAW_TOKEN: "JT" }, gen),
+    ).toMatchObject({ token: "OPC", source: "env:OPENCODE_SERVER_PASSWORD", autoGenerated: false });
+    expect(resolveAuthToken(undefined, { JELLYCLAW_TOKEN: "JT" }, gen)).toMatchObject({
+      token: "JT",
+      source: "env:JELLYCLAW_TOKEN",
+      autoGenerated: false,
+    });
+    expect(resolveAuthToken(undefined, {}, gen)).toMatchObject({
+      token: "AUTO",
+      source: "auto",
+      autoGenerated: true,
+    });
+  });
+
+  it("treats empty strings as missing", () => {
+    const gen = () => "AUTO";
+    expect(resolveAuthToken("", { OPENCODE_SERVER_PASSWORD: "OPC" }, gen)).toMatchObject({
+      source: "env:OPENCODE_SERVER_PASSWORD",
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Full action behaviour
+// ---------------------------------------------------------------------------
+
+describe("createServeAction — loopback default", () => {
+  it("auto-generates a token and prints it to stdout exactly once", async () => {
+    const h = makeHarness({}, "abcdef");
+    const action = createServeAction(h.deps);
+    const p = action({} satisfies ServeCliOptions);
+    // Fire SIGTERM so the action completes.
+    await new Promise<void>((r) => setImmediate(r));
+    fireSignalAndWait(h, "SIGTERM");
+    const code = await p;
+    expect(code).toBe(0);
+    const printed = h.stdout.join("");
+    expect(printed).toBe("jellyclaw serve: generated bearer token: abcdef\n");
+    expect(h.stderr.join("")).toBe(""); // loopback → no banner
+    expect(h.generateToken).toHaveBeenCalledTimes(1);
+  });
+
+  it("uses OPENCODE_SERVER_PASSWORD over JELLYCLAW_TOKEN and does NOT print token", async () => {
+    const h = makeHarness({ OPENCODE_SERVER_PASSWORD: "OPC", JELLYCLAW_TOKEN: "JT" });
+    const action = createServeAction(h.deps);
+    const p = action({});
+    await new Promise<void>((r) => setImmediate(r));
+    fireSignalAndWait(h, "SIGTERM");
+    await p;
+    expect(h.stdout.join("")).toBe("");
+    expect(h.generateToken).not.toHaveBeenCalled();
+  });
+});
+
+describe("createServeAction — non-loopback", () => {
+  it("throws BindSafetyError without --i-know-what-im-doing", async () => {
+    const h = makeHarness({});
+    const action = createServeAction(h.deps);
+    await expect(action({ host: "0.0.0.0" })).rejects.toBeInstanceOf(BindSafetyError);
+  });
+
+  it("throws AuthTokenMissingError with --i-know-what-im-doing but no token", async () => {
+    const h = makeHarness({});
+    const action = createServeAction(h.deps);
+    await expect(action({ host: "0.0.0.0", iKnowWhatImDoing: true })).rejects.toBeInstanceOf(
+      AuthTokenMissingError,
+    );
+    // Even if an auto token was candidate-generated, it must never be printed.
+    expect(h.stdout.join("")).toBe("");
+    expect(h.stderr.join("")).toBe("");
+  });
+
+  it("proceeds with explicit token + escape flag + prints stderr banner", async () => {
+    const h = makeHarness({});
+    const action = createServeAction(h.deps);
+    const p = action({
+      host: "0.0.0.0",
+      iKnowWhatImDoing: true,
+      authToken: "explicit-hex",
+      verbose: true,
+    });
+    await new Promise<void>((r) => setImmediate(r));
+    fireSignalAndWait(h, "SIGTERM");
+    const code = await p;
+    expect(code).toBe(0);
+    const banner = h.stderr.join("");
+    expect(banner).toContain("NON-LOOPBACK BIND ENABLED");
+    expect(banner).toContain("host=0.0.0.0");
+    expect(banner).toContain("Token source: flag");
+    expect(banner.split("\n").length).toBeGreaterThanOrEqual(7);
+    // Token never leaks to stdout or stderr in this branch.
+    expect(h.stdout.join("")).toBe("");
+    expect(banner).not.toContain("explicit-hex");
+  });
+
+  it("accepts env token on non-loopback with escape flag", async () => {
+    const h = makeHarness({ OPENCODE_SERVER_PASSWORD: "from-env" });
+    const action = createServeAction(h.deps);
+    const p = action({ host: "0.0.0.0", iKnowWhatImDoing: true });
+    await new Promise<void>((r) => setImmediate(r));
+    fireSignalAndWait(h, "SIGTERM");
+    const code = await p;
+    expect(code).toBe(0);
+    expect(h.stderr.join("")).toContain("Token source: env:OPENCODE_SERVER_PASSWORD");
+  });
+});
+
+describe("createServeAction — shutdown", () => {
+  it("SIGINT triggers runManager.shutdown and resolves 0", async () => {
+    let shutdownCalled = false;
+    const h = makeHarness({});
+    h.deps = {
+      ...h.deps,
+      createRunManager: () => ({
+        ...fakeRunManager(),
+        shutdown(grace: number) {
+          shutdownCalled = true;
+          expect(grace).toBe(30_000);
+          return Promise.resolve();
+        },
+      }),
+    };
+    const action = createServeAction(h.deps);
+    const p = action({});
+    await new Promise<void>((r) => setImmediate(r));
+    fireSignalAndWait(h, "SIGINT");
+    const code = await p;
+    expect(code).toBe(0);
+    expect(shutdownCalled).toBe(true);
+  });
+});
