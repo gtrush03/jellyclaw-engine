@@ -21,11 +21,12 @@
     "lint": "biome check .",
     "format": "biome format --write .",
     "typecheck": "tsc --noEmit",
-    "postinstall": "patch-package || true",
+    "postinstall": "patch-package --patch-dir patches --error-on-fail",
+    "verify:patches": "patch-package --patch-dir patches --dry-run",
     "clean": "rm -rf dist node_modules/.cache"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "latest",
+    "@anthropic-ai/sdk": "^0.40.0",
     "@modelcontextprotocol/sdk": "latest",
     "@opencode-ai/plugin": "latest",
     "@opencode-ai/sdk": "latest",
@@ -34,11 +35,11 @@
     "better-sse": "latest",
     "execa": "latest",
     "hono": "latest",
-    "opencode-ai": ">=1.4.4",
-    "patch-package": "latest",
+    "opencode-ai": "1.4.5",
+    "patch-package": "^8.0.0",
     "pino": "latest",
     "pino-pretty": "latest",
-    "zod": "latest"
+    "zod": "^3.23.0"
   },
   "devDependencies": {
     "@biomejs/biome": "latest",
