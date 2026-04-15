@@ -1,9 +1,13 @@
 /**
  * Unit tests for the Task subagent-dispatch tool.
+ *
+ * Phase 06 Prompt 02 changed the Task handler from "throw on misconfig"
+ * to "always return a graceful SubagentResult-shaped error." The suite
+ * below locks in that contract: every failure path returns a payload,
+ * never throws out of the handler.
  */
 
 import { describe, expect, it, vi } from "vitest";
-import { ZodError } from "zod";
 
 import { createLogger } from "../../../engine/src/logger.js";
 import { stubSubagentService } from "../../../engine/src/subagents/stub.js";
@@ -11,11 +15,7 @@ import type { SubagentResult, SubagentService } from "../../../engine/src/subage
 import { getTool } from "../../../engine/src/tools/index.js";
 import { allowAll } from "../../../engine/src/tools/permissions.js";
 import { taskTool } from "../../../engine/src/tools/task.js";
-import {
-  SubagentsNotImplementedError,
-  SubagentsUnavailableError,
-  type ToolContext,
-} from "../../../engine/src/tools/types.js";
+import type { ToolContext } from "../../../engine/src/tools/types.js";
 import taskSchema from "../../fixtures/tools/claude-code-schemas/task.json" with { type: "json" };
 
 function makeCtx(subagents?: SubagentService): ToolContext {
@@ -40,16 +40,12 @@ const validInput = {
 };
 
 describe("taskTool — dispatcher behavior", () => {
-  it("with stubSubagentService throws SubagentsNotImplementedError mentioning Phase 06 and subagent dispatch", async () => {
-    try {
-      await taskTool.handler(validInput, makeCtx(stubSubagentService));
-      expect.unreachable("handler should have thrown");
-    } catch (err) {
-      expect(err).toBeInstanceOf(SubagentsNotImplementedError);
-      const msg = (err as Error).message;
-      expect(msg).toContain("Phase 06");
-      expect(msg).toMatch(/subagent dispatch/i);
-    }
+  it("with stubSubagentService returns { status: 'error' } mentioning Phase 06 stub", async () => {
+    const out = await taskTool.handler(validInput, makeCtx(stubSubagentService));
+    expect(out.status).toBe("error");
+    expect(out.summary).toMatch(/dispatch_error/);
+    expect(out.summary).toMatch(/Phase 06/i);
+    expect(out.usage).toEqual({ input_tokens: 0, output_tokens: 0 });
   });
 
   it("delegates to ctx.subagents.dispatch and returns its result verbatim", async () => {
@@ -69,45 +65,48 @@ describe("taskTool — dispatcher behavior", () => {
     });
   });
 
-  it("propagates rejected-promise errors from the dispatcher", async () => {
-    const boom = new Error("dispatch blew up");
-    const dispatch = vi.fn().mockRejectedValue(boom);
-    await expect(taskTool.handler(validInput, makeCtx({ dispatch }))).rejects.toBe(boom);
+  it("maps rejected-promise errors from the dispatcher to { status: 'error' }", async () => {
+    const dispatch = vi.fn().mockRejectedValue(new Error("dispatch blew up"));
+    const out = await taskTool.handler(validInput, makeCtx({ dispatch }));
+    expect(out.status).toBe("error");
+    expect(out.summary).toMatch(/dispatch_error: dispatch blew up/);
   });
 
-  it("throws SubagentsUnavailableError when ctx.subagents is missing", async () => {
-    await expect(taskTool.handler(validInput, makeCtx())).rejects.toBeInstanceOf(
-      SubagentsUnavailableError,
-    );
+  it("returns { status: 'error', summary: /subagents_unavailable/ } when ctx.subagents is missing", async () => {
+    const out = await taskTool.handler(validInput, makeCtx());
+    expect(out.status).toBe("error");
+    expect(out.summary).toMatch(/subagents_unavailable/);
   });
 });
 
 describe("taskTool — schema validation", () => {
-  it("rejects input missing subagent_type", async () => {
-    await expect(
-      taskTool.handler(
-        { description: "x", prompt: "y" } as unknown as typeof validInput,
-        makeCtx(stubSubagentService),
-      ),
-    ).rejects.toBeInstanceOf(ZodError);
+  it("maps missing subagent_type to invalid_input error result", async () => {
+    const out = await taskTool.handler(
+      { description: "x", prompt: "y" } as unknown as typeof validInput,
+      makeCtx(stubSubagentService),
+    );
+    expect(out.status).toBe("error");
+    expect(out.summary).toMatch(/invalid_input/);
+    expect(out.summary).toMatch(/subagent_type/);
   });
 
-  it("rejects input missing prompt", async () => {
-    await expect(
-      taskTool.handler(
-        { description: "x", subagent_type: "general-purpose" } as unknown as typeof validInput,
-        makeCtx(stubSubagentService),
-      ),
-    ).rejects.toBeInstanceOf(ZodError);
+  it("maps missing prompt to invalid_input error result", async () => {
+    const out = await taskTool.handler(
+      { description: "x", subagent_type: "general-purpose" } as unknown as typeof validInput,
+      makeCtx(stubSubagentService),
+    );
+    expect(out.status).toBe("error");
+    expect(out.summary).toMatch(/invalid_input/);
+    expect(out.summary).toMatch(/prompt/);
   });
 
-  it("rejects empty strings", async () => {
-    await expect(
-      taskTool.handler(
-        { description: "", prompt: "", subagent_type: "" },
-        makeCtx(stubSubagentService),
-      ),
-    ).rejects.toBeInstanceOf(ZodError);
+  it("maps empty strings to invalid_input error result", async () => {
+    const out = await taskTool.handler(
+      { description: "", prompt: "", subagent_type: "" },
+      makeCtx(stubSubagentService),
+    );
+    expect(out.status).toBe("error");
+    expect(out.summary).toMatch(/invalid_input/);
   });
 });
 
