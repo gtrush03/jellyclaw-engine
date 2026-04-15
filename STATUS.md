@@ -3,8 +3,8 @@
 > Living doc. Update at the start and end of every working day.
 > If this file is stale, don't trust it.
 
-**Last updated:** 2026-04-15 (Phase 02 research complete; implementation pending)
-**Current phase:** Phase 02 — Config + provider layer (research ✅, impl ⏳)
+**Last updated:** 2026-04-15 (Phase 02 research ✅ + Anthropic provider ✅; OpenRouter pending)
+**Current phase:** Phase 02 — Config + provider layer (Prompts 01+02 ✅, Prompt 03 ⏳)
 **Current milestone target:** M1 (Engine works) — projected week of May 18
 **Engine on:** n/a (not yet bootable)
 **Genie dispatcher:** Claurst (unchanged)
@@ -55,7 +55,7 @@ Budget ceiling for v1.0 (Phases 00–18): **TBD — pending Q2 answer.**
 
 | Metric | Count |
 |--------|-------|
-| Unit tests passing | 48 |
+| Unit tests passing | 93 |
 | Unit tests failing | 0 |
 | Integration tests passing | 0 |
 | Golden-prompt regression tests | 0 / 5 target |
@@ -124,5 +124,10 @@ Budget ceiling for v1.0 (Phases 00–18): **TBD — pending Q2 answer.**
   documented; OpenRouter endpoint contract + tool mapping + both caching
   regressions (#1245, #17910) deep-dived; `acknowledgeCachingLimits` gate
   decision table authored.
-- Next action: Phase 02 Prompt 02 — implement Anthropic provider wrapper.
+- Phase 02 Prompt 02 (Anthropic provider) landed: `engine/src/config/{schema,loader}.ts`
+  + `engine/src/providers/{types,cache-breakpoints,anthropic,index}.ts` + tests.
+  SPEC §9 config shape authoritative; SPEC §7 cache_control plan pure-function;
+  `anthropic-beta: extended-cache-ttl-2025-04-11` header auto-set on 1h TTL;
+  own retry loop (3 attempts / 30s / jitter / Retry-After honored). 93/93 tests.
+- Next action: Phase 02 Prompt 03 — OpenRouter provider + router/fallback + docs.
   Fresh Claude session.

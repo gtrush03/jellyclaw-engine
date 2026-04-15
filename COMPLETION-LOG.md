@@ -117,14 +117,36 @@
     what the name suggests in this binary.
 
 ### Phase 02 — Config + provider layer
-- **Status:** 🔄 In progress (Prompt 01 ✅ research)
+- **Status:** 🔄 In progress (Prompts 01+02 ✅; 03 remaining)
 - **Started:** 2026-04-15
 - **Completed:** —
 - **Duration (actual):** —
-- **Session count:** 1 (ongoing)
-- **Commits:** (this commit)
-- **Tests passing:** n/a (research-only prompt)
+- **Session count:** 2 (ongoing)
+- **Commits:** 53cf19d (research), (this commit: anthropic provider)
+- **Tests passing:** 93/93 (45 new in Prompt 02: 24 schema/loader, 13 cache-breakpoints, 8 anthropic provider)
 - **Notes:**
+  - ✅ Prompt 02 (anthropic provider) — `engine/src/config/{schema,loader}.ts`
+    + `engine/src/providers/{types,cache-breakpoints,anthropic,index}.ts`
+    + matching tests landed. New config schema matches SPEC §9 exactly
+    (single `provider` enum + `model` + `anthropic`/`openrouter` blocks +
+    `cache`/`server`/`telemetry`/`permissions` + `acknowledgeCachingLimits`
+    gate). Loader implements resolution order defaults ← global ← local ←
+    env ← CLI with deep-merge, `ConfigParseError` on malformed JSON, and
+    separate `assertCredentials` + `assertCachingGate` helpers (zod cannot
+    enforce env-fallback or cross-field gating natively).
+    `planBreakpoints` is a pure function covering all 4 SPEC §7 slots
+    (system/tools/CLAUDE.md/skills) with byte-identical stability semantics
+    and the `anthropic-beta: extended-cache-ttl-2025-04-11` header auto-set
+    when any breakpoint carries `ttl:"1h"`. AnthropicProvider uses
+    `maxRetries:0` on the SDK and owns its own retry loop (3 attempts /
+    30s budget / exponential+jitter / Retry-After honored) per
+    research-notes §4.3. SDK `CacheControlEphemeral` type in 0.40.1 lacks
+    the `ttl` field — isolated cast documented inline.
+    Legacy `engine/src/config.ts` kept in place (index.ts still imports
+    it); Phase 10 consolidates the two config surfaces.
+    Logger redact list gained `headers.x-api-key` entries.
+    Scope left for Prompt 03: OpenRouter wrapper + router/fallback +
+    docs/providers.md (+ possible credential-pool implementation).
   - ✅ Prompt 01 (research) — `engine/provider-research-notes.md` landed
     (1753 lines, 10 sections + 2 appendices). Every section populated;
     every caching-related claim has a source URL. Key confirmations from
@@ -321,6 +343,7 @@
 |---|---|---|---|---|
 | 2026-04-15 | 1 | 00 | 01-verify-scaffolding | ✅ Phase 00 complete — toolchain green, tag v0.0.0-scaffold, commit 6644aaf |
 | 2026-04-15 | 2 | 01 | 01-research | 🔄 Research note landed (engine/opencode-research-notes.md, 950 lines). Commit dcb0601. Phase 01 NOT complete — awaits Prompt 02 implementation. |
+| 2026-04-15 | 5 | 02 | 02-anthropic-provider | 🔄 Config schema+loader, Provider interface, pure `planBreakpoints`, `AnthropicProvider` with real SDK streaming + SPEC §7 cache_control placement + `anthropic-beta` 1h header + own retry loop all landed. 93/93 tests green (45 new). Phase 02 still open — Prompt 03 (OpenRouter + router/fallback + docs) remains. |
 | 2026-04-15 | 4 | 02 | 01-research | 🔄 `engine/provider-research-notes.md` landed (1753 lines). Beta header `extended-cache-ttl-2025-04-11` verified current. Min-cache-tokens table refreshed. OR #1245 + #17910 deep-dives completed with primary + mirror citations. `acknowledgeCachingLimits` gate decision table authored (§10). Phase 02 NOT complete — Prompts 02-06 still ahead. |
 | 2026-04-15 | 3 | 01 | 02-implement | ✅ Phase 01 complete via PIVOT. opencode-ai@1.4.5 is a compiled binary → three planned source patches reimplemented as engine/src/plugin/{agent-context,secret-scrub}.ts + engine/src/bootstrap/opencode-server.ts. 48/48 tests green (incl. live e2e against opencode-ai child). SPEC §5.1/§15 + CVE-MITIGATION §1.4/§2.1 + patches/README + phases/PHASE-01 synced. Commits 06d7d8a (pin+lock), 8a380dd (code), (this commit) (docs+log). |
 
