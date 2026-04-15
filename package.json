@@ -33,6 +33,7 @@
     "@openrouter/ai-sdk-provider": "latest",
     "better-sqlite3": "latest",
     "better-sse": "latest",
+    "eventsource-parser": "^3",
     "execa": "latest",
     "hono": "latest",
     "opencode-ai": "1.4.5",

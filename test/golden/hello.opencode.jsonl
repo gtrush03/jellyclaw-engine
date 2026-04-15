@@ -1,0 +1,8 @@
+{"type":"server.connected","properties":{}}
+{"type":"message.updated","properties":{"info":{"id":"msg-1","role":"assistant","time":{"created":1,"completed":null}}}}
+{"type":"message.part.updated","properties":{"messageID":"msg-1","part":{"type":"text","text":"I'll list files. "}}}
+{"type":"message.part.updated","properties":{"messageID":"msg-1","part":{"type":"tool-use","id":"tool-ls","name":"bash","input":"{\"cmd\":\"ls","state":"streaming"}}}
+{"type":"message.part.updated","properties":{"messageID":"msg-1","part":{"type":"tool-use","id":"tool-ls","name":"bash","input":{"cmd":"ls"},"state":"completed"}}}
+{"type":"message.part.updated","properties":{"messageID":"msg-1","part":{"type":"tool-result","callID":"tool-ls","output":"README.md\npackage.json\n"}}}
+{"type":"message.part.updated","properties":{"messageID":"msg-1","part":{"type":"text","text":"Done."}}}
+{"type":"message.updated","properties":{"info":{"id":"msg-1","role":"assistant","time":{"created":1,"completed":200},"tokens":{"input":40,"output":12,"cache":{"read":8,"write":4}}}}}

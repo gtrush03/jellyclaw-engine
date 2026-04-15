@@ -86,3 +86,4 @@ tmp/
 # Scratch — ignore all except committed reproducers
 engine/scratch/*
 !engine/scratch/repro-5894.ts
+!engine/scratch/emit-hello.ts
