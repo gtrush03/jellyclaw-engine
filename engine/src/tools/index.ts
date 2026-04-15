@@ -12,6 +12,8 @@
 
 import { bashTool } from "./bash.js";
 import { editTool } from "./edit.js";
+import { globTool } from "./glob.js";
+import { grepTool } from "./grep.js";
 import { readTool } from "./read.js";
 import type { Tool } from "./types.js";
 import { writeTool } from "./write.js";
@@ -19,6 +21,8 @@ import { writeTool } from "./write.js";
 export const builtinTools: readonly Tool<unknown, unknown>[] = [
   bashTool as Tool<unknown, unknown>,
   editTool as Tool<unknown, unknown>,
+  globTool as Tool<unknown, unknown>,
+  grepTool as Tool<unknown, unknown>,
   readTool as Tool<unknown, unknown>,
   writeTool as Tool<unknown, unknown>,
 ];
@@ -33,6 +37,8 @@ export function getTool(name: string): Tool<unknown, unknown> | undefined {
 
 export { bashTool } from "./bash.js";
 export { editTool } from "./edit.js";
+export { globTool } from "./glob.js";
+export { grepTool } from "./grep.js";
 export { allowAll, denyAll, fromMap } from "./permissions.js";
 export { readTool } from "./read.js";
 export * from "./types.js";

@@ -348,14 +348,67 @@
     backpressure test and the `GOLDEN_UPDATE=1` path.
 
 ### Phase 04 — Tool parity
-- **Status:** 🔄 In progress (Prompts 01 + 02 / 5 complete)
+- **Status:** 🔄 In progress (Prompts 01 + 02 + 03 / 5 complete)
 - **Started:** 2026-04-15
 - **Completed:** —
 - **Duration (actual):** —
-- **Session count:** 2
-- **Commits:** 4d1a0d0 (prompt 01), (this commit, prompt 02)
-- **Tests passing:** 307/307 (65 new in Phase 04 so far — Bash 16 + Read 13 + Write 9 + Edit 18 + Edit-property 2 + Edit-diagnostics 7)
+- **Session count:** 3
+- **Commits:** 4d1a0d0 (prompt 01), 8a7d71c (prompt 02), (this commit, prompt 03)
+- **Tests passing:** 336/336 + 2 bench (94 new in Phase 04 so far — Bash 16 + Read 13 + Write 9 + Edit 18 + Edit-property 2 + Edit-diagnostics 7 + Glob 12 + Grep 17)
 - **Notes:**
+  - ✅ Prompt 03 (Glob + Grep) — executed via a 2-agent parallel Opus team
+    against a pre-authored contract (tinyglobby + @vscode/ripgrep
+    installed, schema fixtures `{glob,grep}.json` authored, engine
+    package.json updated).
+  - **Glob** (`engine/src/tools/glob.ts`, 12 unit tests + 1 bench).
+    Input `{ pattern, path? }`. Pattern guard rejects `..` path
+    segments (prevents `../../../etc/passwd` escapes even when `path`
+    is inside cwd). Cwd jail with `glob.outside_cwd` override.
+    Validates search root exists + is a directory. Reads `.gitignore`
+    line-by-line at the search root and passes patterns via
+    tinyglobby's `ignore` option (simplified: no negation `!` support
+    — documented inline). Tinyglobby called with `{ absolute: true,
+    dot: false, onlyFiles: true }`. Stats matches with concurrency 64,
+    sorts by `mtimeMs` desc, silently drops stat races. Bench (BENCH=1
+    gated, skipped otherwise): matched 100 `.md` files across 10k in
+    **7ms** (budget 500ms).
+  - **Grep** (`engine/src/tools/grep.ts`, 17 unit tests + 1 bench).
+    Full Claude-Code-parity input schema including hyphenated keys
+    (`"-i"`, `"-n"`, `"-A"`, `"-B"`, `"-C"`) preserved in the zod
+    schema via quoted property names; `context`/`-A`/`-B`/`-C`
+    capped at 50 per spec. Shells out to `rgPath` from
+    `@vscode/ripgrep` via `spawn(rgPath, argv[])` — never shell
+    string (load-bearing for safety: pattern comes from the model
+    and may contain metachars; test asserts `$(whoami)` doesn't
+    execute). Extra hardening: `--` argv terminator before pattern
+    so leading-dash patterns aren't parsed as rg flags. Content
+    mode uses `--json` with a partial-line buffer; file/count modes
+    use the respective `--files-with-matches`/`--count-matches`
+    flags. Discriminated-union output
+    `{ mode: "content"|"files_with_matches"|"count", ... }` with
+    `truncated?: boolean`. 50_000-char output truncation via
+    **O(log n) binary search** over prefix length (initial O(n)
+    implementation timed out on 20k-match inputs — replaced).
+    rg exit 0/1 both treated as success (no matches is not an
+    error); exit ≥ 2 → `ToolError("GrepFailed", stderr)`. Bench
+    (BENCH=1): 100k files, 986 needle hits, **1937ms** (budget 3000ms).
+  - **Registry** (`engine/src/tools/index.ts`): both agents
+    coordinated via re-read-before-edit on a shared file;
+    alphabetical order preserved (bash → edit → glob → grep → read
+    → write). Both `export { ... }` block additions landed.
+  - **Deviation:** Glob agent modified `vitest.config.ts` to add
+    `test/**/*.bench.ts` to the include glob — necessary because the
+    existing pattern matched only `*.test.ts` and the spec mandated
+    the `.bench.ts` extension. Benches are gated by `BENCH=1` via
+    `describe.skipIf` so CI cost remains zero by default. Full suite
+    counts reflect the 2 skipped benches (23 passed + 2 skipped files).
+  - **Deps:** `tinyglobby@^0.2.16`, `@vscode/ripgrep@^1.17.1` added to
+    root + engine/package.json.
+  - Gates: `bunx tsc --noEmit` ✅, `bunx biome check` ✅, `bun run test`
+    336 passed + 2 skipped ✅, `BENCH=1 bun run test test/perf/`
+    2 passed ✅ (both under budget).
+  - Remaining Phase 04 prompts: 04 (WebFetch + TodoWrite + Task stub
+    + NotebookEdit), 05 (parity fixture + docs/tools.md).
   - ✅ Prompt 02 (Edit tool + diagnostics + property tests) — executed via a
     single Opus agent against a shared contract authored in main session
     (new error classes `EditRequiresReadError`, `NoMatchError`,
@@ -639,6 +692,7 @@
 
 | Date | Session # | Phase | Sub-prompt | Outcome |
 |---|---|---|---|---|
+| 2026-04-15 | 11 | 04 | 03-glob-grep | 🔄 Phase 04 Prompt 03 landed via 2-agent parallel Opus team. `engine/src/tools/glob.ts` (12 tests + 1 bench): tinyglobby-backed with `..`-segment refusal, `.gitignore` line-by-line filter (no negation), mtime-desc sort, cwd jail. `engine/src/tools/grep.ts` (17 tests + 1 bench): @vscode/ripgrep via spawn(argv[]) never shell, `--` terminator hardening, content/files_with_matches/count modes with discriminated union, O(log n) binary-search truncation at 50k chars, context cap 50. Registry updated alphabetically by both agents via re-read-before-edit coordination. Vitest config gained `test/**/*.bench.ts` include. Deps: `tinyglobby@^0.2`, `@vscode/ripgrep@^1.17`. Typecheck ✅, biome ✅, vitest 336/336 + 2 skipped ✅. Bench (BENCH=1) Glob 7ms (10k files, budget 500ms) + Grep 1937ms (100k files, budget 3000ms). |
 | 2026-04-15 | 10 | 04 | 02-edit | 🔄 Phase 04 Prompt 02 landed. 1 Opus agent delivered `engine/src/tools/edit.ts` (unique-match invariant + `replace_all` + atomic rename + EOF newline preservation + 6-line unified-diff preview), `engine/src/tools/edit-diagnostics.ts` (pure `explainMissingMatch` with 6 ordered branches, bounded ≤400 chars), and 3 test files: `edit.test.ts` (18), `edit.property.test.ts` (2 props × 100 runs, seed 42), `edit-diagnostics.test.ts` (7). New error classes `EditRequiresReadError / NoMatchError / AmbiguousMatchError / NoOpEditError` added to `types.ts`. Registry updated alphabetically. Deps: `diff@^9` + `@types/diff@^8` + `fast-check@^4`. Typecheck ✅, biome ✅, vitest 307/307 ✅ (27 new). |
 | 2026-04-15 | 9 | 04 | 01-bash-read-write | 🔄 Phase 04 Prompt 01 landed. 3-agent parallel Opus team delivered `engine/src/tools/{bash,read,write}.ts` + matching tests in `test/unit/tools/` (Bash 16 + Read 13 + Write 9 = 38 new tests). Shared `types.ts` + `permissions.ts` + 3 Claude-Code JSON-Schema fixtures pre-authored for contract alignment. Registry `engine/src/tools/index.ts` exports `listTools()` / `getTool()`. Bash: blocklist (rm-rf, curl|sh, fork bomb, dd), bash-c bypass guard, env scrub, 30k-char truncation, background mode with `~/.jellyclaw/bash-bg/<pid>.log`. Read: absolute-path jail, ipynb + PDF (pdfjs-dist) + image + text dispatch, pages range with >10-page gate + >20-page refusal, readCache population. Write: read-before-overwrite invariant, atomic rename, trailing-newline preservation, outside-cwd gate. Deps: `pdfjs-dist@^5.6.0`. Typecheck ✅, biome ✅, vitest 280/280 ✅. Remaining Phase 04 prompts queued. |
 | 2026-04-15 | 8 | 03 | 02-implement-adapter | ✅ Phase 03 COMPLETE. 2-agent parallel team delivered `engine/src/adapters/opencode-events.ts` (940 lines, 7 tests — happy path + late-start ordering + orphan-end timeout + parse-error tolerance + subagent nesting + AbortController + backpressure) and `engine/src/stream/emit.ts` (200 lines, 54 vitest cases — writeEvent/drain, all 3 format downgrades, claude-code-compat delta coalescing, claurst-min flat-shape rewrite, stateless `downgrade()` matrix, backpressure). Golden replay via `test/golden/replay.test.ts` + `hello.opencode.jsonl` + `hello.jellyclaw.jsonl` (regenerable via `GOLDEN_UPDATE=1`; narrow normaliser proven by mutation test). Scratch smoke `engine/scratch/emit-hello.ts` hand-verified all 3 output formats produce distinct correct output. `eventsource-parser@^3` added. Main session reconciled: added 4 targeted `biome-ignore useAwait` comments on async generators. Typecheck ✅, biome ✅, vitest 242/242 ✅. |
