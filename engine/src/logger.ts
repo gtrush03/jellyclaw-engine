@@ -31,9 +31,8 @@ export interface CreateLoggerOptions {
 }
 
 export function createLogger(options: CreateLoggerOptions = {}): Logger {
-  const level = options.level ?? process.env["JELLYCLAW_LOG_LEVEL"] ?? "info";
-  const pretty =
-    options.pretty ?? (process.env["NODE_ENV"] !== "production" && process.stdout.isTTY);
+  const level = options.level ?? process.env.JELLYCLAW_LOG_LEVEL ?? "info";
+  const pretty = options.pretty ?? (process.env.NODE_ENV !== "production" && process.stdout.isTTY);
 
   return pino({
     name: options.name ?? "jellyclaw",

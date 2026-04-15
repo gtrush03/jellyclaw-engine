@@ -82,3 +82,7 @@ tmp/
 *.swp
 *.swo
 *~
+
+# Scratch — ignore all except committed reproducers
+engine/scratch/*
+!engine/scratch/repro-5894.ts
