@@ -1,11 +1,11 @@
 # Jellyclaw Engine — Completion Log
 
 **Last updated:** 2026-04-15
-**Current phase:** Phase 06 — Subagent system + hook patch (🔄 Prompts 01+02 complete; 03 next)
+**Current phase:** Phase 07 — MCP client integration (next)
 
 ## Overall progress
 
-[██████░░░░░░░░░░░░░░] 6/20 phases complete (30%)
+[███████░░░░░░░░░░░░░] 7/20 phases complete (35%)
 
 ## Phase checklist
 
@@ -16,7 +16,7 @@
 - [x] ✅ Phase 03 — Event stream adapter
 - [x] ✅ Phase 04 — Tool parity
 - [x] ✅ Phase 05 — Skills system
-- [ ] Phase 06 — Subagent system + hook patch
+- [x] ✅ Phase 06 — Subagent system + hook patch
 
 ### Core engine
 - [ ] Phase 07 — MCP client integration
@@ -721,14 +721,42 @@
     substitution, and watcher land in prompt 02.
 
 ### Phase 06 — Subagent system + hook patch
-- **Status:** 🔄 In progress (Prompts 01+02 complete; 03 next)
+- **Status:** ✅ Complete
 - **Started:** 2026-04-15
-- **Completed:** —
-- **Duration (actual):** —
-- **Session count:** 2
-- **Commits:** 810267b (P01), (P02 pending)
-- **Tests passing:** 549/549 (+66 net new in agents/: parser 12, discovery 10, registry 9, semaphore 6, context 15, dispatch 14; task tool suite rewritten for graceful-error contract)
+- **Completed:** 2026-04-15
+- **Duration (actual):** 1 day (3 sessions)
+- **Session count:** 3
+- **Commits:** 810267b (P01), b0286af (P02), (P03 pending)
+- **Tests passing:** 558/561 + 3 skipped (+77 net new across agents/ + hooks/ + integration: parser 12, discovery 10, registry 9, semaphore 6, context 15, dispatch 14, subagent-hooks regression 11 + 1 skipped negative control; task tool rewritten for graceful-error contract)
 - **Notes:**
+  - ✅ **Prompt 03 — Verify subagent hook-fire patch complete.** Landed via 2-agent
+    parallel Opus team. Key pivot from the original spec: the `.patch` file never
+    existed — opencode-ai@1.4.5 ships a compiled Bun binary so the original
+    `001-subagent-hook-fire.patch` was reimplemented as the first-class jellyclaw
+    plugin `engine/src/plugin/agent-context.ts` (see `patches/README.md`). Prompt 03
+    adapted accordingly: the "static sentinel grep on node_modules" became a static
+    surface check on the replacement file + its exports; the dynamic check still
+    covers the #5894 invariant end-to-end via the dispatcher's event stream.
+    (A) `engine/src/hooks/test-harness.ts` — test-only `HookRecorder` class mapping
+    `tool.call.start/end` events to `PreToolUse/PostToolUse` records, tracks
+    in-flight `tool_use_id`s for name resolution; `test/integration/fixtures/agents/
+    hook-probe/AGENT.md` fixture subagent (Bash-only, max_turns:3);
+    `test/integration/subagent-hooks.test.ts` (11 tests + 1 skipped negative control)
+    covering static surface (agent-context.ts file exists + exports
+    `enrichHookEnvelope`/`createCachedResolver`/`MAX_AGENT_CHAIN_DEPTH`), dynamic
+    #5894 invariant (`session_id !== parent`, `PostToolUse` matches `tool_use_id`,
+    parentSessionId audit, tool-input contains "echo probe", subagent.start →
+    tool.call.* → subagent.end ordering, `subagent_path` correctness), plus
+    integration of the recorder through `enrichHookEnvelope` (agentChain ===
+    [parent]). (B) `scripts/verify-hook-patch.ts` — standalone two-step verifier:
+    static (asserts design-intent `STATUS: superseded` + README + live file +
+    dynamic-imported exports), dynamic (spawns vitest on the regression test).
+    `package.json` adds `"test:hook-patch": "bun run scripts/verify-hook-patch.ts"`.
+    `docs/development.md` — new "Upstream rebase checklist" section pointing at the
+    script + tests on every opencode-ai version bump. Script output ends with exact
+    `patch verified: static + dynamic`. Typecheck ✅, biome ✅, vitest 558/561 + 3
+    skipped ✅ (+11 new). `bun run test:hook-patch` green end-to-end.
+    **Phase 06 ✅ COMPLETE.** Foundation group now 7/7.
   - ✅ **Prompt 02 — Task tool + dispatch + semaphore complete.** Landed via 2-agent
     parallel Opus team against a pre-authored `dispatch-types.ts` contract
     (`SubagentContext`, `ParentContext`, `SessionRunner` seam, `DispatchConfig`,
@@ -906,6 +934,7 @@
 
 | Date | Session # | Phase | Sub-prompt | Outcome |
 |---|---|---|---|---|
+| 2026-04-15 | 18 | 06 | 03-verify-hook-patch | ✅ **Phase 06 COMPLETE.** Phase 06 Prompt 03 landed via 2-agent parallel Opus team. Pivot forced by `patches/README.md`: no `.patch` file exists (opencode-ai ships compiled binary); the hook-fire fix lives as `engine/src/plugin/agent-context.ts`. Prompt rescoped: static "sentinel on node_modules" → static surface check on the replacement file + its three exports. (A) `engine/src/hooks/test-harness.ts` (test-only `HookRecorder` with `tool_use_id` → name map); `test/integration/fixtures/agents/hook-probe/AGENT.md`; `test/integration/subagent-hooks.test.ts` (11 tests + 1 skipped negative control) locks in the #5894 invariants — `session_id !== parent`, `PostToolUse` matches, audit chain, input contains "echo probe", event ordering subagent.start → tool.call.* → subagent.end, `subagent_path` correctness, `enrichHookEnvelope` integration (agentChain === [parent]). (B) `scripts/verify-hook-patch.ts` two-step verifier (static + vitest subprocess) exits with exact `patch verified: static + dynamic`; `package.json` adds `test:hook-patch`; `docs/development.md` "Upstream rebase checklist" added. Typecheck ✅, biome ✅, vitest 558/561 + 3 skipped ✅, `bun run test:hook-patch` green end-to-end. Foundation group now 7/7. Next: Phase 07 MCP client. |
 | 2026-04-15 | 17 | 06 | 02-task-tool-implementation | 🔄 Phase 06 Prompt 02 landed via 2-agent parallel Opus team against a pre-authored `engine/src/agents/dispatch-types.ts` contract. (A) `semaphore.ts` (6 tests) — p-limit closure with clamp [1, 5] + warn-once, slot release on rejection; `context.ts` (15 tests) — pure builder, depth guard, tool intersection dedupe, model/skills/CLAUDE.md resolution. (B) `dispatch.ts` (14 tests) — `SubagentDispatcher implements SubagentService` with 10-step flow (graceful errors, no throw), child `AbortController` bound to parent signal, isolated listener errors, JSON-clean result; `events.ts` — `makeSubagentStart/EndEvent` factories (no progress variant — 15-protocol parity). Task tool rewritten to return `{ status: "error" }` on all failure paths. `test/unit/tools/task.test.ts` updated for new contract. `docs/agents.md` authored. `SessionRunner` seam allows production wiring in Phase 09 without blocking this prompt. Typecheck ✅, biome ✅ on agents/ + tools/task.ts + docs/agents.md, vitest 549/549 + 2 skipped ✅ (+35 net new). Next: prompt 03 — verify hook-patch propagation end-to-end. |
 | 2026-04-15 | 16 | 06 | 01-subagent-definitions | 🔄 Phase 06 Prompt 01 landed via 3-agent parallel Opus team against a pre-authored `engine/src/agents/types.ts` contract (Agent, AgentFrontmatter Zod-strict, AgentLoadError, AGENT_BODY_MAX_BYTES = 16384). (A) `parser.ts` (12 tests) — gray-matter + Zod strict frontmatter with kebab `name`, ≤1024 `description`, `mode` enum (`subagent`/`primary`), `tools` regex covering built-ins + `mcp__<server>__<tool>`, `skills` kebab, `max_turns` ≤100, `max_tokens` >0, 16 KB body cap, empty-body rejection, trimmed prompt, optional `expectedName` cross-check. (B) `discovery.ts` (10 tests) — walks `~/.jellyclaw/agents` → `cwd/.jellyclaw/agents` → `cwd/.claude/agents` (legacy), both `<name>/AGENT.md` dir-style (wins) and `<name>.md` flat. Example agents `agents/code-reviewer/AGENT.md` + `agents/doc-writer/AGENT.md` + `engine/scripts/agents-dump.ts` smoke. (C) `registry.ts` (9 tests) — `AgentRegistry` first-wins across sources with warn-on-shadow, per-file `AgentLoadError` capture, `reload()` + `subscribe()` diff (added/removed/modified keyed on path+mtime), listener errors isolated. Barrel `index.ts` mirrors skills pattern (single-line value export for `AgentFrontmatter` to avoid TS2300). `p-limit@^6` installed for prompt 02 dispatch. Typecheck ✅, biome ✅ on agents/ + scripts/, vitest 514/514 ✅ (+31 new: parser 12, discovery 10, registry 9). Smoke: `echo` agent loads from `~/.jellyclaw/agents/echo/AGENT.md` as source=user with tools=[Read] and max_turns=3. Next: Prompt 02 — Task tool + dispatch + semaphore + isolated context. |
 | 2026-04-15 | 15 | 05 | 02-progressive-disclosure-and-args | ✅ **Phase 05 COMPLETE.** 3-agent parallel Opus team: (A) `substitution.ts` (12 tests, pure, trailing-digit guard for `$10`, escape sentinel, dedup-preserving unknown sweep); (B) `inject.ts` (10 tests, source-priority+alpha sort, greedy byte-capped pack, `Buffer.byteLength` ≤1536, single `logger.warn` on drop, header suppressed when nothing fits); (C) `watcher.ts` + registry `reload()/subscribe()/SkillsChangedEvent` (6 watcher + 4 registry tests, chokidar@4 parent-dir watching at depth:2, 250 ms debounce coalesces bursts, awaitWriteFinish stability 100 ms, listener errors isolated). Integration pass: `index.ts` barrel re-exports, `docs/skills.md`, `skills/{commit,review}/SKILL.md` examples, `engine/scripts/inject-preview.ts` smoke (live preview renders 378 bytes across 3 skills, 0 dropped). Typecheck ✅, biome ✅ on skills/ + scripts/, vitest 483/485 + 2 skipped ✅ (32 new in prompt 02 — skills subsystem now 58 tests). All PHASE-05 acceptance criteria met. Foundation group now 6/7. |
