@@ -1,0 +1,121 @@
+# [upstream-candidate][security] Fire plugin hooks for subagent tool calls
+#
+# Upstream: OpenCode issue #5894 — plugin hooks (tool.execute.before /
+# tool.execute.after) do not fire for tool calls made inside a subagent
+# spawned via the `task` tool. This is a policy-bypass bug: any security
+# check implemented as a hook can be circumvented by asking the model to
+# delegate the dangerous tool call to a subagent.
+#
+# Root cause: task.ts creates a fresh Session for the subagent without
+# threading the parent's plugin registry into it. processor.ts then
+# resolves an empty hook chain and executes tools unobserved.
+#
+# Fix (two files):
+#   - task.ts: pass `plugins` (and the derived `hookChain`) from the
+#     parent Session into the child Session options.
+#   - processor.ts: resolve hooks from `session.plugins` rather than the
+#     module-level registry, so subagents see the same hooks as the root.
+#
+# Jellyclaw ticket: SEC-002
+# Upstream PR: pending
+#
+# Line numbers below are approximate against @sst/opencode@1.1.10.
+# --------------------------------------------------------------------
+
+diff --git a/packages/opencode/src/tool/task.ts b/packages/opencode/src/tool/task.ts
+index 1111111..2222222 100644
+--- a/packages/opencode/src/tool/task.ts
++++ b/packages/opencode/src/tool/task.ts
+@@ -14,7 +14,7 @@ import { Session } from "../session";
+ import { Bus } from "../bus";
+ import type { Plugin } from "../plugin/types";
+
+-export const TaskTool = Tool.define("task", {
++export const TaskTool = Tool.define("task", {
+   description: "Spawn a subagent to run a focused sub-task...",
+   parameters: z.object({
+     description: z.string(),
+@@ -38,13 +38,27 @@ export const TaskTool = Tool.define("task", {
+     // Parent session context is available on ctx.session
+     const parent = ctx.session;
+
+-    // BEFORE: subagent created with no plugin registry — hooks won't fire.
+-    const sub = await Session.create({
+-      model: parent.model,
+-      agent: agentSpec,
+-      parentId: parent.id,
+-      // plugins: (missing) ← the bug
+-    });
++    // AFTER (SEC-002): thread the parent's plugin registry and derived
++    // hook chain into the subagent session. This makes tool.execute.before
++    // and tool.execute.after fire for every tool call the subagent makes,
++    // closing the OpenCode #5894 policy-bypass.
++    //
++    // We also tag the subagent with `parent.rootId` so nested subagents
++    // (subagent-of-subagent) inherit hooks transitively.
++    const sub = await Session.create({
++      model: parent.model,
++      agent: agentSpec,
++      parentId: parent.id,
++      rootId: parent.rootId ?? parent.id,
++      plugins: parent.plugins,           // <-- the fix
++      hookChain: parent.hookChain,       // pre-resolved, avoids re-walk
++    });
++
++    // Emit a diagnostic event so operators can see subagent spawns in the
++    // same bus stream as the parent, and hooks receive a lifecycle signal.
++    Bus.publish("subagent.spawn", {
++      parentId: parent.id,
++      childId: sub.id,
++      agent: agentSpec.name,
++    });
+
+     // Run the subagent loop to completion.
+     const result = await sub.run(params.prompt);
+
+diff --git a/packages/opencode/src/session/processor.ts b/packages/opencode/src/session/processor.ts
+index 3333333..4444444 100644
+--- a/packages/opencode/src/session/processor.ts
++++ b/packages/opencode/src/session/processor.ts
+@@ -10,7 +10,7 @@ import { Plugin } from "../plugin";
+ import type { Session } from "./index";
+ import type { ToolCall, ToolResult } from "./types";
+
+-// Resolved at module load — effectively the root session's hooks.
+-const rootHooks = Plugin.resolveHooks();
++// DO NOT use a module-level hook chain. Subagents inherit their parent's
++// plugin registry via session.plugins (see task.ts SEC-002 patch), and
++// we must resolve hooks per-session, not once at module load.
+
+ export async function executeToolCall(
+   session: Session,
+@@ -21,9 +21,16 @@ export async function executeToolCall(
+     name: call.name,
+     args: call.args,
+   };
+-  // BEFORE: always used rootHooks, so subagents ran without policy.
+-  for (const hook of rootHooks.before) {
+-    await hook(hookCtx);
++  // AFTER (SEC-002): resolve hooks from the session's own plugin registry.
++  // For the root session this is identical to the old rootHooks. For a
++  // subagent, this now correctly returns the inherited hook chain.
++  const hooks = session.hookChain ?? Plugin.resolveHooks(session.plugins);
++  for (const hook of hooks.before) {
++    // A hook that throws aborts the tool call. This is deliberate and
++    // matches the upstream contract for root-session tool calls.
++    await hook(hookCtx);
+   }
+
+   let result: ToolResult;
+@@ -35,8 +42,8 @@ export async function executeToolCall(
+     throw err;
+   }
+
+-  for (const hook of rootHooks.after) {
+-    await hook({ ...hookCtx, result });
++  for (const hook of hooks.after) {
++    await hook({ ...hookCtx, result });
+   }
+
+   return result;
+ }

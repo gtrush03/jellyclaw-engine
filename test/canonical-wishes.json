@@ -1,0 +1,149 @@
+[
+  {
+    "wish_id": "coffee-landing",
+    "transcript": "Genie, build me a beautiful landing page about specialty coffee. Obsidian palette, hero section, a few sections, real imagery, polished. Deploy it.",
+    "expected_tier": "website",
+    "expected_tools": ["TodoWrite", "Read", "WebSearch", "Write", "Bash"],
+    "expected_result_shape": "url",
+    "dry_run_allowed": false,
+    "max_cost_usd": 3.0,
+    "timeout_seconds": 600
+  },
+  {
+    "wish_id": "sweetgreen-order",
+    "transcript": "Genie, order me a Harvest Bowl from Sweetgreen for lunch.",
+    "expected_tier": "browser",
+    "expected_tools": [
+      "TodoWrite",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_snapshot",
+      "mcp__playwright__browser_type",
+      "mcp__playwright__browser_click"
+    ],
+    "expected_result_shape": "order_id",
+    "dry_run_allowed": true,
+    "max_cost_usd": 4.0,
+    "timeout_seconds": 900
+  },
+  {
+    "wish_id": "linkedin-dm-5",
+    "transcript": "Genie, DM five early-stage founders on LinkedIn about trying Genie.",
+    "expected_tier": "browser",
+    "expected_tools": [
+      "TodoWrite",
+      "WebSearch",
+      "Task",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_snapshot",
+      "mcp__playwright__browser_click",
+      "mcp__playwright__browser_type"
+    ],
+    "expected_result_shape": "screenshots",
+    "dry_run_allowed": true,
+    "max_cost_usd": 6.0,
+    "timeout_seconds": 1200
+  },
+  {
+    "wish_id": "research-topic",
+    "transcript": "Genie, research the latest on AI regulation in the EU and summarize the top five developments this quarter with sources.",
+    "expected_tier": "browser",
+    "expected_tools": ["TodoWrite", "WebSearch", "WebFetch", "Task"],
+    "expected_result_shape": "text",
+    "dry_run_allowed": false,
+    "max_cost_usd": 3.0,
+    "timeout_seconds": 600
+  },
+  {
+    "wish_id": "stripe-49",
+    "transcript": "Genie, create a Stripe payment link for forty nine dollars and send it to me on Telegram.",
+    "expected_tier": "browser",
+    "expected_tools": ["Bash", "WebFetch"],
+    "expected_result_shape": "payment_url",
+    "dry_run_allowed": false,
+    "max_cost_usd": 1.5,
+    "timeout_seconds": 300
+  },
+  {
+    "wish_id": "tweet-plus-landing",
+    "transcript": "Genie, build a tiny landing page for my new side project Lumen and then post a tweet about it with the link.",
+    "expected_tier": "browser",
+    "expected_tools": [
+      "TodoWrite",
+      "Write",
+      "Bash",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_snapshot",
+      "mcp__playwright__browser_type",
+      "mcp__playwright__browser_click"
+    ],
+    "expected_result_shape": "url",
+    "dry_run_allowed": true,
+    "max_cost_usd": 5.0,
+    "timeout_seconds": 900
+  },
+  {
+    "wish_id": "schedule-calendly",
+    "transcript": "Genie, schedule a thirty minute intro call with Jane on my Calendly next Tuesday afternoon.",
+    "expected_tier": "browser",
+    "expected_tools": [
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_snapshot",
+      "mcp__playwright__browser_click",
+      "mcp__playwright__browser_type"
+    ],
+    "expected_result_shape": "url",
+    "dry_run_allowed": true,
+    "max_cost_usd": 3.0,
+    "timeout_seconds": 600
+  },
+  {
+    "wish_id": "vercel-deploy",
+    "transcript": "Genie, take this index.html I have in /tmp and push it live on Vercel.",
+    "expected_tier": "website",
+    "expected_tools": ["Read", "Write", "Bash"],
+    "expected_result_shape": "url",
+    "dry_run_allowed": false,
+    "max_cost_usd": 1.0,
+    "timeout_seconds": 300
+  },
+  {
+    "wish_id": "github-issues-summary",
+    "transcript": "Genie, look at the top ten open issues on the vercel next dot js repo and give me a one line summary of each.",
+    "expected_tier": "browser",
+    "expected_tools": ["WebFetch", "Bash"],
+    "expected_result_shape": "text",
+    "dry_run_allowed": false,
+    "max_cost_usd": 2.0,
+    "timeout_seconds": 420
+  },
+  {
+    "wish_id": "multi-file-refactor",
+    "transcript": "Genie, refactor the dispatcher module to split event parsing into its own file, update callers, run tests.",
+    "expected_tier": "premium",
+    "expected_tools": ["TodoWrite", "Glob", "Read", "Grep", "Task", "Edit", "Write", "Bash"],
+    "expected_result_shape": "text",
+    "dry_run_allowed": false,
+    "max_cost_usd": 8.0,
+    "timeout_seconds": 1500
+  },
+  {
+    "wish_id": "factcheck-3-subagents",
+    "transcript": "Genie, use the best model. Fact check this claim with three parallel research subagents and tell me which sources say what.",
+    "expected_tier": "premium",
+    "expected_tools": ["TodoWrite", "Task", "WebSearch", "WebFetch"],
+    "expected_result_shape": "text",
+    "dry_run_allowed": false,
+    "max_cost_usd": 6.0,
+    "timeout_seconds": 900
+  },
+  {
+    "wish_id": "firebase-todo-app",
+    "transcript": "Genie, build a simple TODO web app with Firebase auth and Firestore, clean minimal design, and deploy it.",
+    "expected_tier": "website",
+    "expected_tools": ["TodoWrite", "Write", "Read", "Edit", "Bash"],
+    "expected_result_shape": "url",
+    "dry_run_allowed": false,
+    "max_cost_usd": 7.0,
+    "timeout_seconds": 1500
+  }
+]

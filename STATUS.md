@@ -1,0 +1,108 @@
+# Jellyclaw — Status
+
+> Living doc. Update at the start and end of every working day.
+> If this file is stale, don't trust it.
+
+**Last updated:** 2026-04-14 (initial scaffold; no engineering work started)
+**Current phase:** Phase 0 — Repo scaffolding
+**Current milestone target:** M1 (Engine works) — projected week of May 18
+**Engine on:** n/a (not yet bootable)
+**Genie dispatcher:** Claurst (unchanged)
+
+---
+
+## Blockers
+
+None.
+
+Pre-flight questions that should be answered before Phase 02 starts (see
+`MASTER-PLAN.md` §10):
+
+- [ ] Q1: Genie hook taxonomy — any hooks outside Claude Code's set?
+- [ ] Q2: Monthly Anthropic API budget ceiling for tests + burn-in
+- [ ] Q3: jelly-claw IPC surface (sidecar vs child process)
+- [ ] Q4: License choice — MIT or Apache-2.0
+- [ ] Q5: Apple Developer ID / notarization readiness
+- [ ] Q6: Telemetry opt-in vs opt-out policy
+
+---
+
+## Wins this week
+
+- Repo skeleton created under `/Users/gtrush/Downloads/jellyclaw-engine/`
+- Five parallel documentation agents dispatched
+- `engine/SPEC.md`, `engine/SECURITY.md`, `engine/CVE-MITIGATION.md` landed
+- `phases/README.md` + first 4 phase runbooks landed
+- Master plan, status, roadmap produced
+
+---
+
+## Burn rate
+
+| Category | This week | Cumulative |
+|----------|-----------|------------|
+| Anthropic API | $0.00 | $0.00 |
+| OpenRouter | $0.00 | $0.00 |
+| Infra (Fly, Vercel, etc.) | $0.00 | $0.00 |
+| Signing / notarization | $0.00 | $0.00 |
+| **Total** | **$0.00** | **$0.00** |
+
+Budget ceiling for v1.0 (Phases 00–18): **TBD — pending Q2 answer.**
+
+---
+
+## Tests
+
+| Metric | Count |
+|--------|-------|
+| Unit tests passing | 0 |
+| Unit tests failing | 0 |
+| Integration tests passing | 0 |
+| Golden-prompt regression tests | 0 / 5 target |
+| CI green streak (days) | n/a |
+
+---
+
+## Deploys
+
+| Surface | Version | Status |
+|---------|---------|--------|
+| npm (`jellyclaw`) | unpublished | — |
+| brew (`jellyclaw`) | unpublished | — |
+| GitHub repo | private | — |
+| Desktop `.dmg` | unbuilt | — |
+| Docs site | unbuilt | — |
+
+---
+
+## Phase progress
+
+- [ ] Phase 00 — Repo scaffolding
+- [ ] Phase 01 — OpenCode pinning + patching
+- [ ] Phase 02 — Config + provider layer
+- [ ] Phase 03 — Event stream adapter
+- [ ] Phase 04 — Tool parity
+- [ ] Phase 05 — Skills system
+- [ ] Phase 06 — Subagents + hook patch
+- [ ] Phase 07 — MCP client integration
+- [ ] Phase 08 — Permission engine + hooks
+- [ ] Phase 09 — Session persistence + resume
+- [ ] Phase 10 — CLI + HTTP server + library
+- [ ] Phase 11 — Testing harness
+- [ ] Phase 12 — Genie integration behind flag
+- [ ] Phase 13 — Make jellyclaw default in Genie
+- [ ] Phase 14 — Observability + tracing
+- [ ] Phase 15 — Desktop MVP
+- [ ] Phase 16 — Desktop polish
+- [ ] Phase 17 — jelly-claw integration
+- [ ] Phase 18 — Open-source release
+- [ ] Phase 19 — Post-launch stabilization (ongoing)
+
+---
+
+## Daily log
+
+### 2026-04-14
+- Initial scaffold. No code. No tests. Baseline captured.
+- Next action: George executes the 10-item checklist at the end of
+  `MASTER-PLAN.md`.

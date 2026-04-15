@@ -1,0 +1,41 @@
+{
+  "name": "@jellyclaw/engine",
+  "version": "0.0.1",
+  "description": "jellyclaw engine — typed event-driven wrapper around OpenCode",
+  "type": "module",
+  "license": "MIT",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts"
+    },
+    "./events": {
+      "types": "./src/events.ts",
+      "import": "./src/events.ts"
+    },
+    "./config": {
+      "types": "./src/config.ts",
+      "import": "./src/config.ts"
+    },
+    "./providers/anthropic": {
+      "types": "./src/providers/anthropic.ts",
+      "import": "./src/providers/anthropic.ts"
+    },
+    "./providers/openrouter": {
+      "types": "./src/providers/openrouter.ts",
+      "import": "./src/providers/openrouter.ts"
+    }
+  },
+  "files": [
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "vitest run"
+  },
+  "peerDependencies": {
+    "opencode-ai": ">=1.4.4"
+  }
+}
