@@ -54,7 +54,7 @@ export class AnthropicProvider {
    */
   apiKey(): string {
     const fromConfig = this.deps.config.apiKey;
-    const fromEnv = process.env["ANTHROPIC_API_KEY"];
+    const fromEnv = process.env.ANTHROPIC_API_KEY;
     const key = fromConfig ?? fromEnv;
     if (!key) {
       throw new Error(

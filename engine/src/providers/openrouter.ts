@@ -63,7 +63,7 @@ export class OpenRouterProvider {
 
   apiKey(): string {
     const fromConfig = this.deps.config.apiKey;
-    const fromEnv = process.env["OPENROUTER_API_KEY"];
+    const fromEnv = process.env.OPENROUTER_API_KEY;
     const key = fromConfig ?? fromEnv;
     if (!key) {
       throw new Error(

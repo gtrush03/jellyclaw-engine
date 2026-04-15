@@ -16,10 +16,38 @@ import { createLogger, type Logger } from "./logger.js";
 import { AnthropicProvider } from "./providers/anthropic.js";
 import { OpenRouterProvider } from "./providers/openrouter.js";
 
+// Phase 01 — bootstrap + plugin controls (opencode-ai ships compiled; these
+// live jellyclaw-side per patches/README.md).
+export {
+  BindViolationError,
+  OpenCodeExitError,
+  type OpenCodeHandle,
+  OpenCodeStartTimeoutError,
+  OpenCodeVersionError,
+  PortRangeError,
+  type StartOpenCodeOptions,
+  startOpenCode,
+} from "./bootstrap/opencode-server.js";
 export * from "./config.js";
 export * from "./events.js";
 export type { Logger } from "./logger.js";
 export { createLogger } from "./logger.js";
+export {
+  createCachedResolver,
+  type EnrichedToolHookEnvelope,
+  enrichHookEnvelope,
+  MAX_AGENT_CHAIN_DEPTH,
+  type SessionMetadata,
+  type SessionResolver,
+  type ToolHookEnvelope,
+} from "./plugin/agent-context.js";
+export {
+  type ScrubOptions,
+  type ScrubStats,
+  scrubSecrets,
+  scrubToolResult,
+  scrubWithStats,
+} from "./plugin/secret-scrub.js";
 export { AnthropicProvider } from "./providers/anthropic.js";
 export { OpenRouterProvider } from "./providers/openrouter.js";
 

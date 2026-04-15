@@ -65,15 +65,15 @@ async function runCommand(argv: readonly string[]): Promise<number> {
     return 2;
   }
 
-  const pretty = flags["pretty"] === "true";
+  const pretty = flags.pretty === "true";
 
   try {
     const runOpts: Parameters<typeof run>[0] = { wish };
-    const agent = flags["agent"];
+    const agent = flags.agent;
     if (agent !== undefined) runOpts.agent = agent;
-    const cwd = flags["cwd"];
+    const cwd = flags.cwd;
     if (cwd !== undefined) runOpts.cwd = cwd;
-    const configPath = flags["config"];
+    const configPath = flags.config;
     if (configPath !== undefined) runOpts.configPath = configPath;
 
     for await (const event of run(runOpts)) {
