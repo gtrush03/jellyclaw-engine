@@ -3,8 +3,8 @@
 > Living doc. Update at the start and end of every working day.
 > If this file is stale, don't trust it.
 
-**Last updated:** 2026-04-15 (Phase 04 Prompt 04 ✅ — WebFetch + WebSearch stub)
-**Current phase:** Phase 04 — Tool parity (in progress, 4/5 prompts done)
+**Last updated:** 2026-04-15 (Phase 04 ✅ COMPLETE — all 11 tools landed)
+**Current phase:** Phase 05 — Skills system (next)
 **Current milestone target:** M1 (Engine works) — projected week of May 18
 **Engine on:** n/a (not yet bootable)
 **Genie dispatcher:** Claurst (unchanged)
@@ -55,7 +55,7 @@ Budget ceiling for v1.0 (Phases 00–18): **TBD — pending Q2 answer.**
 
 | Metric | Count |
 |--------|-------|
-| Unit tests passing | 364 (+2 benches under BENCH=1) |
+| Unit tests passing | 423 (+2 benches under BENCH=1) |
 | Unit tests failing | 0 |
 | Integration tests passing | 0 |
 | Golden-prompt regression tests | 0 / 5 target |
@@ -81,7 +81,7 @@ Budget ceiling for v1.0 (Phases 00–18): **TBD — pending Q2 answer.**
 - [x] ✅ Phase 01 — OpenCode pinning + patching
 - [x] ✅ Phase 02 — Config + provider layer
 - [x] ✅ Phase 03 — Event stream adapter
-- [ ] Phase 04 — Tool parity
+- [x] ✅ Phase 04 — Tool parity
 - [ ] Phase 05 — Skills system
 - [ ] Phase 06 — Subagents + hook patch
 - [ ] Phase 07 — MCP client integration
@@ -208,5 +208,19 @@ Budget ceiling for v1.0 (Phases 00–18): **TBD — pending Q2 answer.**
   bootstrap. Deps: `undici@^8.1`, `turndown@^7.2`, `ipaddr.js@^2.3`,
   `@types/turndown@^5`. `docs/tools.md` created. 364/364 + 2 skipped ✅
   (28 new). Typecheck ✅, biome ✅.
-- Next action: Phase 04 — Prompt 05 (TodoWrite + Task + NotebookEdit +
-  parity fixture + docs round-out — closes Phase 04). Fresh Claude session.
+- Phase 04 Prompt 05 (TodoWrite + Task + NotebookEdit + parity suite +
+  docs round-out) landed via a 3-agent parallel Opus team. TodoWrite
+  enforces full-list replace + single in_progress invariant via
+  `ctx.session.update`. Task is a thin pass-through to `ctx.subagents`
+  — Phase-04 stub throws `SubagentsNotImplementedError` with a
+  Phase-06 hint. NotebookEdit enforces nbformat v4 with
+  replace/insert/delete + output preservation + cell_type-change reset
+  + atomic rename + read-before-edit invariant. **Parity suite**
+  asserts all 11 tools registered + names match Claude Code canon +
+  every inputSchema deep-equals its JSON fixture + drift list empty.
+  Pre-authored: `engine/src/subagents/{types,stub}.ts`, 6 new error
+  classes, 3 fixtures, `parity-allowed-drift.json`,
+  `zod-to-json-schema@^3.25`. `docs/tools.md` rounded out with full
+  11-tool matrix table + per-tool sections. 423/423 + 2 skipped ✅
+  (59 new). Typecheck ✅, biome ✅. **Phase 04 ✅ COMPLETE.**
+- Next action: Phase 05 — Skills system. Fresh Claude session.

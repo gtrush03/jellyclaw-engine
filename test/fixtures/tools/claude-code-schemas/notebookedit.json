@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "notebook_path": {
+      "description": "The absolute path to the .ipynb file to edit",
+      "type": "string"
+    },
+    "new_source": {
+      "description": "The new source for the cell. Required for replace and insert; ignored for delete.",
+      "type": "string"
+    },
+    "cell_id": {
+      "description": "The id of the cell to edit. If omitted with cell_number, falls back to index lookup.",
+      "type": "string"
+    },
+    "cell_number": {
+      "description": "0-indexed cell position. Used when cell_id is not provided.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "cell_type": {
+      "description": "Cell type. Required when inserting; for replace, changing the type clears outputs and execution_count.",
+      "enum": ["code", "markdown"],
+      "type": "string"
+    },
+    "edit_mode": {
+      "description": "What to do at the located cell. Defaults to replace.",
+      "enum": ["replace", "insert", "delete"],
+      "type": "string"
+    },
+    "clear_outputs": {
+      "description": "When replacing a code cell, wipe its outputs and execution_count. Default false.",
+      "type": "boolean"
+    }
+  },
+  "required": ["notebook_path"]
+}

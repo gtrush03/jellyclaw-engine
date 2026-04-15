@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "todos": {
+      "description": "Updated todo list",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "content": {
+            "description": "A brief title for the task",
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "description": "Task status",
+            "enum": ["pending", "in_progress", "completed", "cancelled"],
+            "type": "string"
+          },
+          "activeForm": {
+            "description": "Present continuous form shown in spinner when in_progress",
+            "type": "string",
+            "minLength": 1
+          },
+          "id": {
+            "description": "Optional stable identifier for the task",
+            "type": "string"
+          }
+        },
+        "required": ["content", "status", "activeForm"]
+      }
+    }
+  },
+  "required": ["todos"]
+}
