@@ -1,3 +1,9 @@
+> **STATUS: superseded by `engine/src/plugin/agent-context.ts`.** This file was authored
+> when we believed opencode-ai would be patchable at the source level. The npm
+> distribution is a compiled binary, so the patch is not applicable. This document
+> is retained as the design-intent record; the live implementation is at
+> `engine/src/plugin/agent-context.ts`.
+
 # [upstream-candidate][security] Fire plugin hooks for subagent tool calls
 #
 # Upstream: OpenCode issue #5894 — plugin hooks (tool.execute.before /

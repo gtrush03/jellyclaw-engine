@@ -1,3 +1,9 @@
+> **STATUS: superseded by `engine/src/plugin/secret-scrub.ts`.** This file was authored
+> when we believed opencode-ai would be patchable at the source level. The npm
+> distribution is a compiled binary, so the patch is not applicable. This document
+> is retained as the design-intent record; the live implementation is at
+> `engine/src/plugin/secret-scrub.ts`.
+
 # [upstream-candidate][security] Scrub credential patterns from tool results
 #
 # Before the model sees a tool result, run it through a credential-pattern
