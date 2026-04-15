@@ -3,8 +3,8 @@
 > Living doc. Update at the start and end of every working day.
 > If this file is stale, don't trust it.
 
-**Last updated:** 2026-04-15 (Phase 07 Prompt 02 ✅ — HTTP + SSE + OAuth + token store landed)
-**Current phase:** Phase 07 — MCP client integration (Prompts 01–02 ✅; 03 pending)
+**Last updated:** 2026-04-15 (Phase 07 ✅ COMPLETE — Playwright MCP via CDP:9333 landed config-only)
+**Current phase:** Phase 08 — Permission engine + hooks (next)
 **Current milestone target:** M1 (Engine works) — projected week of May 18
 **Engine on:** n/a (not yet bootable)
 **Genie dispatcher:** Claurst (unchanged)
@@ -55,7 +55,7 @@ Budget ceiling for v1.0 (Phases 00–18): **TBD — pending Q2 answer.**
 
 | Metric | Count |
 |--------|-------|
-| Unit tests passing | 652 (+3 skipped, +2 benches under BENCH=1) |
+| Unit tests passing | 652 default / 657 opt-in (+3 skipped, +2 benches under BENCH=1, +5 Playwright under JELLYCLAW_PW_MCP_TEST=1) |
 | Integration tests passing | 11 (subagent hook-fire regression) |
 | Unit tests failing | 0 |
 | Integration tests passing | 0 |
@@ -85,7 +85,7 @@ Budget ceiling for v1.0 (Phases 00–18): **TBD — pending Q2 answer.**
 - [x] ✅ Phase 04 — Tool parity
 - [x] ✅ Phase 05 — Skills system
 - [x] ✅ Phase 06 — Subagents + hook patch
-- [ ] Phase 07 — MCP client integration
+- [x] ✅ Phase 07 — MCP client integration
 - [ ] Phase 08 — Permission engine + hooks
 - [ ] Phase 09 — Session persistence + resume
 - [ ] Phase 10 — CLI + HTTP server + library
@@ -257,3 +257,20 @@ Budget ceiling for v1.0 (Phases 00–18): **TBD — pending Q2 answer.**
   and `oauth-provider`. Registry dispatch extended; `mcp-list.ts` smoke
   passes. `docs/mcp.md` authored. Typecheck ✅, biome ✅, vitest 652/655
   + 3 skipped ✅ (+66 net new). Next: 07.03 Playwright MCP smoke.
+- Phase 07 Prompt 03 (Playwright MCP via CDP:9333) landed as
+  **config-only** — zero code under `engine/src/mcp/`. `package.json`
+  pins `@playwright/mcp@0.0.41` exact.
+  `scripts/playwright-test-chrome.sh` spawns headless Chrome on
+  `JELLYCLAW_TEST_CHROME_PORT` (default 9333) with a tmp user-data-dir;
+  whole-port-token regex refuses 9222 (exit 64).
+  `test/integration/playwright-mcp.test.ts` (5 tests): config-9222
+  refusal; 21 namespaced tools registered; navigate + screenshot PNG
+  end-to-end under `$TMPDIR/jellyclaw-test-artifacts/`; datadir
+  cleanup; TCP-probe-9222 never-speaks guard.
+  **Deviation**: suite gated behind `JELLYCLAW_PW_MCP_TEST=1` to avoid
+  starving opencode-server e2e's 20s startup timeout (mirrors
+  `.bench.ts`/`BENCH=1`). Default `bun run test` → 652/660 + 8 skipped;
+  `JELLYCLAW_PW_MCP_TEST=1 bun run test` → 657/660 + 3 skipped.
+  `docs/playwright-setup.md` authored + `docs/mcp.md` section added.
+  **Phase 07 ✅ COMPLETE.** Core-engine group now 1/5. Next: Phase 08
+  permission engine + hooks. Fresh Claude session.

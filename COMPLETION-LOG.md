@@ -1,11 +1,11 @@
 # Jellyclaw Engine — Completion Log
 
 **Last updated:** 2026-04-15
-**Current phase:** Phase 07 — MCP client integration (next)
+**Current phase:** Phase 08 — Permission engine + hooks (next)
 
 ## Overall progress
 
-[███████░░░░░░░░░░░░░] 7/20 phases complete (35%)
+[████████░░░░░░░░░░░░] 8/20 phases complete (40%)
 
 ## Phase checklist
 
@@ -19,7 +19,7 @@
 - [x] ✅ Phase 06 — Subagent system + hook patch
 
 ### Core engine
-- [ ] Phase 07 — MCP client integration
+- [x] ✅ Phase 07 — MCP client integration
 - [ ] Phase 08 — Permission engine + hooks
 - [ ] Phase 09 — Session persistence + resume
 - [ ] Phase 10 — CLI + HTTP server + library
@@ -801,13 +801,13 @@
     dispatch + semaphore + isolated context.
 
 ### Phase 07 — MCP client integration
-- **Status:** 🔄 In progress (Prompts 01–02 ✅; Prompt 03 pending)
+- **Status:** ✅ Complete
 - **Started:** 2026-04-15
-- **Completed:** —
-- **Duration (actual):** —
-- **Session count:** 2
-- **Commits:** 4f532ef (07.01), c6990e6 (07.02)
-- **Tests passing:** 652/655 + 3 skipped (+94 over Phase 06 baseline: credential-strip 12, client-stdio 6, registry 10, namespacing 14, token-store 20, client-http 6, client-sse 6, oauth 20)
+- **Completed:** 2026-04-15
+- **Duration (actual):** ~1 day (3 sessions)
+- **Session count:** 3
+- **Commits:** 4f532ef (07.01), c6990e6 (07.02), 51b8648 (07.03)
+- **Tests passing:** default 652/660 + 8 skipped; opt-in (`JELLYCLAW_PW_MCP_TEST=1`) 657/660 + 3 skipped (+99 over Phase 06 baseline: credential-strip 12, client-stdio 6, registry 10, namespacing 14, token-store 20, client-http 6, client-sse 6, oauth 20, playwright-mcp 5)
 - **Notes:**
   - ✅ Prompt 01 (stdio MCP client) — landed via 2-agent parallel Opus team.
     SDK pinned to `@modelcontextprotocol/sdk@^1` (resolved 1.29.0).
@@ -897,6 +897,62 @@
     covers the manual smoke the script was intended to replace.
     Typecheck clean, biome clean, vitest 652/655 + 3 skipped (+66 net
     new). Next: Prompt 03 — Playwright MCP integration smoke.
+  - ✅ Prompt 03 (Playwright MCP via CDP:9333) — **config-only
+    integration, zero code added under `engine/src/mcp/`**. Proves the
+    Phase 07.02 transport abstraction is correct by driving a real
+    `@playwright/mcp@0.0.41` stdio server end-to-end with nothing more
+    than a `JellyclawConfig.mcp[]` entry.
+    `package.json` — `@playwright/mcp@0.0.41` pinned **exact** (no
+    caret) per `patches/004-playwright-mcp-pin.md`; later releases
+    regress on `browser_fill_form` / `browser_select_option` /
+    `browser_run_code` / some `browser_tabs` variants.
+    `scripts/playwright-test-chrome.sh` — Chrome lifecycle helper;
+    `start` picks `JELLYCLAW_TEST_CHROME_PORT` (default 9333), waits
+    up to 15 s for CDP to respond, writes pidfile + datadirfile
+    sentinels; `stop` is idempotent (SIGTERM → SIGKILL 3 s grace,
+    `rm -rf` of temp user-data-dir). Whole-port-token regex refuses
+    any 9222 reference in args/env (exit 64). Works on macOS
+    (`/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`)
+    and Linux (`google-chrome`/`chromium`); `JELLYCLAW_TEST_CHROME_BIN`
+    override for other paths.
+    `test/fixtures/mcp/playwright.test-config.json` — config targeting
+    `http://127.0.0.1:9333`; reviewer can grep any test line for
+    `9333` to confirm isolation.
+    `test/integration/playwright-mcp.test.ts` (5 tests):
+    (1) refuses configs naming 9222 via `assertNoForbiddenPort` regex
+    whole-port-token guard; (2) registers all 21 namespaced tools —
+    asserts the load-bearing subset (`browser_navigate`,
+    `browser_take_screenshot`) and logs the full list to stderr so
+    upstream renames at 0.0.42+ surface as a CI diff rather than a
+    cryptic miss; (3) navigates to `http://example.com`, calls
+    `browser_take_screenshot`, materializes a valid PNG (checks magic
+    `89 50 4E 47`) under `$TMPDIR/jellyclaw-test-artifacts/` for human
+    eyeball review — handles both image-content-block and file-path
+    shapes of the tool's return; (4) confirms datadir sentinel exists
+    during run + is removed by `stop`; (5) TCP connect-probe to 9222
+    (immediately destroyed) logs whether anything's listening but
+    never speaks to it. `assertNoForbiddenPort` is called on every
+    string produced by the suite (config text, helper stdout, args,
+    datadir path).
+    `docs/mcp.md` — Playwright section added; `docs/playwright-setup.md`
+    authored (prod on 9222, tests on 9333, helper-script usage, tool
+    surface reference, common pitfalls).
+    **Deviation from spec — test gating:** the Playwright suite does
+    ~45 s of real Chrome work; running in parallel with
+    `engine/src/bootstrap/opencode-server.test.ts` starves the
+    latter's 20 s internal startup timeout under CPU contention.
+    Gated behind `JELLYCLAW_PW_MCP_TEST=1` (mirrors how `.bench.ts`
+    files are gated by `BENCH=1`). Default `bun run test` → 652/660
+    + 8 skipped; `JELLYCLAW_PW_MCP_TEST=1 bun run test` →
+    657/660 + 3 skipped (the 5 Playwright tests included). Phase 11's
+    CI workflow will flip the env flag.
+    Typecheck ✅, biome ✅ on all Phase 07.03 files. Manual smoke:
+    `scripts/playwright-test-chrome.sh start` spawns Chrome 147, CDP
+    responds on 9333, stop cleans up. 9222 guard smoke:
+    `JELLYCLAW_TEST_CHROME_PORT=9222 scripts/playwright-test-chrome.sh
+    start` → exit 64 with the expected refusal message.
+    **Phase 07 ✅ COMPLETE.** Core-engine group now 1/5. Next:
+    Phase 08 — permission engine + hooks.
 
 ### Phase 08 — Permission engine + hooks
 - **Status:** ⏳ Not started
@@ -1022,6 +1078,7 @@
 
 | Date | Session # | Phase | Sub-prompt | Outcome |
 |---|---|---|---|---|
+| 2026-04-15 | 21 | 07 | 03-playwright-mcp-integration | ✅ **Phase 07 COMPLETE.** Phase 07 Prompt 03 landed as **config-only** integration — zero code under `engine/src/mcp/`, proving the Phase 07.02 transport abstraction is correct. `package.json` pins `@playwright/mcp@0.0.41` exact (no caret) per `patches/004-playwright-mcp-pin.md`. `scripts/playwright-test-chrome.sh` spawns headless Chrome on `JELLYCLAW_TEST_CHROME_PORT` (default 9333), waits ≤15s for CDP, pidfile + datadirfile sentinels, SIGTERM→SIGKILL 3s grace on stop, whole-port-token regex refuses 9222 (exit 64). `test/fixtures/mcp/playwright.test-config.json` hard-wires `127.0.0.1:9333`. `test/integration/playwright-mcp.test.ts` (5 tests): refuses 9222 configs; registers all 21 namespaced tools (asserts `browser_navigate` + `browser_take_screenshot`, logs full list to stderr for upstream-rename diff); navigates to `example.com` + screenshots with valid PNG magic (`89 50 4E 47`) under `$TMPDIR/jellyclaw-test-artifacts/`; confirms datadir cleanup; TCP-probe 9222 never-speaks guard. `assertNoForbiddenPort` called on every produced string. `docs/mcp.md` Playwright section; `docs/playwright-setup.md` full walkthrough. **Deviation:** Playwright suite gated behind `JELLYCLAW_PW_MCP_TEST=1` — ~45s real Chrome work starved opencode-server e2e's 20s internal timeout under CPU contention; mirrors `.bench.ts`/`BENCH=1` pattern, Phase 11 CI will flip the flag. Default `bun run test` → 652/660 + 8 skipped; `JELLYCLAW_PW_MCP_TEST=1 bun run test` → 657/660 + 3 skipped (5 Playwright tests included). Typecheck ✅, biome ✅, manual helper-script smoke passed (pid/datadir/CDP-up/clean teardown), 9222 refusal smoke exit=64. Core-engine group 1/5. Next: Phase 08 permission engine + hooks. |
 | 2026-04-15 | 20 | 07 | 02-mcp-client-http-sse | 🔄 Phase 07 Prompt 02 landed via 5-agent parallel Opus team. Root `JellyclawConfig.mcp` is now a `z.discriminatedUnion` on `transport: "stdio"|"http"|"sse"` with `OAuthConfig` sub-schema. (A) `token-store.ts` (20 tests) — 0600-mode `~/.jellyclaw/mcp-tokens.json`, `stat.mode & 0o077` pre-read check, atomic `.tmp`+rename+chmod, token-scrubbed errors. (B) `oauth.ts` (20 tests) — implements SDK's `OAuthClientProvider` with PKCE S256, loopback callback `awaitOAuthCallback()` on `127.0.0.1:47419`, state-verification + `OAuthStateMismatchError`, `OAuthCallbackPortInUseError` on bind conflict, AbortSignal cancel, cross-platform browser opener + stderr fallback. (C) `client-http.ts` (6 tests) — wraps `StreamableHTTPClientTransport`; `exactOptionalPropertyTypes` friction on `Client.connect` handled via single-point cast. (D) `client-sse.ts` (6 tests) — wraps deprecated `SSEClientTransport` + shared OAuth plumbing + `[500,1000,2000,4000,8000]`ms×5 reconnect. **SDK limitation documented**: SSE `onclose` does not fire from server-side stream drops; test uses a module-scope monkey-patch to force the signal so the reconnect contract is still exercised. (E) `namespacing.ts` (14 tests) — extracted from types.ts, stricter `[a-z0-9-]+` server names + `InvalidServerNameError`/`InvalidToolNameError`; legacy aliases re-exported from types.ts. Fixtures: `http-echo.ts` (StreamableHTTP with `requireAuth`/`rejectWithStatus`) + `oauth-provider.ts` (minimal OAuth 2.1 AS, PKCE S256 verification, rotating refresh, `issueTokenDirectly` + `lastAuthorizeRequest`). Registry dispatch switch extended; `mcp-list.ts` smoke `mcp: 1 live, 0 dead, 0 retrying` + `mcp__echo__echo`. `docs/mcp.md` authored. Deviations: `eventsource@^2` skipped (SDK 1.29.0 bundles v3); `mcp-oauth-demo.ts` omitted (covered by oauth.test.ts). Typecheck ✅, biome ✅, vitest 652/655 + 3 skipped (+66 net new). Next: 07.03 Playwright MCP integration smoke. |
 | 2026-04-15 | 19 | 07 | 01-mcp-client-stdio | 🔄 Phase 07 Prompt 01 landed via 2-agent parallel Opus team against a pre-authored `engine/src/mcp/types.ts` contract. `@modelcontextprotocol/sdk@^1` installed (1.29.0). (A) `credential-strip.ts` (12 tests) — `buildCredentialScrubber` over `Object.values(env)`, longest-first, metachar-escaped, <6-char / empty secrets skipped via `onSkipped`, identity fallback, `REDACTED` constant. (B) `client-stdio.ts` (6 tests) — `createStdioMcpClient` wraps SDK `Client` over `StdioClientTransport` with serialized `#enqueue` queue, 10 s connect timeout, cancellable `[500, 1_000, 2_000, 4_000, 8_000]` × 5 backoff → `dead`, SIGTERM→SIGKILL (3 s grace), credential scrubber on stderr/callTool-errors/timeouts/reconnect-reasons/listener-errors, `__testPid__` accessor for kill tests, zero `env` logging. (C) `registry.ts` (10 tests) — `McpRegistry` with `Promise.allSettled` parallel connect, DI `clientFactory`, 30 s background retry rebuilding dead clients, snapshot(`live`/`dead`/`retrying`), namespaced routing, `McpUnknownServerError`/`McpNotReadyError`. Barrel `index.ts`; fixture `test/fixtures/mcp/echo-server.ts`; smoke `engine/scripts/mcp-list.ts` (prints `mcp: 1 live, 0 dead, 0 retrying` + `mcp__echo__echo` against `~/.jellyclaw/jellyclaw.json`). Typecheck ✅, biome ✅, vitest 586/589 + 3 skipped ✅ (+28 new). Root `JellyclawConfig.mcp` schema deliberately left untouched — Prompt 02 owns the transport-discriminant extension. Next: 07.02 HTTP+SSE transports + OAuth. |
 | 2026-04-15 | 18 | 06 | 03-verify-hook-patch | ✅ **Phase 06 COMPLETE.** Phase 06 Prompt 03 landed via 2-agent parallel Opus team. Pivot forced by `patches/README.md`: no `.patch` file exists (opencode-ai ships compiled binary); the hook-fire fix lives as `engine/src/plugin/agent-context.ts`. Prompt rescoped: static "sentinel on node_modules" → static surface check on the replacement file + its three exports. (A) `engine/src/hooks/test-harness.ts` (test-only `HookRecorder` with `tool_use_id` → name map); `test/integration/fixtures/agents/hook-probe/AGENT.md`; `test/integration/subagent-hooks.test.ts` (11 tests + 1 skipped negative control) locks in the #5894 invariants — `session_id !== parent`, `PostToolUse` matches, audit chain, input contains "echo probe", event ordering subagent.start → tool.call.* → subagent.end, `subagent_path` correctness, `enrichHookEnvelope` integration (agentChain === [parent]). (B) `scripts/verify-hook-patch.ts` two-step verifier (static + vitest subprocess) exits with exact `patch verified: static + dynamic`; `package.json` adds `test:hook-patch`; `docs/development.md` "Upstream rebase checklist" added. Typecheck ✅, biome ✅, vitest 558/561 + 3 skipped ✅, `bun run test:hook-patch` green end-to-end. Foundation group now 7/7. Next: Phase 07 MCP client. |
