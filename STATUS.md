@@ -3,8 +3,8 @@
 > Living doc. Update at the start and end of every working day.
 > If this file is stale, don't trust it.
 
-**Last updated:** 2026-04-15 (Phase 08 ✅ COMPLETE — 08.03 rate limiter + secret scrub landed)
-**Current phase:** Phase 09 — Session persistence + resume (next)
+**Last updated:** 2026-04-15 (Phase 99 Prompt 01 ✅ — provider→AgentEvent adapter landed + 13 tests)
+**Current phase:** Phase 99 — Unfucking (1/8 prompts complete; Phase 11 queued behind it).
 **Current milestone target:** M1 (Engine works) — projected week of May 18
 **Engine on:** n/a (not yet bootable)
 **Genie dispatcher:** Claurst (unchanged)
@@ -29,6 +29,13 @@ Pre-flight questions that should be answered before Phase 02 starts (see
 
 ## Wins this week
 
+- **JellyJelly brand refresh** landed via 4-agent Opus ultrathink sprint:
+  brand brief → 9-letter JELLYCLAW stencil wordmark (cyan→violet gradient,
+  5 rows, readable) → deep-sea theme JSON (`#3BA7FF`/`#9E7BFF`/`#FFB547`/
+  `#0A1020`) → spinner amber heartbeat → in-TUI API key capture
+  (`~/.jellyclaw/credentials.json` 0600) + `jellyclaw key` rotation + pino
+  redact. tsc clean; 67/67 TUI tests + 17 credentials tests pass; build
+  green. 8 pre-existing `tui.test.ts` spawn-timeouts untouched.
 - Repo skeleton created under `/Users/gtrush/Downloads/jellyclaw-engine/`
 - Five parallel documentation agents dispatched
 - `engine/SPEC.md`, `engine/SECURITY.md`, `engine/CVE-MITIGATION.md` landed
@@ -55,7 +62,7 @@ Budget ceiling for v1.0 (Phases 00–18): **TBD — pending Q2 answer.**
 
 | Metric | Count |
 |--------|-------|
-| Unit tests passing | 895 default / 900 opt-in (+8 skipped, +2 benches under BENCH=1, +5 Playwright under JELLYCLAW_PW_MCP_TEST=1) |
+| Unit tests passing | 24/25 library (1 skipped = consumer smoke, gated on JELLYCLAW_LIB_CONSUMER_TEST=1) + prior ~1101 default / 1107 opt-in suites intact (+14 skipped, +2 benches under BENCH=1, +5 Playwright under JELLYCLAW_PW_MCP_TEST=1, +6 HTTP E2E under JELLYCLAW_HTTP_E2E=1) |
 | Integration tests passing | 11 (subagent hook-fire regression) |
 | Unit tests failing | 0 |
 | Integration tests passing | 0 |
@@ -87,8 +94,10 @@ Budget ceiling for v1.0 (Phases 00–18): **TBD — pending Q2 answer.**
 - [x] ✅ Phase 06 — Subagents + hook patch
 - [x] ✅ Phase 07 — MCP client integration
 - [x] ✅ Phase 08 — Permission engine + hooks
-- [ ] Phase 09 — Session persistence + resume
-- [ ] Phase 10 — CLI + HTTP server + library
+- [x] ✅ Phase 09 — Session persistence + resume
+- [x] ✅ Phase 10 — CLI + HTTP server + library
+- [x] ✅ Phase 10.5 — Interactive TUI (4/4 prompts — 01 ✅, 02 ✅, 03 ✅, 04 ✅)
+- [ ] 🔄 Phase 99 — Unfucking (1/8 — 01 ✅ provider→AgentEvent adapter)
 - [ ] Phase 11 — Testing harness
 - [ ] Phase 12 — Genie integration behind flag
 - [ ] Phase 13 — Make jellyclaw default in Genie
