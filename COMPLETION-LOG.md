@@ -806,7 +806,7 @@
 - **Completed:** —
 - **Duration (actual):** —
 - **Session count:** 1
-- **Commits:** (pending commit for 07.01)
+- **Commits:** 4f532ef
 - **Tests passing:** 586/589 + 3 skipped (+28 new: credential-strip 12, client-stdio 6, registry 10)
 - **Notes:**
   - ✅ Prompt 01 (stdio MCP client) — landed via 2-agent parallel Opus team.
