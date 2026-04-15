@@ -3,8 +3,8 @@
 > Living doc. Update at the start and end of every working day.
 > If this file is stale, don't trust it.
 
-**Last updated:** 2026-04-15 (Phase 07 Prompt 01 ✅ — stdio MCP client + credential scrubber + registry landed)
-**Current phase:** Phase 07 — MCP client integration (Prompt 01 ✅; 02–03 pending)
+**Last updated:** 2026-04-15 (Phase 07 Prompt 02 ✅ — HTTP + SSE + OAuth + token store landed)
+**Current phase:** Phase 07 — MCP client integration (Prompts 01–02 ✅; 03 pending)
 **Current milestone target:** M1 (Engine works) — projected week of May 18
 **Engine on:** n/a (not yet bootable)
 **Genie dispatcher:** Claurst (unchanged)
@@ -55,7 +55,7 @@ Budget ceiling for v1.0 (Phases 00–18): **TBD — pending Q2 answer.**
 
 | Metric | Count |
 |--------|-------|
-| Unit tests passing | 586 (+3 skipped, +2 benches under BENCH=1) |
+| Unit tests passing | 652 (+3 skipped, +2 benches under BENCH=1) |
 | Integration tests passing | 11 (subagent hook-fire regression) |
 | Unit tests failing | 0 |
 | Integration tests passing | 0 |
@@ -241,3 +241,19 @@ Budget ceiling for v1.0 (Phases 00–18): **TBD — pending Q2 answer.**
   Typecheck ✅, biome ✅, vitest 586/589 + 3 skipped ✅ (+28 new). Root
   `JellyclawConfig.mcp` schema left untouched — Prompt 02 owns the
   transport-discriminant extension with HTTP+SSE + OAuth.
+- Phase 07 Prompt 02 (HTTP + SSE + OAuth) landed via 5-agent parallel Opus
+  team. Root `JellyclawConfig.mcp` now a `z.discriminatedUnion` on
+  `transport: "stdio"|"http"|"sse"` with `OAuthConfig` sub-schema.
+  (A) `token-store.ts` (20 tests) — 0600-mode store with pre-read mode
+  check, atomic write, token-scrubbed errors. (B) `oauth.ts` (20 tests)
+  — SDK `OAuthClientProvider` impl with PKCE S256, loopback callback
+  listener `awaitOAuthCallback()`, state-mismatch + port-in-use errors,
+  cross-platform browser opener. (C) `client-http.ts` (6 tests) — wraps
+  `StreamableHTTPClientTransport`. (D) `client-sse.ts` (6 tests) — wraps
+  deprecated `SSEClientTransport`; **SDK limitation**: SSE `onclose`
+  does not fire from server-side stream drops, test monkey-patches the
+  transport to force the signal. (E) `namespacing.ts` (14 tests) —
+  extracted + stricter `[a-z0-9-]+` server names. Fixtures: `http-echo`
+  and `oauth-provider`. Registry dispatch extended; `mcp-list.ts` smoke
+  passes. `docs/mcp.md` authored. Typecheck ✅, biome ✅, vitest 652/655
+  + 3 skipped ✅ (+66 net new). Next: 07.03 Playwright MCP smoke.
