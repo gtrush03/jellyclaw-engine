@@ -14,6 +14,7 @@
 
 import { randomUUID } from "node:crypto";
 import { runAgentLoop } from "../agents/loop.js";
+import { loadSoul } from "../agents/soul.js";
 import type { AgentEvent } from "../events.js";
 import { HookRegistry } from "../hooks/registry.js";
 import type { RunOptions } from "../internal.js";
@@ -135,6 +136,9 @@ async function* realRunFn(opts: RunOptions): AsyncIterable<AgentEvent> {
   process.once("SIGINT", onSig);
   process.once("SIGTERM", onSig);
   try {
+    // Inject jellyclaw's default voice. `loadSoul()` honours both the env
+    // kill-switch (JELLYCLAW_SOUL=off → null) and ~/.jellyclaw/soul.md.
+    const soul = await loadSoul({ logger });
     yield* runAgentLoop({
       provider,
       hooks,
@@ -145,6 +149,7 @@ async function* realRunFn(opts: RunOptions): AsyncIterable<AgentEvent> {
       cwd: opts.cwd ?? process.cwd(),
       signal: ac.signal,
       logger,
+      ...(soul !== null ? { systemPrompt: soul } : {}),
     });
   } finally {
     process.off("SIGINT", onSig);

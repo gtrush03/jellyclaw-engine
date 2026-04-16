@@ -15,6 +15,7 @@ import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 
 import type { AgentEvent } from "../events.js";
 import type { JellyclawClient } from "./client.js";
+import { BootAnimation } from "./components/boot-animation.js";
 import { InputBox } from "./components/input-box.js";
 import { PermissionModal } from "./components/permission-modal.js";
 import { Splash } from "./components/splash.js";
@@ -67,6 +68,9 @@ export function App(props: AppProps): JSX.Element {
 
   const [state, dispatch] = useReducer(reduce, initialState ?? createInitialState({ cwd }));
   const [draft, setDraft] = useState("");
+  const [bootDone, setBootDone] = useState<boolean>(
+    initialState !== undefined || reducedMotion,
+  );
   const [confirmExitMsg, setConfirmExitMsg] = useState<string | null>(null);
   const confirmExitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const exitArmed = useRef(false);
@@ -286,12 +290,23 @@ export function App(props: AppProps): JSX.Element {
         tick={state.tick}
         reducedMotion={reducedMotion}
       />
-      {/* Splash stays pinned at top for the duration of the session — new
-          content scrolls below it, it never unmounts. */}
-      <Splash cwd={cwd} model={state.model} sessionId={state.sessionId} />
+      {/* Boot animation plays once at startup, then yields to the real splash.
+          Splash itself stays pinned at top for the duration of the session —
+          new content scrolls below it, it never unmounts. */}
+      {bootDone ? (
+        <Splash cwd={cwd} model={state.model} sessionId={state.sessionId} />
+      ) : (
+        <BootAnimation reducedMotion={reducedMotion} onDone={() => setBootDone(true)} />
+      )}
       <Box flexDirection="column" flexGrow={1}>
         {state.items.length > 0 || state.runId !== null ? (
-          <Transcript items={state.items} rows={transcriptRows} sessionId={state.sessionId} />
+          <Transcript
+            items={state.items}
+            rows={transcriptRows}
+            sessionId={state.sessionId}
+            status={state.status}
+            reducedMotion={reducedMotion}
+          />
         ) : null}
       </Box>
       {state.pendingPermission !== null ? (

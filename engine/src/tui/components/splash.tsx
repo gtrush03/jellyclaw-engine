@@ -1,18 +1,21 @@
 /**
- * Startup splash — single-line premium wordmark + tagline, shown on first
- * launch (no session, empty transcript). Intentionally avoids multi-row ASCII
- * stencils: those are fragile across terminals (column alignment breaks on
- * half-block chars with non-monospaced widths, and any missing letter
- * definition prints as garbage). Instead we lean on terminal strengths:
- * a single bold line painted with a per-character truecolor
- * cyan→violet→blush gradient, flanked by a jellyfish glyph.
+ * Startup splash — premium wordmark + tagline, shown on first launch (no
+ * session, empty transcript). Intentionally avoids multi-row ASCII stencils:
+ * those are fragile across terminals (column alignment breaks on half-block
+ * chars with non-monospaced widths, and any missing letter definition prints
+ * as garbage). Instead we lean on terminal strengths: a single bold wordmark
+ * painted with a per-character truecolor cyan→violet→blush gradient, flanked
+ * by a jellyfish glyph, with a thin gradient underline for depth.
  *
  * Rendered inside the transcript area; once the user sends a prompt (or a
  * session resumes), the `App` swaps it for the live `<Transcript />`.
+ *
+ * Compact mode (once a session exists) collapses to a 2-line header so the
+ * splash stays pinned without eating screen real estate.
  */
 
 import { Box, Text } from "ink";
-import { brand, GRADIENT_JELLY, gradient } from "../theme/brand.js";
+import { brand, GRADIENT_BELL, GRADIENT_JELLY, gradient } from "../theme/brand.js";
 
 export interface SplashProps {
   /** CWD printed under the tagline — short form. */
@@ -52,9 +55,7 @@ export function Splash(props: SplashProps): JSX.Element {
           <Text color={brand.medusaViolet}>{shortCwd(props.cwd)}</Text>
         </Box>
         <Box>
-          <Text color={brand.tidewaterDim}>
-            {"\u2500".repeat(Math.min(64, shortCwd(props.cwd).length + 40))}
-          </Text>
+          <Text>{gradient("\u2500".repeat(Math.min(64, shortCwd(props.cwd).length + 40)), GRADIENT_BELL)}</Text>
         </Box>
       </Box>
     );
@@ -65,10 +66,11 @@ export function Splash(props: SplashProps): JSX.Element {
   return (
     <Box flexDirection="column" paddingX={2} paddingY={1}>
       <Box>
-        <Text color={brand.blushPink}>{"\u{1FABC}"}</Text>
-      </Box>
-      <Box marginTop={1}>
+        <Text color={brand.blushPink}>{"\u{1FABC}  "}</Text>
         <Text bold>{gradient("jellyclaw", GRADIENT_JELLY)}</Text>
+      </Box>
+      <Box>
+        <Text>{gradient("\u2500".repeat(28), GRADIENT_JELLY)}</Text>
       </Box>
       <Box marginTop={1}>
         <Text color={brand.tidewater}>{tagline}</Text>
@@ -76,12 +78,12 @@ export function Splash(props: SplashProps): JSX.Element {
       <Box marginTop={1}>
         {hasModel ? (
           <>
-            <Text color={brand.tidewater}>model </Text>
+            <Text color={brand.tidewaterDim}>model </Text>
             <Text color={brand.jellyCyan}>{props.model}</Text>
             <Text color={brand.tidewaterDim}>{"  \u00B7  "}</Text>
           </>
         ) : null}
-        <Text color={brand.tidewater}>cwd </Text>
+        <Text color={brand.tidewaterDim}>cwd </Text>
         <Text color={brand.medusaViolet}>{shortCwd(props.cwd)}</Text>
       </Box>
       <Box marginTop={1}>
