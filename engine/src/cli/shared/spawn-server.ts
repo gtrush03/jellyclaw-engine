@@ -188,18 +188,34 @@ export async function spawnEmbeddedServer(
 // waitForHealth
 // ---------------------------------------------------------------------------
 
-export async function waitForHealth(baseUrl: string, timeoutMs = 5_000): Promise<void> {
+export async function waitForHealth(
+  baseUrl: string,
+  tokenOrTimeout?: string | number,
+  maybeTimeoutMs?: number,
+): Promise<void> {
+  // Backwards-compat overload: (baseUrl, timeoutMs) still works for tests.
+  const token = typeof tokenOrTimeout === "string" ? tokenOrTimeout : undefined;
+  const timeoutMs =
+    typeof tokenOrTimeout === "number"
+      ? tokenOrTimeout
+      : typeof maybeTimeoutMs === "number"
+        ? maybeTimeoutMs
+        : 15_000;
+
   const deadline = Date.now() + timeoutMs;
+  const headers: Record<string, string> = {};
+  if (token !== undefined && token.length > 0) headers.Authorization = `Bearer ${token}`;
+
   let lastErr: unknown = null;
   while (Date.now() < deadline) {
     try {
-      const res = await fetch(`${baseUrl}/v1/health`);
+      const res = await fetch(`${baseUrl}/v1/health`, { headers });
       if (res.status === 200) return;
       lastErr = new Error(`/v1/health returned ${res.status}`);
     } catch (err) {
       lastErr = err;
     }
-    await sleep(50);
+    await sleep(100);
   }
   const detail = lastErr instanceof Error ? lastErr.message : String(lastErr);
   throw new TuiHealthTimeoutError(
