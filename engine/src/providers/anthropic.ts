@@ -30,6 +30,13 @@ import type { Provider, ProviderChunk, ProviderRequest } from "./types.js";
  */
 export const BETA_EXTENDED_CACHE_TTL = "extended-cache-ttl-2025-04-11";
 
+/**
+ * Beta header required to unlock 1M-token context window on Claude Opus 4.6
+ * (and Sonnet 4.6). Applied automatically when `model` starts with
+ * `claude-opus-4-6` or `claude-sonnet-4-6`.
+ */
+export const BETA_CONTEXT_1M = "context-1m-2025-08-07";
+
 export interface AnthropicProviderDeps {
   apiKey: string;
   baseURL?: string;
@@ -147,9 +154,12 @@ export class AnthropicProvider implements Provider {
     };
 
     const baseHeaders: Record<string, string> = {};
-    if (planned.hasOneHourBreakpoint) {
-      baseHeaders["anthropic-beta"] = BETA_EXTENDED_CACHE_TTL;
+    const betas: string[] = [];
+    if (planned.hasOneHourBreakpoint) betas.push(BETA_EXTENDED_CACHE_TTL);
+    if (req.model.startsWith("claude-opus-4-6") || req.model.startsWith("claude-sonnet-4-6")) {
+      betas.push(BETA_CONTEXT_1M);
     }
+    if (betas.length > 0) baseHeaders["anthropic-beta"] = betas.join(",");
 
     const t0 = this.clock();
     let attempt = 0;

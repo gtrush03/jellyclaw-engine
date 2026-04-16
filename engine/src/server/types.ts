@@ -70,6 +70,18 @@ export interface RunEntry {
 // RunManager — constructed once per app, injected into routes
 // ---------------------------------------------------------------------------
 
+/**
+ * A single prior-turn message replayed from the session JSONL transcript and
+ * handed to {@link AgentLoopOptions.priorMessages}. Shape is intentionally
+ * minimal (Anthropic `MessageParam`-compatible for `content: string`) so the
+ * agent loop can cast it straight onto the working messages array without
+ * additional normalization.
+ */
+export interface PriorMessage {
+  readonly role: "user" | "assistant";
+  readonly content: string;
+}
+
 export interface CreateRunOptions {
   readonly prompt: string;
   readonly sessionId?: string;
@@ -81,6 +93,12 @@ export interface CreateRunOptions {
   readonly allowedTools?: readonly string[];
   readonly mcpConfig?: string;
   readonly cwd?: string;
+  /**
+   * Conversation history from prior turns in this session. When set, passed
+   * through verbatim to the agent loop. RunManager populates this
+   * automatically from the session JSONL when `sessionId` is provided.
+   */
+  readonly priorMessages?: ReadonlyArray<PriorMessage>;
 }
 
 export interface ResumeRunOptions {

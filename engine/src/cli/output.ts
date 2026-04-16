@@ -132,7 +132,10 @@ class TextWriter implements OutputWriter {
       case "session.completed":
       case "usage.updated":
       case "stream.ping":
-        // Not user-facing chrome; suppressed in text mode.
+      case "user.prompt":
+        // Not user-facing chrome; suppressed in text mode. (user.prompt is
+        // persisted to the JSONL transcript; echoing it back to stdout would
+        // duplicate what the TUI already rendered.)
         return;
       default: {
         const _exhaustive: never = event;

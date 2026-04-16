@@ -21,6 +21,8 @@ import { EventEmitter } from "node:events";
 
 import type { Logger } from "pino";
 
+import { access } from "node:fs/promises";
+
 import { runAgentLoop } from "../agents/loop.js";
 import type { AgentEvent } from "../events.js";
 import type { HookRegistry } from "../hooks/registry.js";
@@ -31,6 +33,7 @@ import type { Db, JsonlWriter } from "../session/index.js";
 import {
   openJsonl,
   projectHash,
+  replayJsonl,
   resumeSession,
   SessionPaths,
   SessionWriter,
@@ -38,6 +41,7 @@ import {
 import type {
   BufferedEvent,
   CreateRunOptions,
+  PriorMessage,
   ResumeRunOptions,
   RunEntry,
   RunManager,
@@ -48,6 +52,62 @@ import { RunNotFoundError } from "./types.js";
 
 export const DEFAULT_RING_BUFFER_CAP = 512;
 export const DEFAULT_POST_COMPLETION_TTL_MS = 5 * 60 * 1000;
+
+/**
+ * Convert a replayed JSONL event stream into an ordered list of
+ * `PriorMessage` entries suitable for {@link AgentLoopOptions.priorMessages}.
+ *
+ * Rules:
+ *  - `user.prompt` events become `{ role: "user", content: text }`.
+ *  - Consecutive `agent.message` deltas collapse into ONE assistant message;
+ *    the run ends at the first `final: true` OR at any non-agent.message
+ *    boundary (another user.prompt, tool event, etc.). Empty merged strings
+ *    are dropped so the model never sees a blank assistant turn.
+ *  - All other event types (thinking, tool.*, permission.*, usage, session.*,
+ *    subagent.*, stream.ping) are ignored — they don't contribute to the
+ *    user/assistant alternation the chat API expects.
+ */
+export function eventsToPriorMessages(
+  events: readonly AgentEvent[],
+): ReadonlyArray<PriorMessage> {
+  const out: PriorMessage[] = [];
+  let pendingAssistant: string[] | null = null;
+
+  const flushAssistant = (): void => {
+    if (pendingAssistant === null) return;
+    const content = pendingAssistant.join("");
+    if (content.length > 0) {
+      out.push({ role: "assistant", content });
+    }
+    pendingAssistant = null;
+  };
+
+  for (const event of events) {
+    if (event.type === "agent.message") {
+      if (pendingAssistant === null) pendingAssistant = [];
+      pendingAssistant.push(event.delta);
+      if (event.final) flushAssistant();
+      continue;
+    }
+    // Any non-agent.message boundary terminates the in-flight assistant run.
+    flushAssistant();
+    if (event.type === "user.prompt") {
+      out.push({ role: "user", content: event.text });
+    }
+    // All other event types are deliberately ignored.
+  }
+  flushAssistant();
+  return out;
+}
+
+async function fileExists(path: string): Promise<boolean> {
+  try {
+    await access(path);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 interface MutableRunEntry {
   readonly runId: string;
@@ -338,13 +398,54 @@ export function createRunManager(options: RunManagerOptions): RunManager {
       const sessionId = opts.sessionId ?? randomUUID();
       const cwd = opts.cwd ?? process.cwd();
 
+      // 1. Rehydrate prior-turn context from the session JSONL BEFORE we open
+      //    the writer (openJsonl appends; we want to read the pre-existing
+      //    tail, not any user.prompt we're about to append). Only attempted
+      //    when the caller passed an explicit sessionId (continuation). A
+      //    brand-new session has no log; a missing file for a claimed
+      //    sessionId is treated as "new session" per the spec.
+      let priorMessages: ReadonlyArray<PriorMessage> | undefined;
+      if (opts.sessionId !== undefined) {
+        const pHashEarly = projectHash(cwd);
+        const logPath = paths.sessionLog(pHashEarly, sessionId);
+        if (await fileExists(logPath)) {
+          try {
+            const replay = await replayJsonl(logPath, { logger });
+            priorMessages = eventsToPriorMessages(replay.events);
+          } catch (err) {
+            logger.warn(
+              { err, runId, sessionId, path: logPath },
+              "run-manager: replayJsonl for priorMessages failed; continuing without history",
+            );
+          }
+        }
+      }
+
       const { jsonl, sessionWriter, pHash } = await openDurability(sessionId, cwd);
       const entry = makeEntry(runId, sessionId, cwd, jsonl, sessionWriter, pHash);
       runs.set(runId, entry);
       totalRuns++;
 
-      // Kick off the iterator but return promptly so the caller gets its runId.
-      void startIterator(entry, opts);
+      // 2. Persist the user's prompt BEFORE kicking off the iterator so the
+      //    on-disk transcript captures this turn even if the agent crashes
+      //    before emitting any event. The writer's internal seq counter
+      //    handles assignment.
+      if (jsonl) {
+        try {
+          await jsonl.writeUserPrompt(sessionId, opts.prompt);
+        } catch (err) {
+          logger.warn(
+            { err, runId, sessionId },
+            "run-manager: writeUserPrompt failed; continuing without user-turn persistence",
+          );
+        }
+      }
+
+      // 3. Kick off the iterator but return promptly so the caller gets its
+      //    runId. `priorMessages` threads through to `runAgentLoop`.
+      const iterOpts: CreateRunOptions =
+        priorMessages !== undefined ? { ...opts, priorMessages } : opts;
+      void startIterator(entry, iterOpts);
 
       return toReadonly(entry);
     },
@@ -507,6 +608,7 @@ function makeDefaultRunFactory(
       logger,
       ...(opts.appendSystemPrompt !== undefined ? { systemPrompt: opts.appendSystemPrompt } : {}),
       ...(opts.maxTurns !== undefined ? { maxTurns: opts.maxTurns } : {}),
+      ...(opts.priorMessages !== undefined ? { priorMessages: opts.priorMessages } : {}),
     });
   };
 }

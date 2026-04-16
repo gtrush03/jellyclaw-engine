@@ -75,6 +75,19 @@ export interface UiState {
   readonly errorMessage: string | null;
   /** Monotonic counter used as a tick for the animated spinner. */
   readonly tick: number;
+  /**
+   * Highest `seq` already processed for the current `sessionId`. Used to
+   * drop replayed events (e.g., when an SSE reconnect starts from seq 0
+   * without a Last-Event-Id), which would otherwise duplicate every prior
+   * message in the transcript in a cascading 1×,2×,3×… pattern.
+   */
+  readonly lastSeenSeq: number;
+  /**
+   * User-selected model override (set via `/model <name>`). Forwarded to
+   * `createRun` as the `model` field when non-empty. Empty string = let the
+   * server pick its default.
+   */
+  readonly currentModel: string;
 }
 
 export function createInitialState(overrides: Partial<UiState> = {}): UiState {
@@ -96,6 +109,8 @@ export function createInitialState(overrides: Partial<UiState> = {}): UiState {
     },
     errorMessage: null,
     tick: 0,
+    lastSeenSeq: -1,
+    currentModel: "",
     ...overrides,
   };
 }
@@ -109,4 +124,8 @@ export type UiAction =
   | { readonly kind: "run-started"; readonly runId: string; readonly sessionId: string }
   | { readonly kind: "run-cancelled" }
   | { readonly kind: "tick" }
-  | { readonly kind: "clear-error" };
+  | { readonly kind: "clear-error" }
+  | { readonly kind: "clear-transcript" }
+  | { readonly kind: "new-session" }
+  | { readonly kind: "set-model"; readonly model: string }
+  | { readonly kind: "system-message"; readonly id: string; readonly text: string };

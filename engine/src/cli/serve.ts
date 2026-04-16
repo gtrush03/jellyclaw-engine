@@ -28,7 +28,7 @@ import { SessionPaths } from "../session/paths.js";
 
 /** Default model for HTTP-initiated runs. Cheap for smoke tests; per-run
  * overrides via CreateRunOptions.model supersede this. */
-const DEFAULT_SERVE_MODEL = "claude-haiku-4-5-20251001";
+const DEFAULT_SERVE_MODEL = "claude-opus-4-6";
 
 // ---------------------------------------------------------------------------
 // CLI options (after Commander's camelCase normalisation)

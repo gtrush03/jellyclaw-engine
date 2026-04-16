@@ -81,6 +81,12 @@ export async function openJsonl(opts: OpenJsonlOptions): Promise<JsonlWriter> {
   let handle = await open(filePath, "a");
   let bytesWritten = (await handle.stat()).size;
   let closed = false;
+  const now = opts.now ?? Date.now;
+  // Writer-local monotonic counter used exclusively by `writeUserPrompt` to
+  // stamp `user.prompt` events. The agent loop's adapter owns `seq` for
+  // agent-emitted events via its own AdapterState; the two counters are
+  // independent because a user.prompt is persisted BEFORE the loop starts.
+  let userPromptSeq = 0;
 
   // Serialise writes + rotations via a local promise chain.
   let queue: Promise<unknown> = Promise.resolve();
@@ -182,6 +188,18 @@ export async function openJsonl(opts: OpenJsonlOptions): Promise<JsonlWriter> {
     path: filePath,
     write(event) {
       return enqueue(() => doWrite(event));
+    },
+    writeUserPrompt(sid, text) {
+      return enqueue(async () => {
+        const event: AgentEvent = {
+          type: "user.prompt",
+          session_id: sid,
+          ts: now(),
+          seq: userPromptSeq++,
+          text,
+        };
+        await doWrite(event);
+      });
     },
     flushTurn() {
       return enqueue(() => doFlush());

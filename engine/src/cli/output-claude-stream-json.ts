@@ -128,6 +128,7 @@ export class ClaudeStreamJsonWriter implements OutputWriter {
       case "subagent.spawned":
       case "subagent.returned":
       case "stream.ping":
+      case "user.prompt":
         this.#debug(`drop: ${event.type}`);
         return;
       default: {

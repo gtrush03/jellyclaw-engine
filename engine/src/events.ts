@@ -5,9 +5,10 @@
  * AgentEvent values. The shape of this union is a **public API** — breaking changes bump the
  * engine major version.
  *
- * The 15 variants cover the full lifecycle of a wish:
+ * The 16 variants cover the full lifecycle of a wish:
  *
  *   lifecycle:   session.started · session.completed · session.error
+ *   user input:  user.prompt
  *   planning:    agent.thinking · agent.message
  *   tools:       tool.called · tool.result · tool.error
  *   permission:  permission.requested · permission.granted · permission.denied
@@ -209,6 +210,16 @@ export const StreamPingEvent = EventBase.extend({
 export type StreamPingEvent = z.infer<typeof StreamPingEvent>;
 
 // ---------------------------------------------------------------------------
+// 16. user.prompt  (user-supplied turn text, persisted before the agent loop
+//     begins so replay/resume can reconstruct the full multi-turn transcript)
+// ---------------------------------------------------------------------------
+export const UserPromptEvent = EventBase.extend({
+  type: z.literal("user.prompt"),
+  text: z.string(),
+});
+export type UserPromptEvent = z.infer<typeof UserPromptEvent>;
+
+// ---------------------------------------------------------------------------
 // Discriminated union
 // ---------------------------------------------------------------------------
 
@@ -228,6 +239,7 @@ export const AgentEvent = z.discriminatedUnion("type", [
   SubagentReturnedEvent,
   UsageUpdatedEvent,
   StreamPingEvent,
+  UserPromptEvent,
 ]);
 
 export type AgentEvent = z.infer<typeof AgentEvent>;

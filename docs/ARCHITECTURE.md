@@ -1,9 +1,33 @@
-# jellyclaw — Architecture
+# 🪼 jellyclaw — Architecture
 
 This document describes how jellyclaw is put together: the layers, the components inside each
 layer, how data flows through the system, where consumers hook in, and where extension authors
 plug new behavior. Read this alongside [`engine/SPEC.md`](../engine/SPEC.md), which is the
 authoritative description of _what_ the engine does; this document describes _how_.
+
+**For contributors.** New to the repo? Read in this order:
+
+1. [`../README.md`](../README.md) — what jellyclaw is.
+2. [`../STATUS.md`](../STATUS.md) — what actually works right now.
+3. This file, top to bottom — how the pieces fit together.
+4. [`../engine/SPEC.md`](../engine/SPEC.md) — the authoritative contract.
+5. [`../phases/README.md`](../phases/README.md) — the phase graph; pick the right phase before writing code.
+
+```
+   consumers                                            ┐
+        │  spawn / stdio / import                       │
+        ▼                                               │
+   public API ─── run(), createEngine(), AgentEvent     │
+        │                                               │  one process
+        ▼                                               │  (unless serve)
+   engine core ── bus, tools, perms, hooks, MCP, skills │
+        │                                               │
+        ▼                                               │
+   provider router ── Anthropic direct / OpenRouter     │
+        │                                               │
+        ▼                                               │
+   runtime core                     ┘
+```
 
 ## 1. Layered view
 
@@ -42,12 +66,12 @@ authoritative description of _what_ the engine does; this document describes _ho
 └─────────────────────────────────┬───────────────────────────────────────┘
                                   │
 ┌─────────────────────────────────▼───────────────────────────────────────┐
-│                   OpenCode (pinned, patched)                            │
-│     HTTP server · @opencode-ai/sdk · @opencode-ai/plugin                │
+│                   runtime core                            │
+│     HTTP server · internal SDK · plugin API                │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
-The engine core is a single process. OpenCode can run embedded (same process) or out-of-process
+The engine core is a single process. The runtime can run embedded (same process) or out-of-process
 (HTTP server mode); jellyclaw supports both. Phase 1 lands the SDK wiring for in-process; Phase 4
 adds the out-of-process variant for the jelly-claw macOS app sandbox.
 
@@ -74,7 +98,7 @@ The authoritative list of callable tools for a session. Populated from three sou
 1. **Built-in tools** baked into the engine (read, write, bash, edit, etc.).
 2. **MCP tools** from configured MCP servers — each server's `tools/list` response is merged in
    under a `mcp__<server>__<name>` namespace.
-3. **Plugin tools** registered through `@opencode-ai/plugin` at engine boot.
+3. **Plugin tools** registered through `plugin API` at engine boot.
 
 The registry computes a stable hash of the tools array; that hash becomes the Anthropic
 `cache_control` breakpoint key (so tools-unchanged sessions get cache hits).
@@ -158,7 +182,7 @@ piping, and CI usage where you want agent-backed actions without writing a Node 
 
 ## 5. Extension points
 
-**Plugins** (`@opencode-ai/plugin`). Can register tools, intercept tool calls, transform messages,
+**Plugins** (`plugin API`). Can register tools, intercept tool calls, transform messages,
 add new slash commands. Loaded at engine boot from `config.plugins[]` (Phase 3).
 
 **MCP servers.** External processes speaking MCP over stdio. Declared in `config.mcp[]`. The
@@ -176,13 +200,49 @@ non-first-party providers can be registered without editing engine core.
 
 ## 6. What is _not_ here (yet)
 
-- No sandbox. Tool execution runs with the parent process's privileges. Until Phase 4, the
-  consumer's own sandboxing (Genie's docker exec, jelly-claw's App Sandbox) is what keeps things
-  safe.
-- No authn/authz on the OpenCode HTTP server beyond `OPENCODE_SERVER_PASSWORD`. Phase 2 tightens
-  this.
-- No streaming cancellation protocol for tools already in flight. Phase 3.
-- No persistent session resume across process restarts. Phase 5.
+Tracked honestly in [`../STATUS.md`](../STATUS.md). As of April 2026:
 
-These are known gaps, tracked in the phase docs. Don't fill them silently — follow the phase
-sequence.
+- **No process sandbox.** Tool execution runs with the parent process's privileges. Consumers
+  (Genie's docker exec, jelly-claw's App Sandbox) provide outer isolation; jellyclaw enforces
+  per-tool permissions + hook deny-wins inside that boundary.
+- **No golden-prompt regression harness in CI yet.** Phase 11 lands 5 frozen prompts asserting
+  byte-parity with Claude Code's `stream-json`.
+- **No observability export.** OTLP tracing + per-tool latency ships in Phase 14.
+- **No desktop app.** Tauri 2 MVP is Phase 15–16.
+- **No voice triggers.** jelly-claw in-call integration is Phase 17.
+
+What _is_ here and done: phases 00–10.5 (scaffolding, the runtime pin, providers, event stream,
+11 tools at parity, skills, subagents + hook patch, MCP with 3 transports, permissions + 10
+hook event kinds, session resume, CLI + HTTP + library, Ink TUI). Fill gaps by following the
+phase sequence — don't drag Phase 14 work into Phase 11.
+
+## 7. Where code lives
+
+```
+engine/src/
+  adapters/      the runtime event-bus → AgentEvent translator
+  cli/           Commander shell (run, serve, tui, sessions, doctor, ...)
+  server/        Hono HTTP app + SSE routes + bind safety + bearer auth
+  tui/           Ink TUI (splash, transcript, input, slash commands, theme)
+  providers/     Anthropic, OpenRouter, router, cache_control policy
+  tools/         11 built-in tools + registry + parity fixtures
+  mcp/           stdio, HTTP, SSE, OAuth, token store, namespacing
+  permissions/   rule matcher, engine, prompt, audit sink
+  hooks/         10-event runner, registry, audit log, config schema
+  skills/        loader for .claude/skills/*.md
+  subagents/     stub (Phase 06 — hook-inheritance patch lives in patches/)
+  session/       better-sqlite3 persistence, resume, NDJSON trace
+  stream/        emit, downgrade matrix, claude-stream-json writer
+  config/        zod schema + loader + env merging
+  logger.ts      pino with secret-redact list
+  index.ts       public barrel
+  cli.ts         argv entrypoint → dist/cli/main.js via engine/bin/jellyclaw
+shared/src/
+  events.ts      15-variant AgentEvent discriminated union (zod)
+patches/         patch-package patches applied at postinstall
+phases/          per-phase runbooks — authoritative for the build order
+```
+
+The engine is a single process. `jellyclaw serve` exposes the same core over HTTP.
+`jellyclaw tui` spawns the server in-process on a random loopback port and points
+the TUI at it — same event protocol, different transport.

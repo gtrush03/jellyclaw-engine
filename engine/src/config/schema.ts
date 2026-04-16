@@ -168,7 +168,7 @@ export type SecretsBlock = z.infer<typeof SecretsBlock>;
 
 export const Config = z.object({
   provider: Provider.default("anthropic"),
-  model: z.string().default("claude-sonnet-4-6"),
+  model: z.string().default("claude-opus-4-6"),
   anthropic: AnthropicBlock,
   openrouter: OpenRouterBlock,
   cache: CacheBlock,
