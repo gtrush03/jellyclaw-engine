@@ -191,7 +191,7 @@ export async function launchTui(opts: LaunchTuiOptions): Promise<LaunchTuiHandle
   const launchAfterKey = async (apiKey: string): Promise<void> => {
     process.env.ANTHROPIC_API_KEY = apiKey;
     serverHandle = await spawn({ cwd });
-    await wait(serverHandle.baseUrl);
+    await wait(serverHandle.baseUrl, serverHandle.token);
     const client = createClient({
       baseUrl: serverHandle.baseUrl,
       token: serverHandle.token,
