@@ -24,6 +24,7 @@ import type { Logger } from "pino";
 import { access } from "node:fs/promises";
 
 import { runAgentLoop } from "../agents/loop.js";
+import { loadSoul } from "../agents/soul.js";
 import type { AgentEvent } from "../events.js";
 import type { HookRegistry } from "../hooks/registry.js";
 import { run as engineRun } from "../internal.js";
@@ -596,19 +597,30 @@ function makeDefaultRunFactory(
   return (opts) => {
     const model = opts.model ?? defaultModel;
     const cwd = opts.cwd ?? defaultCwd;
-    return runAgentLoop({
-      provider,
-      hooks,
-      permissions,
-      model,
-      prompt: opts.prompt,
-      sessionId: opts.sessionId,
-      cwd,
-      signal: opts.signal,
-      logger,
-      ...(opts.appendSystemPrompt !== undefined ? { systemPrompt: opts.appendSystemPrompt } : {}),
-      ...(opts.maxTurns !== undefined ? { maxTurns: opts.maxTurns } : {}),
-      ...(opts.priorMessages !== undefined ? { priorMessages: opts.priorMessages } : {}),
-    });
+    // Resolve the system prompt: caller override wins; else pull jellyclaw's
+    // default voice (via `loadSoul()` — honours env + ~/.jellyclaw/soul.md).
+    // Wrapped in an async generator so we can await the disk read without
+    // changing the factory's sync return signature.
+    async function* runWithSoul(): AsyncGenerator<AgentEvent, void, void> {
+      const systemPrompt =
+        opts.appendSystemPrompt !== undefined
+          ? opts.appendSystemPrompt
+          : (await loadSoul({ logger })) ?? undefined;
+      yield* runAgentLoop({
+        provider,
+        hooks,
+        permissions,
+        model,
+        prompt: opts.prompt,
+        sessionId: opts.sessionId,
+        cwd,
+        signal: opts.signal,
+        logger,
+        ...(systemPrompt !== undefined ? { systemPrompt } : {}),
+        ...(opts.maxTurns !== undefined ? { maxTurns: opts.maxTurns } : {}),
+        ...(opts.priorMessages !== undefined ? { priorMessages: opts.priorMessages } : {}),
+      });
+    }
+    return runWithSoul();
   };
 }

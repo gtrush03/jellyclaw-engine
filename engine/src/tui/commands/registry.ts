@@ -11,6 +11,7 @@ import { readdir, stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
+import { loadSoul } from "../../agents/soul.js";
 import type { CommandContext, ParsedCommand } from "./dispatch.js";
 
 export interface CommandDefinition {
@@ -158,6 +159,32 @@ function handleCost(_cmd: ParsedCommand, ctx: CommandContext): void {
   ctx.pushSystem(lines.join("\n"));
 }
 
+async function handleSoul(_cmd: ParsedCommand, ctx: CommandContext): Promise<void> {
+  // Surface the active voice so users can see exactly what's shaping replies.
+  // Override chain (see `agents/soul.ts`): env JELLYCLAW_SOUL=off → disabled;
+  // ~/.jellyclaw/soul.md exists → user's custom voice; otherwise → baked-in
+  // default. We report which one we got so it's debuggable at a glance.
+  const customPath = join(homedir(), ".jellyclaw", "soul.md");
+  const env = process.env.JELLYCLAW_SOUL;
+  if (typeof env === "string" && env.toLowerCase() === "off") {
+    ctx.pushSystem("soul: disabled (JELLYCLAW_SOUL=off in environment)");
+    return;
+  }
+  const soul = await loadSoul();
+  if (soul === null) {
+    ctx.pushSystem("soul: disabled");
+    return;
+  }
+  let source = "baked-in default";
+  try {
+    await stat(customPath);
+    source = customPath;
+  } catch {
+    /* no custom soul — default in use */
+  }
+  ctx.pushSystem(`active soul (${source}):\n\n${soul}`);
+}
+
 async function handleCancel(_cmd: ParsedCommand, ctx: CommandContext): Promise<void> {
   if (ctx.runId === null) {
     ctx.pushSystem("no active run to cancel");
@@ -205,4 +232,9 @@ export const COMMANDS: readonly CommandDefinition[] = [
   },
   { name: "cost", description: "show session usage + cost", handler: handleCost },
   { name: "cancel", description: "cancel the active run (if any)", handler: handleCancel },
+  {
+    name: "soul",
+    description: "print the active voice/personality prompt",
+    handler: handleSoul,
+  },
 ];
