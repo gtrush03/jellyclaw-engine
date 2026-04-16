@@ -28,7 +28,12 @@ export interface BreakpointOptions {
 export const defaultBreakpointOptions: BreakpointOptions = {
   enabled: true,
   skillsTopN: 12,
-  systemTTL: "1h",
+  // Must be "5m" when tools also carry a cache_control breakpoint: Anthropic
+  // processes blocks in the order `tools → system → messages` and rejects
+  // any ttl="1h" block that appears AFTER a ttl="5m" block. We put "1h" on
+  // tools (most stable prefix, rarely changes) and "5m" on system so the
+  // order is 1h → 5m which Anthropic accepts.
+  systemTTL: "5m",
 };
 
 export interface PlannedRequest {
@@ -91,7 +96,7 @@ export function planBreakpoints(
         // it (per research-notes §3.3). Cast is intentional and isolated.
         (last as { cache_control?: CacheControlInput }).cache_control = {
           type: "ephemeral",
-          ttl: "5m",
+          ttl: "1h",
         };
         plan.toolsPlaced = true;
       }
@@ -155,7 +160,11 @@ export function planBreakpoints(
     }
   }
 
-  const hasOneHourBreakpoint = plan.systemPlaced && opts.systemTTL === "1h";
+  // The `extended-cache-ttl-2025-04-11` beta header is required whenever
+  // ANY cache_control block uses ttl="1h". Tools always get 1h when present;
+  // system uses opts.systemTTL (defaults to "5m" — see note above).
+  const hasOneHourBreakpoint =
+    plan.toolsPlaced || (plan.systemPlaced && opts.systemTTL === "1h");
 
   return { system, tools, messages, hasOneHourBreakpoint, plan };
 }
