@@ -139,7 +139,7 @@ async function* realRunFn(opts: RunOptions): AsyncIterable<AgentEvent> {
       provider,
       hooks,
       permissions,
-      model: "claude-haiku-4-5-20251001",
+      model: "claude-opus-4-6",
       prompt: opts.wish,
       sessionId: opts.sessionId ?? randomUUID(),
       cwd: opts.cwd ?? process.cwd(),

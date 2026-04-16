@@ -1,13 +1,25 @@
 /**
- * Phase 99-06 — top status bar.
+ * Status bar — top of the TUI.
  *
- * Displays brand glyph, app name, model, short session id, token total, and a
- * status-aware glyph (idle dot, streaming jellyfish spinner, awaiting-permission
- * bang, error cross).
+ * Shows (left → right): jellyfish glyph · app name · model (if resolved)
+ * · session id (if started) · token total · cost · status glyph. Accent
+ * colour rotates per-session via `pickRowAccents` so repeated launches feel
+ * distinct.
+ *
+ * Slots are collapsed rather than placeholder-filled: if there's no model
+ * resolved yet, or no session started, those slots are hidden entirely so
+ * the bar never shows "· ·" with empty space between. Separators are
+ * inserted between *rendered* slots only.
+ *
+ * Uses a single-line bottom border drawn from `brand.tidewaterDim` for a
+ * premium "Claude Code"-style separator look — no double/round borders on the
+ * main row.
  */
 
+import type { ReactNode } from "react";
 import { Box, Text } from "ink";
 import type { UiStatus, UiUsage } from "../state/types.js";
+import { brand, pickRowAccents } from "../theme/brand.js";
 import { Jellyfish } from "./jellyfish.js";
 
 export interface StatusBarProps {
@@ -29,32 +41,90 @@ function formatTokens(usage: UiUsage): string {
   return `${total} tok`;
 }
 
-function shortSession(id: string | null): string {
-  if (id === null) return "\u2014";
-  return id.slice(0, 8);
+function formatCost(usage: UiUsage): string {
+  if (usage.costUsd <= 0) return "$0.00";
+  if (usage.costUsd < 0.01) return "<$0.01";
+  return `$${usage.costUsd.toFixed(2)}`;
+}
+
+function isResolvedModel(model: string): boolean {
+  const trimmed = model.trim();
+  if (trimmed.length === 0) return false;
+  if (trimmed === "(default)") return false;
+  return true;
 }
 
 export function StatusBar(props: StatusBarProps): JSX.Element {
-  const sep = <Text color="#5A6B8C"> {"\u00B7"} </Text>;
+  const accents = pickRowAccents(props.sessionId);
+  const slots: ReactNode[] = [];
+
+  // Brand slot — always present.
+  slots.push(
+    <Box key="brand">
+      <Text color={accents.user}>{"\u{1FABC} "}</Text>
+      <Text bold color={brand.foam}>
+        jellyclaw
+      </Text>
+    </Box>,
+  );
+
+  if (isResolvedModel(props.model)) {
+    slots.push(
+      <Text key="model" color={brand.foam}>
+        {props.model}
+      </Text>,
+    );
+  }
+
+  if (props.sessionId !== null && props.sessionId.length > 0) {
+    slots.push(
+      <Text key="session" color={brand.tidewater}>
+        {props.sessionId.slice(0, 8)}
+      </Text>,
+    );
+  }
+
+  slots.push(
+    <Text key="tokens" color={accents.assistant}>
+      {formatTokens(props.usage)}
+    </Text>,
+  );
+  slots.push(
+    <Text key="cost" color={accents.tool}>
+      {formatCost(props.usage)}
+    </Text>,
+  );
+  slots.push(
+    <StatusGlyph
+      key="status"
+      status={props.status}
+      tick={props.tick}
+      reducedMotion={props.reducedMotion}
+    />,
+  );
+
+  const rendered: ReactNode[] = [];
+  for (let i = 0; i < slots.length; i += 1) {
+    if (i > 0) {
+      rendered.push(
+        <Text key={`sep-${i}`} color={brand.tidewaterDim}>
+          {" \u00B7 "}
+        </Text>,
+      );
+    }
+    rendered.push(slots[i]);
+  }
+
   return (
     <Box
       borderStyle="single"
       borderTop={false}
       borderLeft={false}
       borderRight={false}
-      borderColor="#5A6B8C"
+      borderColor={brand.tidewaterDim}
       paddingX={1}
     >
-      <Text color="#3BA7FF">{"\u25C8 "}</Text>
-      <Text>jellyclaw</Text>
-      {sep}
-      <Text>{props.model}</Text>
-      {sep}
-      <Text>{shortSession(props.sessionId)}</Text>
-      {sep}
-      <Text>{formatTokens(props.usage)}</Text>
-      {sep}
-      <StatusGlyph status={props.status} tick={props.tick} reducedMotion={props.reducedMotion} />
+      {rendered}
     </Box>
   );
 }
@@ -70,10 +140,10 @@ function StatusGlyph(props: GlyphProps): JSX.Element {
     case "streaming":
       return <Jellyfish size="compact" tick={props.tick} reducedMotion={props.reducedMotion} />;
     case "awaiting-permission":
-      return <Text color="#FFB547">!</Text>;
+      return <Text color={brand.amberEye}>!</Text>;
     case "error":
-      return <Text color="red">{"\u2717"}</Text>;
+      return <Text color={brand.error}>{"\u2717"}</Text>;
     default:
-      return <Text color="#5A6B8C">{"\u00B7"}</Text>;
+      return <Text color={brand.tidewater}>{"\u00B7"}</Text>;
   }
 }

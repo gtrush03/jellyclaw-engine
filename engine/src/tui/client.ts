@@ -45,6 +45,8 @@ export interface CreateRunInput {
   readonly sessionId?: string;
   readonly cwd?: string;
   readonly systemPrompt?: string;
+  /** Optional model override — forwarded to the server as `model`. */
+  readonly model?: string;
 }
 
 export interface JellyclawClient {
@@ -369,6 +371,7 @@ export function createClient(opts: CreateClientOptions): JellyclawClient {
       if (input.sessionId !== undefined) body.sessionId = input.sessionId;
       if (input.cwd !== undefined) body.cwd = input.cwd;
       if (input.systemPrompt !== undefined) body.appendSystemPrompt = input.systemPrompt;
+      if (input.model !== undefined && input.model.length > 0) body.model = input.model;
       return jsonRequest<{ runId: string; sessionId: string }>("/v1/runs", {
         method: "POST",
         body,

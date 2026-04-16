@@ -17,12 +17,19 @@ import type { AgentEvent } from "../events.js";
 import type { JellyclawClient } from "./client.js";
 import { InputBox } from "./components/input-box.js";
 import { PermissionModal } from "./components/permission-modal.js";
+import { Splash } from "./components/splash.js";
 import { StatusBar } from "./components/status-bar.js";
 import { Transcript } from "./components/transcript.js";
 import { useEvents } from "./hooks/use-events.js";
 import { useReducedMotion } from "./hooks/use-reduced-motion.js";
+import {
+  type CommandContext,
+  executeCommand,
+  parseSlash,
+  type UiCommandAction,
+} from "./commands/dispatch.js";
 import { reduce } from "./state/reducer.js";
-import { createInitialState, type UiState } from "./state/types.js";
+import { createInitialState, type UiAction, type UiState } from "./state/types.js";
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -117,16 +124,68 @@ export function App(props: AppProps): JSX.Element {
     (text: string): void => {
       const trimmed = text.trim();
       if (trimmed.length === 0) return;
+      setDraft("");
+
+      // Slash-command short-circuit: parse + execute locally, never hit the
+      // model. The parser returns null for non-slash input and for bare `/`.
+      const parsed = parseSlash(trimmed);
+      if (parsed !== null) {
+        const pushSystem = (body: string): void => {
+          dispatch({
+            kind: "system-message",
+            id: `sys-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+            text: body,
+          });
+        };
+        // Echo the user's command line so it appears in the transcript like a
+        // normal prompt would — helpful scrollback context.
+        const echoId = `user-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+        dispatch({ kind: "user-prompt", text: trimmed, id: echoId });
+
+        const ctx: CommandContext = {
+          client,
+          cwd,
+          sessionId: state.sessionId,
+          runId: state.runId,
+          currentModel: state.currentModel,
+          usage: state.usage,
+          pushSystem,
+          exit: (code) => {
+            try {
+              inkApp.exit();
+            } catch {
+              /* already unmounted */
+            }
+            onExit(code);
+          },
+          dispatchAction: (a: UiCommandAction) => {
+            // Map the commands-module action enum onto the reducer's UiAction
+            // enum. They are intentionally decoupled so the commands package
+            // has no compile-time dep on the reducer shape.
+            const mapped: UiAction = a;
+            dispatch(mapped);
+          },
+          dispatchEvent: (ev) => dispatch(ev),
+        };
+        void executeCommand(parsed, ctx);
+        return;
+      }
+
       const localId = `user-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
       dispatch({ kind: "user-prompt", text: trimmed, id: localId });
-      setDraft("");
       void (async (): Promise<void> => {
         try {
-          const input: { prompt: string; cwd?: string; sessionId?: string } = {
+          const input: {
+            prompt: string;
+            cwd?: string;
+            sessionId?: string;
+            model?: string;
+          } = {
             prompt: trimmed,
             cwd,
           };
           if (state.sessionId !== null) input.sessionId = state.sessionId;
+          if (state.currentModel.length > 0) input.model = state.currentModel;
           const { runId, sessionId } = await client.createRun(input);
           dispatch({ kind: "run-started", runId, sessionId });
         } catch {
@@ -135,7 +194,16 @@ export function App(props: AppProps): JSX.Element {
         }
       })();
     },
-    [client, cwd, state.sessionId],
+    [
+      client,
+      cwd,
+      state.sessionId,
+      state.runId,
+      state.currentModel,
+      state.usage,
+      inkApp,
+      onExit,
+    ],
   );
 
   // ---- Permission resolve ----------------------------------------------------
@@ -218,8 +286,13 @@ export function App(props: AppProps): JSX.Element {
         tick={state.tick}
         reducedMotion={reducedMotion}
       />
+      {/* Splash stays pinned at top for the duration of the session — new
+          content scrolls below it, it never unmounts. */}
+      <Splash cwd={cwd} model={state.model} sessionId={state.sessionId} />
       <Box flexDirection="column" flexGrow={1}>
-        <Transcript items={state.items} rows={transcriptRows} />
+        {state.items.length > 0 || state.runId !== null ? (
+          <Transcript items={state.items} rows={transcriptRows} sessionId={state.sessionId} />
+        ) : null}
       </Box>
       {state.pendingPermission !== null ? (
         <PermissionModal permission={state.pendingPermission} onResolve={onResolvePermission} />

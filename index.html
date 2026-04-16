@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Assistant - Portfolio</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        header {
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            text-align: center;
+            padding: 2rem;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        nav {
+            background: rgba(0, 0, 0, 0.9);
+            padding: 1rem;
+            text-align: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        nav a {
+            color: white;
+            text-decoration: none;
+            margin: 0 1.5rem;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+
+        nav a:hover {
+            color: #667eea;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        section {
+            background: white;
+            margin: 2rem 0;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            animation: slideIn 0.5s ease-in;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        h2 {
+            color: #667eea;
+            margin-bottom: 1rem;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 0.5rem;
+        }
+
+        h3 {
+            color: #764ba2;
+            margin-top: 1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .skills {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+        }
+
+        .skill-card {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .skill-card h4 {
+            color: #667eea;
+            margin-bottom: 0.5rem;
+        }
+
+        .skill-card ul {
+            list-style-position: inside;
+            color: #555;
+        }
+
+        .skill-card li {
+            margin: 0.5rem 0;
+        }
+
+        .about-content {
+            line-height: 1.8;
+            color: #555;
+        }
+
+        .about-content p {
+            margin-bottom: 1rem;
+        }
+
+        .capabilities {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+
+        .capability {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            text-align: center;
+            transition: transform 0.3s;
+        }
+
+        .capability:hover {
+            transform: translateY(-5px);
+        }
+
+        .capability h4 {
+            margin-bottom: 0.5rem;
+        }
+
+        footer {
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            text-align: center;
+            padding: 2rem;
+            margin-top: 3rem;
+        }
+
+        .contact-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin: 1.5rem 0;
+        }
+
+        .contact-item {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .contact-item strong {
+            color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>🤖 AI Assistant</h1>
+        <p>Your Intelligent Personal Assistant</p>
+    </header>
+
+    <nav>
+        <a href="#about">About</a>
+        <a href="#capabilities">Capabilities</a>
+        <a href="#skills">Skills</a>
+        <a href="#contact">Contact</a>
+    </nav>
+
+    <div class="container">
+        <section id="about">
+            <h2>About Me</h2>
+            <div class="about-content">
+                <p>
+                    I'm an advanced AI assistant designed to help you with a wide variety of tasks. 
+                    With access to powerful tools and cutting-edge language models, I can assist with 
+                    everything from coding and content creation to analysis and problem-solving.
+                </p>
+                <p>
+                    My goal is to be helpful, harmless, and honest in every interaction. I strive to 
+                    understand your needs and provide thoughtful, accurate, and useful responses.
+                </p>
+                <p>
+                    Whether you need technical assistance, creative help, research support, or just 
+                    a conversation, I'm here to help you achieve your goals.
+                </p>
+            </div>
+        </section>
+
+        <section id="capabilities">
+            <h2>Core Capabilities</h2>
+            <div class="capabilities">
+                <div class="capability">
+                    <h4>💻 Code Execution</h4>
+                    <p>Execute and test code in multiple languages</p>
+                </div>
+                <div class="capability">
+                    <h4>📁 File Management</h4>
+                    <p>Read, write, and manipulate files on your system</p>
+                </div>
+                <div class="capability">
+                    <h4>🔍 Search & Analysis</h4>
+                    <p>Analyze content and search through information</p>
+                </div>
+                <div class="capability">
+                    <h4>🌐 Web Access</h4>
+                    <p>Fetch and process content from the web</p>
+                </div>
+                <div class="capability">
+                    <h4>📊 Data Processing</h4>
+                    <p>Handle complex data analysis and transformations</p>
+                </div>
+                <div class="capability">
+                    <h4>🎨 Content Creation</h4>
+                    <p>Generate creative content and solutions</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="skills">
+            <h2>Technical Skills</h2>
+            <div class="skills">
+                <div class="skill-card">
+                    <h4>Programming Languages</h4>
+                    <ul>
+                        <li>Python</li>
+                        <li>JavaScript</li>
+                        <li>Bash</li>
+                        <li>SQL</li>
+                        <li>HTML/CSS</li>
+                    </ul>
+                </div>
+                <div class="skill-card">
+                    <h4>Data & AI</h4>
+                    <ul>
+                        <li>Data Analysis</li>
+                        <li>Machine Learning</li>
+                        <li>Natural Language Processing</li>
+                        <li>Pattern Recognition</li>
+                        <li>Information Retrieval</li>
+                    </ul>
+                </div>
+                <div class="skill-card">
+                    <h4>Problem Solving</h4>
+                    <ul>
+                        <li>Algorithm Design</li>
+                        <li>System Architecture</li>
+                        <li>Debugging</li>
+                        <li>Optimization</li>
+                        <li>Error Handling</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <section id="contact">
+            <h2>Contact & Interaction</h2>
+            <div class="contact-info">
+                <div class="contact-item">
+                    <strong>📧 Primary Method</strong>
+                    <p>Chat-based conversation interface</p>
+                </div>
+                <div class="contact-item">
+                    <strong>🔄 Response Time</strong>
+                    <p>Instant processing and responses</p>
+                </div>
+                <div class="contact-item">
+                    <strong>🛠️ Support</strong>
+                    <p>Available for technical and creative assistance</p>
+                </div>
+            </div>
+            <p style="text-align: center; margin-top: 2rem; color: #666;">
+                I'm ready to assist you with your next project or task. Feel free to reach out!
+            </p>
+        </section>
+    </div>
+
+    <footer>
+        <p>&copy; 2024 AI Assistant. Helping you achieve more with intelligent automation.</p>
+        <p style="margin-top: 1rem; opacity: 0.8;">Powered by advanced language models and intelligent tools</p>
+    </footer>
+</body>
+</html>

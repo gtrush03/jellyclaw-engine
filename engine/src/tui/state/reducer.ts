@@ -40,6 +40,35 @@ export function reduce(state: UiState, input: ReducerInput): UiState {
 // ---------------------------------------------------------------------------
 
 function reduceAgentEvent(state: UiState, event: AgentEvent): UiState {
+  // Seq-based dedupe: drop any event we've already processed for this session.
+  // Guards against SSE reconnects replaying from seq 0 without a Last-Event-Id.
+  const sameSession =
+    state.sessionId !== null &&
+    "session_id" in event &&
+    (event as { session_id?: unknown }).session_id === state.sessionId;
+  if (
+    sameSession &&
+    event.type !== "session.started" &&
+    "seq" in event &&
+    typeof (event as { seq?: unknown }).seq === "number" &&
+    (event as { seq: number }).seq <= state.lastSeenSeq
+  ) {
+    return state;
+  }
+  const next = reduceAgentEventInner(state, event);
+  if ("seq" in event && typeof (event as { seq?: unknown }).seq === "number") {
+    const s = (event as { seq: number }).seq;
+    if (event.type === "session.started") {
+      return { ...next, lastSeenSeq: s };
+    }
+    if (sameSession && s > state.lastSeenSeq) {
+      return { ...next, lastSeenSeq: s };
+    }
+  }
+  return next;
+}
+
+function reduceAgentEventInner(state: UiState, event: AgentEvent): UiState {
   switch (event.type) {
     case "session.started":
       return {
@@ -50,6 +79,8 @@ function reduceAgentEvent(state: UiState, event: AgentEvent): UiState {
         cwd: event.cwd,
         status: "streaming",
         errorMessage: null,
+        // Reset dedupe counter if this is a new session.
+        ...(state.sessionId !== event.session_id ? { lastSeenSeq: -1 } : {}),
       };
 
     case "session.completed": {
@@ -209,6 +240,47 @@ function reduceUiAction(state: UiState, action: UiAction): UiState {
         errorMessage: null,
         ...(state.status === "error" ? { status: "idle" as const } : {}),
       };
+
+    case "clear-transcript":
+      return {
+        ...state,
+        items: [],
+        errorMessage: null,
+        ...(state.status === "error" ? { status: "idle" as const } : {}),
+      };
+
+    case "new-session":
+      return {
+        ...state,
+        sessionId: null,
+        runId: null,
+        items: [],
+        status: "idle",
+        pendingPermission: null,
+        errorMessage: null,
+        lastSeenSeq: -1,
+        usage: {
+          inputTokens: 0,
+          outputTokens: 0,
+          cacheReadTokens: 0,
+          cacheWriteTokens: 0,
+          costUsd: 0,
+        },
+      };
+
+    case "set-model":
+      return { ...state, currentModel: action.model };
+
+    case "system-message": {
+      const msg: TextMessage = {
+        kind: "text",
+        id: action.id,
+        role: "system",
+        text: action.text,
+        done: true,
+      };
+      return { ...state, items: appendItem(state.items, msg) };
+    }
 
     default:
       return state;

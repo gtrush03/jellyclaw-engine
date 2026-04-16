@@ -8,6 +8,7 @@
 
 import { Box, Text, useInput } from "ink";
 import type { PendingPermission } from "../state/types.js";
+import { brand } from "../theme/brand.js";
 
 const MAX_INPUT_LEN = 300;
 
@@ -43,21 +44,23 @@ export function PermissionModal(props: PermissionModalProps): JSX.Element {
 
   const { permission } = props;
   return (
-    <Box borderStyle="double" borderColor="#FFB547" paddingX={1} flexDirection="column">
-      <Text bold>Permission requested</Text>
-      <Text>
-        <Text color="#5A6B8C">tool: </Text>
-        {permission.toolName}
+    <Box borderStyle="double" borderColor={brand.amberEye} paddingX={1} flexDirection="column">
+      <Text bold color={brand.amberEye}>
+        {"\u25C7 Permission requested"}
       </Text>
       <Text>
-        <Text color="#5A6B8C">reason: </Text>
-        {permission.reason}
+        <Text color={brand.tidewater}>tool: </Text>
+        <Text color={brand.foam}>{permission.toolName}</Text>
       </Text>
       <Text>
-        <Text color="#5A6B8C">input: </Text>
-        {truncate(stringify(permission.inputPreview))}
+        <Text color={brand.tidewater}>reason: </Text>
+        <Text color={brand.foam}>{permission.reason}</Text>
       </Text>
-      <Text color="gray">[Y]es [N]o</Text>
+      <Text>
+        <Text color={brand.tidewater}>input: </Text>
+        <Text color={brand.foam}>{truncate(stringify(permission.inputPreview))}</Text>
+      </Text>
+      <Text color={brand.tidewaterDim}>[Y]es [N]o</Text>
     </Box>
   );
 }

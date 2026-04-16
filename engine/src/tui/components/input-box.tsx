@@ -14,6 +14,7 @@
 
 import { Box, Text } from "ink";
 import TextInput from "ink-text-input";
+import { brand } from "../theme/brand.js";
 
 export interface InputBoxProps {
   value: string;
@@ -31,11 +32,14 @@ export function InputBox(props: InputBoxProps): JSX.Element {
       borderBottom={false}
       borderLeft={false}
       borderRight={false}
+      borderColor={brand.tidewaterDim}
       paddingX={1}
     >
-      <Text color="#9E7BFF">{"\u203A "}</Text>
+      <Text color={brand.medusaViolet} bold>
+        {"\u203A "}
+      </Text>
       {props.disabled === true ? (
-        <Text color="gray">{"(streaming\u2026)"}</Text>
+        <Text color={brand.tidewater}>{"(streaming\u2026)"}</Text>
       ) : (
         <TextInput
           value={props.value}

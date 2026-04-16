@@ -1,156 +1,324 @@
-# jellyclaw
+# 🪼 jellyclaw
 
-> An open-source, embeddable replacement for Claude Code — wrapping [OpenCode](https://github.com/sst/opencode) `>=1.4.4` behind a small, stable, event-driven API.
+<div align="center">
 
-`jellyclaw` is the engine Genie runs on, and the agent that will eventually live inside the
-[jelly-claw](https://github.com/gtrush03/jelly-claw) video-calling app. Instead of shelling out
-to the proprietary `claude` CLI, jellyclaw exposes a typed, streaming, programmable surface over a
-hardened OpenCode core — with first-class support for MCP servers, skills, subagents, permission
-gating, hook execution, and provider routing between Anthropic direct and OpenRouter.
+**Open-source Claude Code runtime.**
+Swap the closed proprietary agent loop for a transparent TypeScript one.
+Same tools, same schema, your infra.
 
-## Status
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Node 20+](https://img.shields.io/badge/node-%3E%3D20.6-informational)](package.json)
+[![Bun](https://img.shields.io/badge/bun-%3E%3D1.1-black)](package.json)
+[![Status](https://img.shields.io/badge/status-active-brightgreen)](STATUS.md)
+[![TypeScript](https://img.shields.io/badge/typed-strict-blue)](tsconfig.json)
 
-**Pre-alpha.** Currently building Phase 0 (scaffolding) and Phase 1 (OpenCode pinning).
-See [`phases/README.md`](phases/README.md) for the full roadmap.
+</div>
 
-Nothing here is stable. Nothing here is secure-by-default yet (CVE-22812 mitigation lands in Phase 2).
-Do not ship this into a product before Phase 5.
+---
 
-## Why
+**jellyclaw** is an embeddable, auditable agent runtime — an open-source alternative to the proprietary `claude` binary. It exposes a stable typed event API so agents and apps can dispatch work without shelling out to a closed-source CLI. You bring the API key; jellyclaw handles the agent loop, tool calls, permissions, hooks, MCP, sessions, and streaming — all in strict TypeScript you can read.
 
-Genie currently dispatches work to `claude -p` via a child process. That works, but:
+## ✨ Features
 
-1. The `claude` binary is closed source, so we can't audit tool calls or patch subagent bugs
-   (e.g. [#5894 subagent hook skip](https://github.com/anthropics/claude-code/issues/5894)).
-2. Embedding a proprietary binary into a shipped macOS app (jelly-claw) is a licensing and
-   distribution risk.
-3. We lose access to the structured internal event stream — we see stdout, not state transitions.
+- 🪼 **Claude-Code parity** — 11 built-in tools (`Bash`, `Read`, `Write`, `Edit`, `Glob`, `Grep`, `WebFetch`, `TodoWrite`, `Task`, `NotebookEdit`, `WebSearch`) at schema parity. ✅ DONE
+- 🌊 **Stream-first** — line-delimited `AgentEvent` protocol over stdout or SSE. Byte-parity target with Claude Code `stream-json`. ✅ DONE (parity on 3 golden prompts; 5-prompt target in M1)
+- 🔌 **MCP client** — stdio + Streamable HTTP + deprecated SSE transports; OAuth with PKCE; Playwright MCP blessed at `0.0.41`. ✅ DONE
+- 🛡️ **Permission engine + hooks** — deny-wins rule matcher, 10 hook event kinds, audit log at `~/.jellyclaw/logs/`. ✅ DONE
+- 🔀 **Provider router** — Anthropic direct (primary, with prompt caching) + OpenRouter (opt-in, warn-on-startup). ✅ DONE
+- 🪝 **Skills + subagents** — loads `.claude/skills/` unmodified; full subagent hook propagation. ✅ DONE
+- 🖥️ **Interactive TUI** — Ink-based, jellyfish spinner, slash-command palette, in-place API key capture. ✅ DONE (Phase 10.5)
+- 📡 **HTTP server** — `POST /v1/runs` + SSE with bearer auth, loopback-by-default, `Last-Event-Id` replay. ✅ DONE (Phase 10.02)
+- 🖱️ **Tauri desktop app** — signed, notarized, auto-updating. 📋 PLANNED (Phase 15–16)
+- 🎙️ **Voice triggers in-call** — `"Jelly, …"` inside a WebRTC call. 📋 PLANNED (Phase 17)
 
-OpenCode solves 1 and 2. jellyclaw solves 3 by putting a **stable typed event API** on top of
-OpenCode so Genie, the jelly-claw desktop app, and future consumers can all speak the same
-protocol regardless of what's happening inside the engine.
+> See [`STATUS.md`](STATUS.md) for current progress and [`phases/README.md`](phases/README.md) for the roadmap graph.
 
-## Architecture at a glance
+## 🏗️ Architecture
 
 ```
-                        ┌─────────────────────────────────────────┐
-  wish / prompt ──►     │           jellyclaw public API          │
-                        │   run() · createEngine() · AgentEvent   │
-                        └───────────────┬─────────────────────────┘
-                                        │
-                        ┌───────────────▼─────────────────────────┐
-                        │          jellyclaw engine core          │
-                        │  event bus · session mgr · permission   │
-                        │  tool registry · hook runner · MCP      │
-                        └───────┬──────────────────────┬──────────┘
-                                │                      │
-                    ┌───────────▼─────────┐  ┌─────────▼─────────┐
-                    │   OpenCode >=1.4.4  │  │  provider router  │
-                    │   (pinned, patched) │  │ Anthropic / OR    │
-                    └─────────────────────┘  └───────────────────┘
+     ┌──────────────────────────────────────────────────────────┐
+     │   Consumers:  Genie  ·  jelly-claw  ·  jellyclaw CLI     │
+     └────────┬────────────────┬───────────────────┬────────────┘
+              │ spawn          │ JSON-RPC          │ direct import
+     ┌────────▼────────────────▼───────────────────▼────────────┐
+     │           Public API:  run() · AgentEvent · Engine       │
+     ╰────────┬─────────────────────────────────────────────────╯
+              │
+     ╭────────▼─────────────────────────────────────────────────╮
+     │                    jellyclaw core                        │
+     │                                                          │
+     │  ┌───────────┐  ┌───────────┐  ┌───────────┐  ┌────────┐ │
+     │  │ event bus │  │ sessions  │  │   tools   │  │  perms │ │
+     │  └───────────┘  └───────────┘  └───────────┘  └────────┘ │
+     │  ┌───────────┐  ┌───────────┐  ┌───────────┐  ┌────────┐ │
+     │  │    MCP    │  │   hooks   │  │  skills   │  │ agents │ │
+     │  └───────────┘  └───────────┘  └───────────┘  └────────┘ │
+     │                                                          │
+     │  ╔═════════════════════════════════════════════════════╗ │
+     │  ║              provider router                        ║ │
+     │  ║     Anthropic direct  │   OpenRouter (opt-in)       ║ │
+     │  ╚═════════════════════════════════════════════════════╝ │
+     ╰──────────────────────────┬───────────────────────────────╯
                                 │
-                        ┌───────▼──────────┐
-                        │  consumers:      │
-                        │  Genie · CLI ·   │
-                        │  jelly-claw app  │
-                        └──────────────────┘
+                       ┌────────▼────────┐
+                       │  Anthropic API  │
+                       │  (opus · sonnet)│
+                       └─────────────────┘
 ```
 
-## Quick start
+Three entry points drive the same core: the **TUI** (Ink), the **CLI** (`jellyclaw run`), and the **HTTP server** (`jellyclaw serve`). All speak the same `AgentEvent` event protocol. More detail in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+
+## ⚡ Quick Start
 
 ```bash
-cd /Users/gtrush/Downloads/jellyclaw-engine
+git clone https://github.com/gtrush03/jellyclaw-engine.git
+cd jellyclaw-engine
 bun install
 bun run build
 
+# Add your Anthropic key (get one at https://console.anthropic.com)
 export ANTHROPIC_API_KEY=sk-ant-...
-node engine/dist/cli/main.js run "hello world"
+
+# Launch the interactive TUI (uses bun — the TUI imports TSX dynamically)
+./engine/bin/jellyclaw tui
 ```
 
-> For the HTTP server use `jellyclaw-serve` (node) — `jellyclaw serve` under
-> bun hits a known SSE chunked-encoding bug in `@hono/node-server`.
-
-For the full Day 1 walkthrough see [`scripts/day-1.md`](scripts/day-1.md).
-
-## Interactive TUI
-
-`jellyclaw tui` opens a Claude-Code-shaped interactive terminal UI backed
-by the same engine the CLI and HTTP server use — streaming tokens,
-tool-call cards, permission prompts, session sidebar, slash-command
-palette, and diff viewer, rebranded with a purple-primary `jellyclaw`
-theme and jellyfish spinner. It boots the engine HTTP server in-process
-on a random loopback port, mints a Bearer token, and tears everything
-down cleanly on `Ctrl-C`. Use `jellyclaw attach <url>` to point the TUI
-at an already-running server instead. See [`docs/tui.md`](docs/tui.md)
-for flags, env vars, exit codes, and the vendor upgrade procedure.
-
-## Repo layout
+You should see:
 
 ```
-engine/          TypeScript source — the engine itself
-  src/           Library + CLI entry points
-  SPEC.md        Engine spec (authoritative)
-  SECURITY.md    Threat model + CVE mitigation (Phase 2+)
-agents/          Built-in agent definitions (YAML)
-skills/          Built-in skills shipped with the engine
-patches/         patch-package patches against pinned OpenCode
-phases/          Phase-by-phase build plan (read in order)
-integration/     Consumer-side integration guides
-  GENIE-INTEGRATION.md   How Genie swaps from `claude -p` to jellyclaw
-desktop/         jelly-claw (Xcode/Swift) bridge
-docs/            Architecture + internals documentation
-scripts/         Dev setup, Day 1 guide, release helpers
-test/            Vitest test suite
+🪼  jellyclaw           open-source agent runtime · 1M context
+    ──────────────────────────────────────────────────────────
+    claude-sonnet-4-5  ·  ~/your-project
+
+    Type a prompt or / for commands.
 ```
 
-## Key documents
-
-- [`engine/SPEC.md`](engine/SPEC.md) — what the engine does and how
-- [`engine/CVE-MITIGATION.md`](engine/CVE-MITIGATION.md) — CVE-22812 defense plan
-- [`phases/README.md`](phases/README.md) — phase plan (do them in order)
-- [`integration/GENIE-INTEGRATION.md`](integration/GENIE-INTEGRATION.md) — Genie swap plan
-- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — internals
-
-## Development
+Prefer a one-shot run without the TUI? Pipe a prompt in:
 
 ```bash
-bun run dev     # watch-mode rebuild
-bun run test    # vitest
-bun run lint    # biome check
-bun run format  # biome format --write
+./engine/bin/jellyclaw run "list the files in this repo"
 ```
 
-Conventions:
+A 60-second walkthrough lives at [`docs/GETTING-STARTED.md`](docs/GETTING-STARTED.md).
 
-- **Strict TypeScript.** No `any`. No `@ts-ignore` without a linked issue.
-- **No `console.log`.** Use the structured logger.
-- **Biome** for lint + format (pre-commit hook, Phase 0).
-- **Vitest** for tests. Coverage gate is 70 % starting Phase 3.
-- **Conventional commits** (`feat:`, `fix:`, `chore:`, `docs:`).
+## 🎮 TUI slash commands
 
-## Contributing
+| Command           | What it does                                         |
+|-------------------|------------------------------------------------------|
+| `/help`           | List available commands                              |
+| `/model [name]`   | Switch model for the next run (no arg = show current)|
+| `/clear`          | Clear the transcript (keeps session)                 |
+| `/new`            | Start a fresh session                                |
+| `/sessions`       | List prior sessions (most recent first)              |
+| `/resume <id>`    | Resume a prior session by id                         |
+| `/cwd`            | Print the current working directory                  |
+| `/cost`           | Show session usage + cost                            |
+| `/cancel`         | Cancel the active run                                |
+| `/key`            | Rotate the API key (exits TUI — run `jellyclaw key`) |
+| `/end`            | Exit the TUI (aliases: `/exit`, `/quit`)             |
 
-Work through [`phases/`](phases) **in order**. Each phase has:
+Full TUI reference: [`docs/tui.md`](docs/tui.md).
 
-- An objective
-- A definition of done
-- A test plan
-- A rollback plan
+## 📡 HTTP API
 
-Do not start Phase N+1 until Phase N's DoD passes. If a phase reveals a flaw in the previous
-one, update the previous phase doc rather than papering over it.
+```
+ client ──POST /v1/runs──▶  jellyclaw serve
+   │                           │
+   │                           ├── spawn session
+   │                           │
+   └◀── SSE /v1/runs/:id/events ──┐
+                                  │
+    event: message.delta          │
+    data: {"text":"Hello"}        │ engine events:
+                                  │   session.start
+    event: tool.call              │   message.delta
+    data: {"tool":"Bash",...}     │   tool.call / tool.result
+                                  │   permission.requested
+    event: done                   │   usage.update
+    data: {"exit":0,"usage":...}  │   done
+```
 
-## License
+Working `curl` example:
 
-[MIT](LICENSE).
+```bash
+# Generate a token, export it, start the server.
+export JELLYCLAW_TOKEN=$(openssl rand -hex 32)
+./engine/bin/jellyclaw-serve --port 8765 &
 
-## Acknowledgments
+# Health probe.
+curl -s http://127.0.0.1:8765/v1/health \
+  -H "Authorization: Bearer $JELLYCLAW_TOKEN"
+# => {"ok":true,"version":"0.1.0","uptime_ms":1234,"active_runs":0}
 
-- [**OpenCode**](https://github.com/sst/opencode) (SST / @anomalyco) — the engine we wrap. Without
-  OpenCode's open-source lift, jellyclaw would be a fork of a binary we can't read.
-- **Anthropic** — the Claude Code UX is the thing we're trying to preserve. Many of the abstractions
-  here (agents, skills, hooks, tool-use streaming, permission gates) are direct tributes to the
-  shape that Claude Code proved out.
-- The [**Genie**](https://github.com/gtrush03/genie-2.0) project — our first consumer, and the
-  reason this engine exists. Every design decision here is downstream of "what does Genie need
-  to keep working tomorrow."
+# Dispatch a run.
+RUN_ID=$(curl -s http://127.0.0.1:8765/v1/runs \
+  -H "Authorization: Bearer $JELLYCLAW_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"prompt":"say hi"}' | jq -r .runId)
+
+# Stream its events (Ctrl-C to stop).
+curl -N http://127.0.0.1:8765/v1/runs/"$RUN_ID"/events \
+  -H "Authorization: Bearer $JELLYCLAW_TOKEN"
+```
+
+Sample SSE output:
+
+```
+event: session.start
+data: {"sessionId":"sess_01hxy...","ts":"2026-04-15T20:00:00Z"}
+
+event: message.delta
+data: {"text":"Hi!"}
+
+event: usage.update
+data: {"inputTokens":842,"outputTokens":2,"costUsd":0.0025}
+
+event: done
+data: {"exit":0}
+```
+
+Full reference: [`docs/http-api.md`](docs/http-api.md).
+
+## 🧪 Current Status
+
+Source of truth: [`STATUS.md`](STATUS.md).
+
+| Phase   | Name                                 | Status |
+|---------|--------------------------------------|--------|
+| 00      | Repo scaffolding                     | ✅ done |
+| 01      | Runtime bootstrap                    | ✅ done |
+| 02      | Config + provider layer              | ✅ done |
+| 03      | Event stream adapter                 | ✅ done |
+| 04      | Tool parity (11 tools)               | ✅ done |
+| 05      | Skills system                        | ✅ done |
+| 06      | Subagents + hook propagation         | ✅ done |
+| 07      | MCP client (stdio + HTTP + SSE)      | ✅ done |
+| 08      | Permission engine + hooks            | ✅ done |
+| 09      | Session persistence + resume        | ✅ done |
+| 10      | CLI + HTTP server + library          | ✅ done |
+| 10.5    | Interactive TUI                      | ✅ done |
+| 99      | Unfucking sprint                     | 🚧 5.5/8 |
+| 11      | Testing harness (5 golden prompts)   | 📋 planned |
+| 12–13   | Genie integration + cutover          | 📋 planned |
+| 14      | Observability (OTLP traces)          | 📋 planned |
+| 15–16   | Desktop app (Tauri 2)                | 📋 planned |
+| 17      | jelly-claw in-call integration       | 📋 planned |
+| 18      | Public OSS release                   | 📋 planned |
+
+## 🗺️ Roadmap
+
+Q2 2026 → v1.0 engine ships. Q3 → jelly-claw voice triggers. Q4 → public GitHub + community skills registry. Details in [`ROADMAP.md`](ROADMAP.md).
+
+```
+  2026                                                2027
+  ├─ Q2 ─────────────┼─ Q3 ──────────┼─ Q4 ──────────┼─ Q1+ ────
+  │                  │               │               │
+  │  M1  M2   M3     │     M4        │     M5        │  ACP · mobile
+  │  │   │    │      │     │         │     │         │
+  │  ▼   ▼    ▼      │     ▼         │     ▼         │
+  │ engine Genie  desktop  jelly-claw    PUBLIC      │  enterprise
+  │ works  on it  ships    voice AI      jellyclaw   │  self-host
+  │                                                  │
+```
+
+## 🛠️ Development
+
+```bash
+bun install
+bun run dev         # tsup --watch
+bun run test        # vitest run
+bun run test:watch  # vitest
+bun run lint        # biome check
+bun run format      # biome format --write
+bun run typecheck   # tsc --noEmit
+bun run build       # tsup → engine/dist/
+```
+
+**Required env** (copy [`.env.example`](.env.example) to `.env.local`):
+
+| Var                       | Required? | Notes                                          |
+|---------------------------|-----------|------------------------------------------------|
+| `ANTHROPIC_API_KEY`       | yes (default) | Get one at https://console.anthropic.com   |
+| `OPENROUTER_API_KEY`      | opt-in    | Warn-on-startup; caching is lossy              |
+| `JELLYCLAW_TOKEN`         | server    | Bearer for `jellyclaw serve`                   |
+| `JELLYCLAW_LOG_LEVEL`     | no        | `trace \| debug \| info \| warn \| error \| silent` |
+| `JELLYCLAW_TELEMETRY_DISABLED` | no   | Telemetry is already off; flag exists for assertions |
+
+**Point at OpenRouter** instead of Anthropic direct by setting
+`OPENROUTER_API_KEY` and passing a `openrouter/…` model string
+(e.g. `--model openrouter/anthropic/claude-sonnet-4`). jellyclaw will
+WARN on startup — [`docs/providers.md`](docs/providers.md) explains why.
+
+Repo conventions (strict TS, no `console.log`, Biome, Vitest, conventional commits) live in [`CLAUDE.md`](CLAUDE.md).
+
+## 📐 Design: one request, end to end
+
+```
+  ┌─────────┐
+  │ prompt  │  user types or POSTs it
+  └────┬────┘
+       ▼
+  ┌─────────────┐
+  │   session   │  allocate id, load skills/agents, build tool registry
+  │   manager   │
+  └────┬────────┘
+       ▼
+  ┌─────────────┐    ┌──────────────┐
+  │  provider   │───▶│ Anthropic or │  SSE stream of deltas
+  │   router    │    │  OpenRouter  │
+  └────┬────────┘    └──────────────┘
+       ▼
+  ┌─────────────┐
+  │   adapter   │  translate provider chunks → AgentEvent
+  └────┬────────┘
+       ▼
+  ┌─────────────┐    ┌────────────┐    ┌────────────┐
+  │  event bus  │───▶│   hooks    │───▶│   perms    │
+  └────┬────────┘    └──────┬─────┘    └──────┬─────┘
+       ▼                    ▼                 ▼
+  ┌─────────────┐    ┌────────────┐    allow / deny / ask
+  │  tools ·    │◀───│ tool.call  │
+  │  MCP · bash │    └────────────┘
+  └────┬────────┘
+       ▼
+  tool.result ──▶ back into the turn loop until the model emits `done`.
+```
+
+## 🎨 Theme
+
+The jellyjelly palette lives at [`engine/src/tui/theme/brand.ts`](engine/src/tui/theme/brand.ts). Five semantic colors over a deep-sea base:
+
+| Swatch | Hex        | Name            | Used for                             |
+|--------|------------|-----------------|--------------------------------------|
+| 🟦     | `#3BA7FF`  | Jelly Cyan      | bell / primary focus / user accent   |
+| 🟪     | `#9E7BFF`  | Medusa Violet   | tentacle glow / assistant accent     |
+| 🟧     | `#FFB547`  | Amber Eye       | heartbeat / warning / tool emphasis  |
+| 🟥     | `#FF6FB5`  | Blush Pink      | "candid" highlight / rim accent      |
+| ⬛     | `#0A1020`  | Abyss           | background                           |
+
+Per-session variance hashes the session id to pick one of five accent rotations, so each session looks distinct without straying from the palette.
+
+## 🤝 Contributing
+
+PRs are welcome — please **open an issue first**. Work happens phase-by-phase in [`phases/`](phases/), and random code before the phase it belongs to tends to get thrown away. Repo conventions are in [`CLAUDE.md`](CLAUDE.md).
+
+Work through phases **in order**. Each phase has an objective, a definition of done, a test plan, and a rollback plan. Do not start Phase N+1 until Phase N's DoD passes.
+
+## 📜 License
+
+[MIT](LICENSE) — use it, fork it, embed it, ship it. No warranty.
+
+## 👤 Author
+
+**George Trushevskiy** — [@gtrush03](https://github.com/gtrush03)
+
+## 🙏 Acknowledgments
+
+- **Anthropic** — the Claude Code UX jellyclaw is built to preserve.
+- [**Genie**](https://github.com/gtrush03/genie-2.0) — first consumer and north-star.
+
+---
+
+<div align="center">
+<sub>🪼 jellyclaw is infrastructure, not a product. Users see <b>Genie</b> or <b>jelly-claw</b>; jellyclaw is the engine underneath.</sub>
+</div>

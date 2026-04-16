@@ -173,6 +173,14 @@ export interface JsonlWriter {
   readonly projectHash: string;
   readonly path: string;
   write(event: AgentEvent): Promise<void>;
+  /**
+   * Append a `user.prompt` event for the current session. `seq` is assigned
+   * from a writer-local monotonic counter that starts at 0 on {@link openJsonl}
+   * and increments per call; `ts` comes from the injected clock. Used by
+   * `RunManager.create()` to persist the user's turn text BEFORE the agent
+   * loop kicks off so subsequent turns can rehydrate prior context.
+   */
+  writeUserPrompt(sessionId: string, text: string): Promise<void>;
   /** fsync the current log file. Idempotent. */
   flushTurn(): Promise<void>;
   /**

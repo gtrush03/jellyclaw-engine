@@ -53,6 +53,11 @@ export interface AgentLoopOptions {
   readonly model: string;
   readonly systemPrompt?: string;
   readonly prompt: string;
+  /**
+   * Conversation history from prior turns in this session. Prepended to the
+   * working `messages` array so multi-turn sessions retain context.
+   */
+  readonly priorMessages?: ReadonlyArray<{ role: "user" | "assistant"; content: string }>;
   readonly sessionId: string;
   readonly cwd: string;
   readonly signal: AbortSignal;
@@ -129,7 +134,10 @@ export async function* runAgentLoop(
       ? [{ type: "text", text: opts.systemPrompt }]
       : [];
   const tools = toolsAsProviderTools();
-  const messages: Anthropic.Messages.MessageParam[] = [{ role: "user", content: opts.prompt }];
+  const messages: Anthropic.Messages.MessageParam[] = [
+    ...(opts.priorMessages ?? []).map((m) => ({ role: m.role, content: m.content })),
+    { role: "user", content: opts.prompt },
+  ];
 
   for (let turn = 1; turn <= maxTurns; turn++) {
     if (opts.signal.aborted) {
