@@ -19,6 +19,30 @@ export const COMPLETION_TEMPLATE = path.join(
   "COMPLETION-UPDATE-TEMPLATE.md",
 );
 
+// ---------- autobuild-rig paths (read-only from the dashboard's POV) ----------
+// The rig owns these directories. The dashboard observes via chokidar + fs.readFile.
+// Any write we do for orchestration commands goes to `.orchestrator/inbox/`,
+// NEVER to `.autobuild/` or the rest of `.orchestrator/`.
+export const AUTOBUILD_DIR = path.join(REPO_ROOT, ".autobuild");
+export const RIG_STATE_FILE = path.join(AUTOBUILD_DIR, "state.json");
+export const RIG_SESSIONS_DIR = path.join(AUTOBUILD_DIR, "sessions");
+export const ORCHESTRATOR_DIR = path.join(REPO_ROOT, ".orchestrator");
+export const ORCHESTRATOR_INBOX = path.join(ORCHESTRATOR_DIR, "inbox");
+export const DISPATCHER_PID_FILE = path.join(
+  ORCHESTRATOR_DIR,
+  "dispatcher.pid",
+);
+export const LOGS_DIR = path.join(REPO_ROOT, "logs");
+export const DISPATCHER_LOG = path.join(LOGS_DIR, "dispatcher.jsonl");
+// The autobuild CLI entrypoint the daemon invokes.
+export const AUTOBUILD_BIN = path.join(
+  REPO_ROOT,
+  "scripts",
+  "autobuild",
+  "bin",
+  "autobuild",
+);
+
 /**
  * Path-traversal guard. Refuses any path that escapes REPO_ROOT.
  * Returns the normalized absolute path on success; throws otherwise.

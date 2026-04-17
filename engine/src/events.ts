@@ -105,6 +105,10 @@ export const ToolResultEvent = EventBase.extend({
   tool_name: z.string(),
   output: z.unknown(),
   duration_ms: z.number().int().nonnegative(),
+  /** Present and `true` when the tool output was truncated to fit within MAX_TOOL_RESULT_BYTES. */
+  truncated: z.boolean().optional(),
+  /** Original byte length of the tool output (UTF-8). Only present when truncated. */
+  output_bytes: z.number().int().nonnegative().optional(),
 });
 export type ToolResultEvent = z.infer<typeof ToolResultEvent>;
 
@@ -220,6 +224,103 @@ export const UserPromptEvent = EventBase.extend({
 export type UserPromptEvent = z.infer<typeof UserPromptEvent>;
 
 // ---------------------------------------------------------------------------
+// 17. team.created  (T4-03 - multi-agent team spawn)
+// ---------------------------------------------------------------------------
+export const TeamCreatedEvent = EventBase.extend({
+  type: z.literal("team.created"),
+  team_id: z.string(),
+  members: z.array(
+    z.object({
+      agent_id: z.string(),
+      subagent_id: z.string(),
+    }),
+  ),
+});
+export type TeamCreatedEvent = z.infer<typeof TeamCreatedEvent>;
+
+// ---------------------------------------------------------------------------
+// 18. team.member.started  (individual member agent started)
+// ---------------------------------------------------------------------------
+export const TeamMemberStartedEvent = EventBase.extend({
+  type: z.literal("team.member.started"),
+  team_id: z.string(),
+  agent_id: z.string(),
+  subagent_id: z.string(),
+});
+export type TeamMemberStartedEvent = z.infer<typeof TeamMemberStartedEvent>;
+
+// ---------------------------------------------------------------------------
+// 19. team.member.result  (individual member agent completed)
+// ---------------------------------------------------------------------------
+export const TeamMemberResultEvent = EventBase.extend({
+  type: z.literal("team.member.result"),
+  team_id: z.string(),
+  agent_id: z.string(),
+  status: z.enum(["done", "error", "cancelled"]),
+  output: z.string().optional(),
+  error: z
+    .object({
+      code: z.string(),
+      message: z.string(),
+    })
+    .optional(),
+});
+export type TeamMemberResultEvent = z.infer<typeof TeamMemberResultEvent>;
+
+// ---------------------------------------------------------------------------
+// 20. team.deleted  (team cancelled and cleaned up)
+// ---------------------------------------------------------------------------
+export const TeamDeletedEvent = EventBase.extend({
+  type: z.literal("team.deleted"),
+  team_id: z.string(),
+  cancelled: z.number().int().nonnegative(),
+  already_done: z.number().int().nonnegative(),
+});
+export type TeamDeletedEvent = z.infer<typeof TeamDeletedEvent>;
+
+// ---------------------------------------------------------------------------
+// 21. monitor.started  (T4-04 - background process monitor started)
+// ---------------------------------------------------------------------------
+export const MonitorStartedEvent = EventBase.extend({
+  type: z.literal("monitor.started"),
+  monitor_id: z.string(),
+  kind: z.enum(["tail", "watch", "cmd"]),
+  target: z.string(),
+});
+export type MonitorStartedEvent = z.infer<typeof MonitorStartedEvent>;
+
+// ---------------------------------------------------------------------------
+// 22. monitor.event  (T4-04 - monitor emitted line(s) or fs event)
+// ---------------------------------------------------------------------------
+export const MonitorEventEvent = EventBase.extend({
+  type: z.literal("monitor.event"),
+  monitor_id: z.string(),
+  // Exactly one of lines, fs_event, or dropped per event.
+  lines: z.array(z.string()).optional(),
+  fs_event: z
+    .object({
+      type: z.string(),
+      path: z.string(),
+    })
+    .optional(),
+  dropped: z.number().int().nonnegative().optional(),
+});
+export type MonitorEventEvent = z.infer<typeof MonitorEventEvent>;
+
+// ---------------------------------------------------------------------------
+// 23. monitor.stopped  (T4-04 - monitor stopped)
+// ---------------------------------------------------------------------------
+export const MonitorStoppedEvent = EventBase.extend({
+  type: z.literal("monitor.stopped"),
+  monitor_id: z.string(),
+  reason: z.enum(["user", "exhausted", "error", "daemon_restart"]),
+  total_events: z.number().int().nonnegative(),
+  stopped_at: z.number().int(),
+  error: z.string().optional(),
+});
+export type MonitorStoppedEvent = z.infer<typeof MonitorStoppedEvent>;
+
+// ---------------------------------------------------------------------------
 // Discriminated union
 // ---------------------------------------------------------------------------
 
@@ -240,6 +341,13 @@ export const AgentEvent = z.discriminatedUnion("type", [
   UsageUpdatedEvent,
   StreamPingEvent,
   UserPromptEvent,
+  TeamCreatedEvent,
+  TeamMemberStartedEvent,
+  TeamMemberResultEvent,
+  TeamDeletedEvent,
+  MonitorStartedEvent,
+  MonitorEventEvent,
+  MonitorStoppedEvent,
 ]);
 
 export type AgentEvent = z.infer<typeof AgentEvent>;

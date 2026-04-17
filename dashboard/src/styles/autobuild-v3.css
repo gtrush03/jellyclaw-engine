@@ -1,0 +1,194 @@
+/*
+ * autobuild-v3.css — scoped styles for the /autobuild page.
+ *
+ * Stays strictly inside Obsidian & Gold. Spec-aligned: tier tokens,
+ * keyframes, and reduced-motion overrides all sit here (not theme.css)
+ * so v3 can ship without touching shared globals.
+ *
+ * Motion budget (per §10 of DESIGN-SPEC.md):
+ *   - ≤200ms for direct-input response
+ *   - 200-400ms for state transitions
+ *   - 600-1200ms for celebration/salience moments
+ *   - loops only on true "alive" indicators
+ */
+
+/* Tier tokens — monochromatic gold tints (ordered by tier index).
+ * Kept in this file so it's strictly additive; theme.css already declares
+ * placeholder --color-tier-N tokens for v2 and we override them here for v3
+ * to match the spec's §A appendix palette. */
+@theme {
+  --color-tier-0: #928466;
+  --color-tier-1: #a89a7a;
+  --color-tier-2: #b8a67f;
+  --color-tier-3: #c4b48c;
+  --color-tier-4: #d4c5a0;
+}
+
+/* Animation keyframes — per §A appendix */
+@keyframes shimmer-sweep {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+@keyframes log-flash {
+  0% { background-color: var(--color-gold-faint); }
+  100% { background-color: transparent; }
+}
+@keyframes review-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(146, 132, 102, 0); }
+  50% { box-shadow: 0 0 0 4px rgba(146, 132, 102, 0.18); }
+}
+@keyframes retry-spin {
+  from { transform: rotate(0); }
+  to { transform: rotate(360deg); }
+}
+@keyframes banner-slide {
+  from { transform: translateY(-100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+@keyframes v3-log-line-flash {
+  0% { background-color: rgba(146, 132, 102, 0.18); }
+  100% { background-color: transparent; }
+}
+
+.v3-banner-enter {
+  animation: banner-slide 200ms ease-out;
+}
+
+.v3-log-new-line {
+  animation: v3-log-line-flash 600ms ease-out;
+}
+
+.v3-retry-spin {
+  animation: retry-spin 1.5s linear infinite;
+}
+
+.v3-shimmer-sweep {
+  background-image: linear-gradient(
+    90deg,
+    rgba(184, 166, 127, 0) 0%,
+    rgba(184, 166, 127, 0.45) 50%,
+    rgba(184, 166, 127, 0) 100%
+  );
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+  animation: shimmer-sweep 900ms ease-out;
+}
+
+.v3-review-pulse {
+  animation: review-pulse 4s ease-in-out infinite;
+}
+
+@keyframes v3-queue-pulse {
+  0%,
+  100% {
+    box-shadow: inset 2px 0 0 0 rgba(146, 132, 102, 0.85),
+      0 0 0 0 rgba(146, 132, 102, 0);
+  }
+  50% {
+    box-shadow: inset 2px 0 0 0 rgba(184, 166, 127, 1),
+      0 0 0 2px rgba(146, 132, 102, 0.15);
+  }
+}
+
+.v3-row-running {
+  animation: v3-queue-pulse 2.4s ease-in-out infinite;
+}
+
+.v3-row-blocked {
+  background-image: repeating-linear-gradient(
+    135deg,
+    rgba(146, 132, 102, 0.04) 0 6px,
+    rgba(146, 132, 102, 0.1) 6px 12px
+  );
+}
+
+.v3-row-review {
+  box-shadow:
+    inset 2px 0 0 0 rgba(212, 191, 143, 0.95),
+    0 0 0 1px rgba(146, 132, 102, 0.4),
+    0 0 24px -8px rgba(212, 191, 143, 0.45);
+}
+
+.v3-row-escalated {
+  box-shadow: inset 2px 0 0 0 rgba(199, 84, 84, 0.85);
+}
+
+.v3-pane-vignette {
+  background:
+    radial-gradient(
+      circle at 50% 0%,
+      rgba(146, 132, 102, 0.06),
+      rgba(5, 5, 5, 0) 60%
+    ),
+    #050505;
+}
+
+/* Tier pill — a solid pill colored by tier variable. */
+.v3-tier-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 18px;
+  min-width: 28px;
+  padding: 0 6px;
+  border-radius: 9999px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #0a0a0a;
+  font-weight: 600;
+}
+
+.v3-tier-pill[data-tier="0"] { background: var(--color-tier-0); }
+.v3-tier-pill[data-tier="1"] { background: var(--color-tier-1); }
+.v3-tier-pill[data-tier="2"] { background: var(--color-tier-2); }
+.v3-tier-pill[data-tier="3"] { background: var(--color-tier-3); }
+.v3-tier-pill[data-tier="4"] { background: var(--color-tier-4); }
+
+.v3-log {
+  background: #050505;
+  background-image:
+    linear-gradient(rgba(146, 132, 102, 0.035) 1px, transparent 1px);
+  background-size: 100% 22px;
+}
+
+/* Victory state — all tiers green. Soft gold radial wash. */
+.v3-victory {
+  background:
+    radial-gradient(
+      circle at 50% 40%,
+      rgba(212, 191, 143, 0.12),
+      rgba(5, 5, 5, 0) 60%
+    ),
+    #050505;
+}
+
+/* Kbd badge — used inside the help overlay. */
+.v3-kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--color-gold-subtle);
+  background: rgba(146, 132, 102, 0.08);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--color-gold-bright);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .v3-row-running,
+  .v3-banner-enter,
+  .v3-log-new-line,
+  .v3-retry-spin,
+  .v3-shimmer-sweep,
+  .v3-review-pulse {
+    animation: none !important;
+  }
+  .v3-row-running {
+    box-shadow: inset 2px 0 0 0 rgba(146, 132, 102, 1);
+  }
+}

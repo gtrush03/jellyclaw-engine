@@ -1,0 +1,5 @@
+{
+  "id": "invalid-json",
+  "version": "not-a-valid-version"
+  invalid json here
+}

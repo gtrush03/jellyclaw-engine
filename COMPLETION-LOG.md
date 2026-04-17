@@ -39,6 +39,9 @@
 - [ ] Phase 18 — Open-source release
 - [ ] Phase 19 — Post-launch stabilization (ongoing)
 
+### Unfucking v2
+- [ ] 🔄 Phase 99b-unfucking-v2 — Unfucking v2 (autobuild-driven) (5 sub-prompts)
+
 ## Phase completion details
 
 ### Phase 00 — Repo scaffolding
@@ -1753,3 +1756,26 @@ first-class jellyclaw code (plugin modules + bootstrap assertions). Layer B
 This pivot should inform every future phase that discusses "patching opencode":
 the only real option is a fork-from-source vendor submodule, which we are NOT
 doing unless a specific future need justifies the cross-platform build matrix.
+
+### Phase 99b-unfucking-v2 — Unfucking v2 (autobuild-driven)
+
+**Status:** 🔄 In progress (autobuild)
+**Started:** 2026-04-17
+**Completed:** —
+**Duration (actual):** —
+**Session count:** 5
+**Commits:** —
+**Tests passing:** 14/14
+**Last updated:** 2026-04-17
+**Notes:** Sub-prompts tracked below.
+
+#### Sub-prompt log
+
+| ID | Title | Completed (UTC) | Duration | Commits | Tests |
+|---|---|---|---|---|---|
+| T0-01-fix-serve-shim | Fix jellyclaw-serve shim entry-path check | 2026-04-17T05:47:43.538Z | 15m 47s | manual | 2/2 |
+| T0-02-serve-reads-credentials | serve reads ANTHROPIC_API_KEY from ~/.jellyclaw/credentials.json | 2026-04-17T07:54:53.604Z | 3m 24s | 4c8ced9 | 2/2 |
+| T0-05-gitignore-autobuild-dirs | gitignore .autobuild/, .orchestrator/, logs/ | 2026-04-17T08:01:00.492Z | 32s | 4c8ced9 | 4/4 |
+| T0-03-fix-hardcoded-model-id | Replace hardcoded claude-opus-4-6 with real model + resolver | 2026-04-17T08:54:53.597Z | 1m 40s | 4c8ced9 | 3/3 |
+| T0-04-thread-cli-flags | Thread --max-turns / --max-cost-usd / permission / tool flags into runAgentLoop | 2026-04-17T10:04:37.729Z | 1m 26s | 4c8ced9 | 3/3 |
+

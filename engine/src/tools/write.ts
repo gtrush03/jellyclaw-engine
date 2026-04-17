@@ -18,11 +18,13 @@ import writeSchema from "../../../test/fixtures/tools/claude-code-schemas/write.
   type: "json",
 };
 
+import { isWithinAllowedRoots } from "./permissions.js";
 import {
   CwdEscapeError,
   InvalidInputError,
   type JsonSchema,
   type Tool,
+  type ToolContext,
   WriteRequiresReadError,
 } from "./types.js";
 
@@ -41,10 +43,9 @@ export interface WriteOutput {
   created: boolean;
 }
 
-function isInsideCwd(absPath: string, cwd: string): boolean {
-  const normalizedCwd = resolve(cwd);
-  const rel = resolve(absPath);
-  return rel === normalizedCwd || rel.startsWith(`${normalizedCwd}/`);
+function isInsideAllowedRoots(absPath: string, ctx: ToolContext): boolean {
+  const roots = [ctx.cwd, ...(ctx.additionalRoots ?? [])];
+  return isWithinAllowedRoots(absPath, roots);
 }
 
 export const writeTool: Tool<WriteInput, WriteOutput> = {
@@ -64,7 +65,7 @@ export const writeTool: Tool<WriteInput, WriteOutput> = {
 
     const absPath = resolve(parsed.file_path);
 
-    if (!isInsideCwd(absPath, ctx.cwd) && !ctx.permissions.isAllowed("write.outside_cwd")) {
+    if (!isInsideAllowedRoots(absPath, ctx) && !ctx.permissions.isAllowed("write.outside_cwd")) {
       throw new CwdEscapeError(absPath, ctx.cwd);
     }
 

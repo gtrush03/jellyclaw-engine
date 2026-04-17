@@ -1,15 +1,25 @@
 {
   "name": "@jellyclaw/engine",
   "version": "0.0.1",
-  "description": "jellyclaw engine — typed event-driven wrapper around OpenCode",
+  "description": "Open-source embeddable Claude Code replacement (wraps OpenCode).",
   "type": "module",
   "license": "MIT",
+  "author": "George Trushevskiy",
+  "homepage": "https://github.com/gtrush03/jellyclaw-engine",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gtrush03/jellyclaw-engine.git"
+  },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "sideEffects": false,
   "bin": {
-    "jellyclaw": "bin/jellyclaw",
-    "jellyclaw-serve": "bin/jellyclaw-serve"
+    "jellyclaw": "./bin/jellyclaw",
+    "jellyclaw-serve": "./bin/jellyclaw-serve",
+    "jellyclaw-daemon": "./bin/jellyclaw-daemon"
+  },
+  "engines": {
+    "node": ">=20.6"
   },
   "exports": {
     ".": {
@@ -30,27 +40,43 @@
     }
   },
   "files": [
-    "dist",
-    "bin",
-    "patches"
+    "dist/",
+    "bin/",
+    "patches/",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
   ],
   "scripts": {
     "test": "vitest run"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.40.0",
+    "@hono/node-server": "^1",
     "@modelcontextprotocol/sdk": "^1",
     "@solid-primitives/event-bus": "1.1.2",
     "@vscode/ripgrep": "^1.15.0",
     "better-sqlite3": "^11",
     "chokidar": "^4.0.0",
+    "commander": "^12",
     "diff": "^9.0.0",
+    "eventsource-parser": "^3",
+    "execa": "latest",
     "gray-matter": "^4.0.3",
+    "hono": "latest",
+    "ink": "^5",
+    "ink-spinner": "^5.0.0",
+    "ink-text-input": "^6.0.0",
     "ipaddr.js": "^2.3.0",
     "opencode-ai": "1.4.5",
     "opentui-spinner": "0.0.6",
+    "p-limit": "^6",
     "patch-package": "^8.0.0",
     "pdfjs-dist": "^5.6.0",
+    "picomatch": "^4",
+    "pino": "latest",
+    "pino-pretty": "latest",
+    "react": "^18",
     "strip-ansi": "^7.1.2",
     "tinyglobby": "^0.2.0",
     "turndown": "^7.2.0",

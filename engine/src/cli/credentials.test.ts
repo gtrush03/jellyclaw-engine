@@ -96,11 +96,7 @@ describe("credentials — load robustness", () => {
   });
 
   it("returns {} when schema rejects the payload (short key)", async () => {
-    await writeFile(
-      credsPath,
-      JSON.stringify({ anthropicApiKey: "nope" }),
-      { mode: 0o600 },
-    );
+    await writeFile(credsPath, JSON.stringify({ anthropicApiKey: "nope" }), { mode: 0o600 });
     const loaded = await loadCredentials();
     expect(loaded).toStrictEqual({});
   });
@@ -166,5 +162,64 @@ describe("credentials — credentialsFileExists", () => {
   it("returns true after a save", async () => {
     await saveCredentials({ anthropicApiKey: "sk-ant-api03-abcdefghij" });
     expect(await credentialsFileExists()).toBe(true);
+  });
+});
+
+describe("subscription-round-trip", () => {
+  it("saves and loads subscription credentials correctly", async () => {
+    const payload = {
+      anthropicApiKey: "sk-ant-api03-abcdefghij",
+      subscription: {
+        kind: "oauth" as const,
+        accessToken: "oauth-access-token-abcdefghij",
+        refreshToken: "oauth-refresh-token-12345",
+        expiresAt: Date.now() + 3600_000,
+        obtainedAt: Date.now(),
+      },
+    };
+    await saveCredentials(payload);
+    const loaded = await loadCredentials();
+    expect(loaded).toStrictEqual(payload);
+  });
+
+  it("survives a write+read cycle with subscription field", async () => {
+    const subscription = {
+      kind: "oauth" as const,
+      accessToken: "oauth-test-token-minimum10",
+      obtainedAt: 1700000000000,
+    };
+    await saveCredentials({ subscription });
+    const loaded = await loadCredentials();
+    expect(loaded.subscription).toBeDefined();
+    expect(loaded.subscription?.kind).toBe("oauth");
+    expect(loaded.subscription?.accessToken).toBe("oauth-test-token-minimum10");
+    expect(loaded.subscription?.obtainedAt).toBe(1700000000000);
+  });
+
+  it("preserves subscription when updating API key", async () => {
+    const subscription = {
+      kind: "oauth" as const,
+      accessToken: "oauth-preserved-token",
+      obtainedAt: Date.now(),
+    };
+    await saveCredentials({ subscription });
+    await updateCredentials({ anthropicApiKey: "sk-ant-api03-newkeyhere" });
+    const loaded = await loadCredentials();
+    expect(loaded.anthropicApiKey).toBe("sk-ant-api03-newkeyhere");
+    expect(loaded.subscription?.accessToken).toBe("oauth-preserved-token");
+  });
+
+  it("accepts subscription without optional fields", async () => {
+    const payload = {
+      subscription: {
+        kind: "oauth" as const,
+        accessToken: "minimal-token-test",
+        obtainedAt: 1700000000000,
+      },
+    };
+    await saveCredentials(payload);
+    const loaded = await loadCredentials();
+    expect(loaded.subscription?.refreshToken).toBeUndefined();
+    expect(loaded.subscription?.expiresAt).toBeUndefined();
   });
 });

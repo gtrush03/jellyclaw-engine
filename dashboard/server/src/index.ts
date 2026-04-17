@@ -5,7 +5,19 @@ import { serveStatic } from "@hono/node-server/serve-static";
 import { promptRoutes } from "./routes/prompts.js";
 import { phaseRoutes } from "./routes/phases.js";
 import { statusRoutes } from "./routes/status.js";
-import { eventRoutes, startWatchers, stopWatchers } from "./routes/events.js";
+import {
+  eventRoutes,
+  startWatchers,
+  stopWatchers,
+  broadcastServerEvent,
+} from "./routes/events.js";
+import { runRoutes } from "./routes/runs.js";
+import {
+  createRigControlRoute,
+  startHeartbeatMonitor,
+  stopTrackedChildOnShutdown,
+} from "./routes/rig-control.js";
+import { loadRigState } from "./lib/rig-state.js";
 
 const app = new Hono();
 
@@ -20,43 +32,25 @@ app.use("*", async (c, next) => {
   );
 });
 
-// ---------- in-memory rate limit (100 req / min / IP) ----------
-interface Bucket {
-  count: number;
-  resetAt: number;
-}
-const buckets = new Map<string, Bucket>();
-const WINDOW_MS = 60_000;
-const LIMIT = 100;
-
-app.use("*", async (c, next) => {
-  // Trust the socket address; we're bound to 127.0.0.1 so X-Forwarded-For is not used.
-  const env = c.env as {
-    incoming?: { socket?: { remoteAddress?: string } };
-  };
-  const ip = env.incoming?.socket?.remoteAddress ?? "unknown";
-  const now = Date.now();
-  let bucket = buckets.get(ip);
-  if (!bucket || bucket.resetAt <= now) {
-    bucket = { count: 0, resetAt: now + WINDOW_MS };
-    buckets.set(ip, bucket);
-  }
-  bucket.count++;
-  if (bucket.count > LIMIT) {
-    const retry = Math.ceil((bucket.resetAt - now) / 1000);
-    c.header("Retry-After", String(retry));
-    return c.json({ error: "rate limit exceeded" }, 429);
-  }
-  await next();
-  return;
-});
+// ---------- rate limit: DISABLED ----------
+// Previously a 100 req/min bucket middleware here. Removed because:
+//   1. The server binds to 127.0.0.1 only — no hostile adversary to limit.
+//   2. The autobuild-v3 page legitimately polls many endpoints (runs, status,
+//      prompts, rig/running) + holds an open SSE stream; the counter filled
+//      constantly and produced 429 spam.
+//   3. Mixing rate-limit `writeHead(429)` with in-flight SSE streams produced
+//      ERR_HTTP_HEADERS_SENT crashes on /api/events.
+// If exposing beyond loopback later, restore with exemption for SSE routes.
 
 // ---------- CORS (allow-list only; no wildcard) ----------
 app.use(
   "*",
   cors({
     origin: ["http://127.0.0.1:5173", "http://localhost:5173"],
-    allowMethods: ["GET", "HEAD", "OPTIONS"],
+    // POST is required for /api/runs/:id/action — the only write endpoint the
+    // dashboard exposes. Writes go to `.orchestrator/inbox/` only; we never
+    // mutate rig-owned state.
+    allowMethods: ["GET", "HEAD", "OPTIONS", "POST"],
     allowHeaders: ["Content-Type"],
     credentials: false,
     maxAge: 600,
@@ -71,6 +65,15 @@ app.route("/api", promptRoutes);
 app.route("/api", phaseRoutes);
 app.route("/api", statusRoutes);
 app.route("/api", eventRoutes);
+app.route("/api", runRoutes);
+// Construct rig-control with a broadcaster wired to the SSE channel so a
+// successful /rig/reset emits a `reset` event to every open dashboard.
+app.route(
+  "/api",
+  createRigControlRoute({
+    broadcastReset: (data) => broadcastServerEvent("reset", data),
+  }),
+);
 
 // ---------- static frontend (production) ----------
 // Frontend sibling agent builds to ../dist (dashboard/dist)
@@ -101,6 +104,18 @@ if (process.env.HOST && process.env.HOST !== "127.0.0.1") {
 
 startWatchers();
 
+// Heartbeat monitor: every 5s, if our dispatcher pid is alive but its heartbeat
+// in .autobuild/state.json is >30s stale → warn. If the pid is dead → scrub
+// the pid file.
+const stopHeartbeatMonitor = startHeartbeatMonitor({
+  loadHeartbeatMs: async () => {
+    const s = await loadRigState();
+    if (!s.rig_heartbeat) return null;
+    const t = Date.parse(s.rig_heartbeat);
+    return Number.isNaN(t) ? null : t;
+  },
+});
+
 const server = serve(
   {
     fetch: app.fetch,
@@ -116,7 +131,11 @@ const server = serve(
 
 async function shutdown(signal: string): Promise<void> {
   console.log(`[${new Date().toISOString()}] received ${signal}, shutting down`);
+  stopHeartbeatMonitor();
   await stopWatchers();
+  // SIGTERM our tracked dispatcher child (if we started one) before closing
+  // the HTTP server. If we didn't spawn a child this is a no-op.
+  await stopTrackedChildOnShutdown();
   server.close(() => process.exit(0));
   // Hard exit if close hangs
   setTimeout(() => process.exit(1), 5_000).unref();

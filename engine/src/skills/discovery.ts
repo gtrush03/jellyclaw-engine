@@ -28,6 +28,7 @@ export function defaultRoots(
   return [
     { path: join(home, ".jellyclaw", "skills"), source: "user" },
     { path: resolve(cwd, ".jellyclaw", "skills"), source: "project" },
+    { path: join(home, ".claude", "skills"), source: "legacy-user" },
     { path: resolve(cwd, ".claude", "skills"), source: "legacy" },
   ];
 }

@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactElement } from "react";
 
 export type PhaseStatus = "not-started" | "in-progress" | "complete";
 
@@ -27,7 +27,7 @@ export function PhaseStatusDot({
   label,
   className = "",
   style,
-}: PhaseStatusDotProps): JSX.Element {
+}: PhaseStatusDotProps): ReactElement {
   const ariaLabel = label ?? DEFAULT_LABELS[status];
 
   if (status === "complete") {

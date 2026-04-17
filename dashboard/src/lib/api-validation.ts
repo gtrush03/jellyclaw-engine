@@ -28,8 +28,8 @@ export type PhaseStatus = z.infer<typeof PhaseStatusSchema>;
  * Backend emits `phase` as a zero-padded string ("01"), not a number.
  */
 export const PromptSchema = z.object({
-  id: z.string().regex(/^phase-\d{1,2}(?:\.\d+)?\/[a-z0-9][a-z0-9-]*$/i),
-  phase: z.string().regex(/^\d{1,2}(?:\.\d+)?$/),
+  id: z.string().regex(/^phase-[a-z0-9][a-z0-9.\-]*\/[a-z0-9][a-z0-9.\-]*$/i),
+  phase: z.string().regex(/^[a-z0-9][a-z0-9.\-]*$/i),
   subPrompt: z.string(),
   title: z.string(),
   whenToRun: z.string().nullable(),
@@ -38,6 +38,16 @@ export const PromptSchema = z.object({
   model: z.string().nullable(),
   filePath: z.string(),
   status: PhaseStatusSchema,
+  // Autobuild-rig fields (optional — present only on phase-99b-unfucking-v2 prompts)
+  tier: z.union([z.literal(0), z.literal(1), z.literal(2), z.literal(3), z.literal(4)]).optional(),
+  scope: z.array(z.string()).optional(),
+  depends_on_fix: z.array(z.string()).optional(),
+  tests: z.array(z.unknown()).optional(),
+  human_gate: z.boolean().optional(),
+  max_turns: z.number().optional(),
+  max_cost_usd: z.number().optional(),
+  max_retries: z.number().optional(),
+  estimated_duration_min: z.number().optional(),
 });
 export type Prompt = z.infer<typeof PromptSchema>;
 

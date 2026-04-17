@@ -41,7 +41,7 @@ describe("buildSkillInjection", () => {
       skills: [mkSkill("that-skill", "user", "does a thing")],
       logger,
     });
-    expect(res.block).toContain("# Available skills (invoke by name via the use_skill tool):\n");
+    expect(res.block).toContain("# Available skills (invoke by name via the Skill tool):\n");
     expect(res.block).toContain("- skill:that-skill — does a thing\n");
     expect(res.included).toEqual(["that-skill"]);
     expect(res.dropped).toEqual([]);

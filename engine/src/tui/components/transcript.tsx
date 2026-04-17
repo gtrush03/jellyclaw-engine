@@ -18,8 +18,10 @@
  */
 
 import { Box, Text } from "ink";
-import type { TranscriptItem, UiStatus } from "../state/types.js";
+import { unifiedDiff } from "../lib/diff.js";
+import type { ToolCallMessage, TranscriptItem, UiStatus } from "../state/types.js";
 import { brand, GRADIENT_JELLY, gradient, pickRowAccents } from "../theme/brand.js";
+import { DiffView } from "./diff-view.js";
 import { Markdown } from "./markdown.js";
 import { Thinking } from "./thinking.js";
 import { ToolCall } from "./tool-call.js";
@@ -77,6 +79,12 @@ function TranscriptRow(props: RowProps): JSX.Element {
   const { item } = props;
 
   if (item.kind === "tool") {
+    // Route Edit/Write/NotebookEdit through DiffView
+    const diffView = tryRenderDiffView(item, props.toolColor);
+    if (diffView !== null) {
+      return <Box marginTop={1}>{diffView}</Box>;
+    }
+
     return (
       <Box marginTop={1}>
         <ToolCall
@@ -156,4 +164,57 @@ function TranscriptRow(props: RowProps): JSX.Element {
       ) : null}
     </Box>
   );
+}
+
+// ---------------------------------------------------------------------------
+// Diff view routing for Edit/Write/NotebookEdit
+// ---------------------------------------------------------------------------
+
+const DIFF_TOOLS = new Set(["Edit", "Write", "NotebookEdit"]);
+
+/**
+ * Try to render a tool call as a DiffView. Returns null if:
+ * - The tool is not Edit/Write/NotebookEdit
+ * - The input cannot be parsed for diff computation
+ */
+function tryRenderDiffView(item: ToolCallMessage, borderColor: string): JSX.Element | null {
+  if (!DIFF_TOOLS.has(item.toolName)) {
+    return null;
+  }
+
+  try {
+    const input = item.input as Record<string, unknown>;
+    let oldText = "";
+    let newText = "";
+    let filePath: string | undefined;
+
+    if (item.toolName === "Edit") {
+      // Edit has old_string and new_string
+      oldText = typeof input.old_string === "string" ? input.old_string : "";
+      newText = typeof input.new_string === "string" ? input.new_string : "";
+      filePath = typeof input.file_path === "string" ? input.file_path : undefined;
+    } else if (item.toolName === "Write") {
+      // Write has file_path and content; old is always empty (new file or overwrite)
+      oldText = "";
+      newText = typeof input.content === "string" ? input.content : "";
+      filePath = typeof input.file_path === "string" ? input.file_path : undefined;
+    } else if (item.toolName === "NotebookEdit") {
+      // NotebookEdit has old_source and new_source
+      oldText = typeof input.old_source === "string" ? input.old_source : "";
+      newText = typeof input.new_source === "string" ? input.new_source : "";
+      filePath = typeof input.notebook_path === "string" ? input.notebook_path : undefined;
+    }
+
+    const diff = unifiedDiff(oldText, newText);
+    return (
+      <DiffView
+        diff={diff}
+        borderColor={borderColor}
+        {...(filePath !== undefined ? { filePath } : {})}
+      />
+    );
+  } catch {
+    // Fall back to regular ToolCall on parse error
+    return null;
+  }
 }

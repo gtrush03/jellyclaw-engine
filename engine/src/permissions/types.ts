@@ -89,12 +89,23 @@ export interface PermissionRuleWarning {
 }
 
 /**
- * Interactive ask-handler. Called when the pipeline lands on `ask`. Must
- * resolve to `allow` or `deny` (never `ask`). If no handler is supplied or
- * we're in a non-TTY context, the engine treats `ask` as `deny` (never as
- * silent allow) and audit-logs the decision.
+ * Result from an ask-handler. Extended to support AskUserQuestion's data channel.
  */
-export type AskHandler = (call: ToolCall, ctx: AskContext) => Promise<"allow" | "deny">;
+export type AskHandlerResult =
+  | "allow"
+  | "deny"
+  | { readonly kind: "answer"; readonly text: string };
+
+/**
+ * Interactive ask-handler. Called when the pipeline lands on `ask`. Must
+ * resolve to `allow`, `deny`, or an answer object (never `ask`). If no handler
+ * is supplied or we're in a non-TTY context, the engine treats `ask` as `deny`
+ * (never as silent allow) and audit-logs the decision.
+ *
+ * The `answer` variant is only valid for `AskUserQuestion` — for all other
+ * tools it collapses to `deny`.
+ */
+export type AskHandler = (call: ToolCall, ctx: AskContext) => Promise<AskHandlerResult>;
 
 export interface AskContext {
   readonly reason: string;
@@ -157,7 +168,11 @@ export const READ_ONLY_TOOLS: ReadonlySet<string> = new Set([
   "Glob",
   "LSP",
   "NotebookRead",
+  "Skill",
   "WebSearch",
+  // Plan-mode control tools (T3-03) — zero side effects, control-plane only.
+  "EnterPlanMode",
+  "ExitPlanMode",
 ]);
 
 /**
@@ -185,3 +200,43 @@ export const PLAN_MODE_DENY_TOOLS: ReadonlySet<string> = new Set([
   "Task",
   "TodoWrite",
 ]);
+
+/**
+ * Interactive tools that always go through the ask path. These tools have no
+ * side effects beyond "render a question to the user" — they skip deny-rule
+ * matching and always invoke the askHandler.
+ */
+export const INTERACTIVE_TOOLS: ReadonlySet<string> = new Set(["AskUserQuestion"]);
+
+// ---------------------------------------------------------------------------
+// PermissionModeController (T3-03)
+// ---------------------------------------------------------------------------
+
+/**
+ * Mutable permission mode surface. Allows tools to toggle plan mode mid-session.
+ * The controller wraps a mutable variable; `current()` reads the live mode and
+ * `set()` updates it. The loop passes a shallow override to `decide()` on each
+ * call so the CompiledPermissions stays frozen except for the mode field.
+ */
+export interface PermissionModeController {
+  current(): CompiledPermissions["mode"];
+  set(next: CompiledPermissions["mode"]): void;
+}
+
+/**
+ * Factory for a mutable mode controller. The closure holds the current mode;
+ * `set()` updates it. Thread this through `AgentLoopOptions.modeController`.
+ */
+export function makePermissionModeController(
+  initial: CompiledPermissions["mode"],
+): PermissionModeController {
+  let mode: CompiledPermissions["mode"] = initial;
+  return {
+    current() {
+      return mode;
+    },
+    set(next) {
+      mode = next;
+    },
+  };
+}

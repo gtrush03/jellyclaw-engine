@@ -76,12 +76,20 @@ interface HandlerCtx {
 }
 
 /**
- * Backend emits these five event names (see `dashboard/server/src/routes/events.ts`):
+ * Backend emits these event names (see `dashboard/server/src/routes/events.ts`).
+ * The first five are from the original dashboard stream; the `run-*` and
+ * `review-needed` events are emitted by the autobuild rig:
  *   - completion-log-changed: COMPLETION-LOG.md changed on disk → everything recomputes
  *   - status-changed:         cheaper status-only recompute
  *   - prompt-added:           a new .md file appeared under prompts/
  *   - prompt-changed:         existing prompt file was edited
  *   - heartbeat:              keepalive every 30s so we know the stream is alive
+ *   - run-started             a new autobuild run spawned
+ *   - run-updated             run state changed (working → testing, etc.)
+ *   - run-failed              run entered FAILED state — toast the user
+ *   - run-completed           run terminal success
+ *   - review-needed           run entered REVIEW state — toast the user
+ *   - rig-updated             rig-wide state change (paused/halted/budget)
  */
 function handleEvent(msg: EventSourceMessage, { queryClient, setLastLogUpdate }: HandlerCtx) {
   const event = msg.event || 'message';
@@ -127,9 +135,54 @@ function handleEvent(msg: EventSourceMessage, { queryClient, setLastLogUpdate }:
       return;
     }
 
+    case 'run-started':
+    case 'run-updated':
+    case 'run-completed':
+    case 'rig-updated':
+    // Server emits the following names from `dashboard/server/src/routes/events.ts` —
+    // treat them the same as the legacy `rig-updated` / `run-updated` family so
+    // the useRuns query invalidates whenever the dispatcher writes state.json
+    // or a worker appends to its tmux.log.
+    case 'rig-state-changed':
+    case 'run-log-appended':
+    case 'rig-heartbeat-lost':
+    case 'rig-heartbeat-recovered':
+    case 'reset':
+      setLastLogUpdate(new Date());
+      void queryClient.invalidateQueries({ queryKey: ['runs'] });
+      void queryClient.invalidateQueries({ queryKey: ['rig', 'running'] });
+      return;
+
+    case 'run-failed': {
+      setLastLogUpdate(new Date());
+      void queryClient.invalidateQueries({ queryKey: ['runs'] });
+      const id = extractPromptId(payload) ?? 'autobuild run';
+      const reason = extractString(payload, 'reason') ?? 'failed';
+      toast.error(`Run failed · ${id}`, { description: reason });
+      return;
+    }
+
+    case 'review-needed': {
+      setLastLogUpdate(new Date());
+      void queryClient.invalidateQueries({ queryKey: ['runs'] });
+      const id = extractPromptId(payload) ?? 'autobuild run';
+      toast.warning(`Review needed · ${id}`, {
+        description: 'Open the autobuild panel (a) to approve or reject.',
+      });
+      return;
+    }
+
     default:
       return;
   }
+}
+
+function extractString(p: unknown, key: string): string | null {
+  if (p && typeof p === 'object' && key in p) {
+    const v = (p as Record<string, unknown>)[key];
+    if (typeof v === 'string') return v;
+  }
+  return null;
 }
 
 function extractPromptId(p: unknown): string | null {
@@ -142,7 +195,7 @@ function extractPromptId(p: unknown): string | null {
     }
     if ('path' in p) {
       const v = (p as { path: unknown }).path;
-      if (typeof v === 'string' && /^phase-\d{2}(?:\.\d+)?\/[a-z0-9-]+$/i.test(v)) return v;
+      if (typeof v === 'string' && /^phase-[a-z0-9][a-z0-9.\-]*\/[a-z0-9][a-z0-9.\-]*$/i.test(v)) return v;
     }
   }
   return null;

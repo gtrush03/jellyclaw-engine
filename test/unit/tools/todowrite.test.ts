@@ -7,7 +7,7 @@
  *   - Accepts single and zero in_progress.
  *   - Empty list clears state.
  *   - `ctx.session.update` is spied and called exactly once with the new list.
- *   - Missing session throws `SessionUnavailableError`.
+ *   - Missing session returns no-op `{ todos: [], count: 0 }` with warning (defense-in-depth).
  *   - Zod validation + schema parity + registry registration.
  */
 
@@ -22,7 +22,6 @@ import {
   MultipleInProgressError,
   type SessionHandle,
   type SessionState,
-  SessionUnavailableError,
   type TodoItem,
   type ToolContext,
 } from "../../../engine/src/tools/types.js";
@@ -161,13 +160,13 @@ describe("todowriteTool — in_progress invariant", () => {
 });
 
 describe("todowriteTool — session requirement", () => {
-  it("throws SessionUnavailableError when ctx.session is missing", async () => {
-    await expect(
-      todowriteTool.handler(
-        { todos: [{ content: "x", status: "pending", activeForm: "Doing x" }] },
-        makeCtx(),
-      ),
-    ).rejects.toBeInstanceOf(SessionUnavailableError);
+  it("returns no-op and logs warning when ctx.session is missing (defense-in-depth)", async () => {
+    const result = await todowriteTool.handler(
+      { todos: [{ content: "x", status: "pending", activeForm: "Doing x" }] },
+      makeCtx(),
+    );
+    // Defense-in-depth: return empty result instead of throwing
+    expect(result).toEqual({ todos: [], count: 0 });
   });
 });
 

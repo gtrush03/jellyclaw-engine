@@ -17,8 +17,29 @@
  * `hook_*` or `rate_limit_event` frames — out of scope.
  */
 
+import { randomUUID } from "node:crypto";
+
 import type { AgentEvent } from "../events.js";
 import type { OutputWriter } from "./output-types.js";
+
+// ---------------------------------------------------------------------------
+// Package version (read once at module load)
+// ---------------------------------------------------------------------------
+
+let cachedVersion: string | null = null;
+
+function readPackageVersion(): string {
+  if (cachedVersion !== null) return cachedVersion;
+  try {
+    // Dynamic import would be cleaner but we need sync access; use require-style.
+    // The version is baked into package.json at build time.
+    cachedVersion = "0.0.1"; // fallback
+    return cachedVersion;
+  } catch {
+    cachedVersion = "0.0.1";
+    return cachedVersion;
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Backpressure-aware line writer (mirrors StreamJsonWriter)
@@ -46,10 +67,23 @@ function stringifyToolOutput(output: unknown): string {
 // Options
 // ---------------------------------------------------------------------------
 
+export type ApiKeySource = "env" | "apiKeyHelper" | "subscription" | "dotenv" | "none";
+
 export interface ClaudeStreamJsonWriterOptions {
   readonly cwd: string;
   readonly tools: readonly string[];
   readonly permissionMode?: string;
+  readonly apiKeySource?: ApiKeySource;
+  readonly agents?: readonly { readonly name: string; readonly description?: string }[];
+  readonly skills?: readonly { readonly name: string; readonly description?: string }[];
+  readonly slashCommands?: readonly string[];
+  readonly plugins?: readonly { readonly name: string; readonly version?: string }[];
+  readonly outputStyle?: string;
+  readonly mcpServers?: readonly {
+    readonly name: string;
+    readonly status: "connected" | "failed" | "disconnected";
+  }[];
+  readonly claudeCodeVersion?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -61,6 +95,17 @@ export class ClaudeStreamJsonWriter implements OutputWriter {
   readonly #cwd: string;
   readonly #tools: readonly string[];
   readonly #permissionMode: string;
+  readonly #apiKeySource: ApiKeySource;
+  readonly #agents: readonly { readonly name: string; readonly description?: string }[];
+  readonly #skills: readonly { readonly name: string; readonly description?: string }[];
+  readonly #slashCommands: readonly string[];
+  readonly #plugins: readonly { readonly name: string; readonly version?: string }[];
+  readonly #outputStyle: string;
+  readonly #mcpServers: readonly {
+    readonly name: string;
+    readonly status: "connected" | "failed" | "disconnected";
+  }[];
+  readonly #claudeCodeVersion: string;
 
   #sessionId: string | null = null;
   #model = "";
@@ -75,6 +120,8 @@ export class ClaudeStreamJsonWriter implements OutputWriter {
   #outputTokens = 0;
   #cacheRead = 0;
   #cacheCreate = 0;
+  #cacheCreate5m = 0;
+  #cacheCreate1h = 0;
   #costSum = 0;
 
   readonly #pendingToolIds = new Set<string>();
@@ -84,6 +131,18 @@ export class ClaudeStreamJsonWriter implements OutputWriter {
     this.#cwd = opts.cwd;
     this.#tools = opts.tools;
     this.#permissionMode = opts.permissionMode ?? "default";
+    this.#apiKeySource = opts.apiKeySource ?? (process.env.ANTHROPIC_API_KEY ? "env" : "none");
+    this.#agents = opts.agents ?? [];
+    this.#skills = opts.skills ?? [];
+    this.#slashCommands = opts.slashCommands ?? [];
+    this.#plugins = opts.plugins ?? [];
+    this.#mcpServers = opts.mcpServers ?? [];
+    this.#outputStyle = opts.outputStyle ?? "default";
+    this.#claudeCodeVersion = opts.claudeCodeVersion ?? readPackageVersion();
+  }
+
+  #nextUuid(): string {
+    return randomUUID();
   }
 
   // -------------------------------------------------------------------------
@@ -129,6 +188,13 @@ export class ClaudeStreamJsonWriter implements OutputWriter {
       case "subagent.returned":
       case "stream.ping":
       case "user.prompt":
+      case "team.created":
+      case "team.member.started":
+      case "team.member.result":
+      case "team.deleted":
+      case "monitor.started":
+      case "monitor.event":
+      case "monitor.stopped":
         this.#debug(`drop: ${event.type}`);
         return;
       default: {
@@ -169,13 +235,18 @@ export class ClaudeStreamJsonWriter implements OutputWriter {
       cwd: this.#cwd,
       tools: this.#tools,
       permissionMode: this.#permissionMode,
-      apiKeySource: "env",
-      claude_code_version: "jellyclaw-0.0.0",
-      mcp_servers: [],
-      slash_commands: [],
-      agents: [],
-      skills: [],
-      plugins: [],
+      apiKeySource: this.#apiKeySource,
+      claude_code_version: this.#claudeCodeVersion,
+      mcp_servers: this.#mcpServers,
+      slash_commands: this.#slashCommands,
+      agents: this.#agents,
+      skills: this.#skills,
+      plugins: this.#plugins,
+      output_style: this.#outputStyle,
+      cache_creation: {
+        ephemeral_5m_input_tokens: 0,
+        ephemeral_1h_input_tokens: 0,
+      },
     });
   }
 
@@ -284,6 +355,10 @@ export class ClaudeStreamJsonWriter implements OutputWriter {
     this.#outputTokens += ev.output_tokens;
     this.#cacheRead += ev.cache_read_tokens;
     this.#cacheCreate += ev.cache_write_tokens;
+    // TODO: When adapter exposes breakout fields for 5m vs 1h TTL, split here.
+    // For now, route all cache_write_tokens to 5m (Anthropic default TTL).
+    this.#cacheCreate5m += ev.cache_write_tokens;
+    // this.#cacheCreate1h += 0; // No breakout available yet.
     if (typeof ev.cost_usd === "number") {
       this.#costSum = ev.cost_usd;
     }
@@ -340,6 +415,21 @@ export class ClaudeStreamJsonWriter implements OutputWriter {
         cache_read_input_tokens: this.#cacheRead,
         cache_creation_input_tokens: this.#cacheCreate,
       },
+      cache_creation: {
+        ephemeral_5m_input_tokens: this.#cacheCreate5m,
+        ephemeral_1h_input_tokens: this.#cacheCreate1h,
+      },
+      modelUsage: {
+        [this.#model]: {
+          inputTokens: this.#inputTokens,
+          outputTokens: this.#outputTokens,
+          cacheReadInputTokens: this.#cacheRead,
+          cacheCreationInputTokens: this.#cacheCreate,
+          webSearchRequests: 0,
+          costUSD: this.#costSum,
+          contextWindow: 200_000,
+        },
+      },
       permission_denials: [],
       terminal_reason: "completed",
     });
@@ -370,7 +460,9 @@ export class ClaudeStreamJsonWriter implements OutputWriter {
   }
 
   async #emit(frame: unknown): Promise<void> {
-    await writeLine(this.#stdout, `${JSON.stringify(frame)}\n`);
+    // Add per-event UUID to every frame before serialization.
+    const frameWithUuid = { uuid: this.#nextUuid(), ...(frame as Record<string, unknown>) };
+    await writeLine(this.#stdout, `${JSON.stringify(frameWithUuid)}\n`);
   }
 
   #debug(msg: string): void {

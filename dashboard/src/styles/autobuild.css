@@ -1,0 +1,107 @@
+/*
+ * Autobuild layer — add-only styles.
+ *
+ * We stay inside the Obsidian & Gold palette: no new hues, only intensity
+ * variations of `--color-gold`. The tier tokens below are consumed by
+ * `TierStrip`, `FixPackProgressBar`, and related components.
+ */
+
+@theme {
+  /* Tier intensity ramp — subtle increase from T0 → T4. All derived from
+   * --color-gold so swapping the base color propagates. */
+  --color-tier-0: rgba(146, 132, 102, 0.45);
+  --color-tier-1: rgba(146, 132, 102, 0.6);
+  --color-tier-2: rgba(146, 132, 102, 0.75);
+  --color-tier-3: rgba(184, 166, 127, 0.85);
+  --color-tier-4: rgba(212, 191, 143, 1);
+
+  /* Rig heartbeat color tokens — reuse success/warning/danger rather than
+   * introducing new ones; declared here only for explicit documentation. */
+  --color-rig-online: var(--color-success);
+  --color-rig-stale: var(--color-warning);
+  --color-rig-down: var(--color-danger);
+}
+
+/* ---------------------------------------------------------------------------
+ * Running-ring pulse. Applied to PromptCard when enriched state is RUNNING.
+ * Purely cosmetic — wrapped in a reduced-motion block below.
+ * ------------------------------------------------------------------------ */
+
+@keyframes ring-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(146, 132, 102, 0.55),
+      0 0 0 1px rgba(146, 132, 102, 0.45);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(146, 132, 102, 0),
+      0 0 0 1px rgba(146, 132, 102, 0.75);
+  }
+}
+
+.autobuild-ring-pulse {
+  animation: ring-pulse 2.2s ease-in-out infinite;
+}
+
+/* ---------------------------------------------------------------------------
+ * Session preview fade — masks the bottom of the monospace log block so it
+ * looks "more below" without drawing a hard border.
+ * ------------------------------------------------------------------------ */
+
+.autobuild-log-fade {
+  mask-image: linear-gradient(to bottom, #000 60%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, #000 60%, transparent 100%);
+}
+
+/* Gutter for FAILED / ESCALATED states — a 2px red left accent. */
+.autobuild-gutter-red {
+  box-shadow: inset 2px 0 0 0 rgba(199, 84, 84, 0.9);
+}
+
+/* REVIEW glow — matches the spec: `shadow-[0_0_0_1px_rgba(146,132,102,0.4)]`
+ * plus a soft outer glow. */
+.autobuild-review-glow {
+  box-shadow: 0 0 0 1px rgba(146, 132, 102, 0.4),
+    0 0 28px -8px rgba(146, 132, 102, 0.55);
+}
+
+/* ---------------------------------------------------------------------------
+ * Spinning-up shimmer — applied to the Start Rig button while we wait for
+ * the first heartbeat to come back. Soft gold sweep across the button;
+ * purely cosmetic, disabled by prefers-reduced-motion.
+ * ------------------------------------------------------------------------ */
+
+@keyframes autobuild-v2-shimmer {
+  0% { background-position: -120% 0; }
+  100% { background-position: 220% 0; }
+}
+
+.autobuild-v2-spinning {
+  background-image: linear-gradient(
+    90deg,
+    rgba(184, 166, 127, 0) 0%,
+    rgba(184, 166, 127, 0.85) 50%,
+    rgba(184, 166, 127, 0) 100%
+  );
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+  animation: autobuild-v2-shimmer 1.8s ease-in-out infinite;
+}
+
+/* ---------------------------------------------------------------------------
+ * Reduced motion — disable the ring pulse entirely so cards don't breathe for
+ * users who opted out.
+ * ------------------------------------------------------------------------ */
+
+@media (prefers-reduced-motion: reduce) {
+  .autobuild-ring-pulse {
+    animation: none !important;
+    box-shadow: 0 0 0 1px rgba(146, 132, 102, 0.6);
+  }
+  .autobuild-v2-spinning {
+    animation: none !important;
+  }
+  .pulse-glow {
+    animation: none !important;
+  }
+}

@@ -22,13 +22,8 @@ import globSchema from "../../../test/fixtures/tools/claude-code-schemas/glob.js
   type: "json",
 };
 
-import {
-  CwdEscapeError,
-  InvalidInputError,
-  type JsonSchema,
-  type Tool,
-  type ToolContext,
-} from "./types.js";
+import { ensureWithinAllowedRoots } from "./permissions.js";
+import { InvalidInputError, type JsonSchema, type Tool, type ToolContext } from "./types.js";
 
 const STAT_CONCURRENCY = 64;
 
@@ -44,12 +39,7 @@ export interface GlobOutput {
 }
 
 function ensureInsideCwd(resolved: string, ctx: ToolContext): void {
-  const cwd = ctx.cwd;
-  const inside = resolved === cwd || resolved.startsWith(cwd + path.sep);
-  if (inside) return;
-  if (!ctx.permissions.isAllowed("glob.outside_cwd")) {
-    throw new CwdEscapeError(resolved, cwd);
-  }
+  ensureWithinAllowedRoots(resolved, ctx, "glob.outside_cwd");
 }
 
 function readGitignorePatterns(root: string): string[] {

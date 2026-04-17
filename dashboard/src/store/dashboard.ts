@@ -7,6 +7,10 @@ interface DashboardState {
   lastLogUpdate: Date | null;
   collapsedPhases: Set<number>;
 
+  // ---- Autobuild slice (v4) ----
+  /** Currently-focused run id on the autobuild page (if any). */
+  selectedRunId: string | null;
+
   setSelectedPromptId: (id: string | null) => void;
   closeViewer: () => void;
   openViewer: () => void;
@@ -14,6 +18,8 @@ interface DashboardState {
   setLastLogUpdate: (d: Date) => void;
   togglePhaseCollapsed: (phase: number) => void;
   expandAllPhases: () => void;
+
+  setSelectedRunId: (id: string | null) => void;
 }
 
 export const useDashboardStore = create<DashboardState>((set) => ({
@@ -22,6 +28,8 @@ export const useDashboardStore = create<DashboardState>((set) => ({
   sseConnected: false,
   lastLogUpdate: null,
   collapsedPhases: new Set<number>(),
+
+  selectedRunId: null,
 
   setSelectedPromptId: (id) =>
     set(() => ({
@@ -40,4 +48,6 @@ export const useDashboardStore = create<DashboardState>((set) => ({
       return { collapsedPhases: next };
     }),
   expandAllPhases: () => set({ collapsedPhases: new Set<number>() }),
+
+  setSelectedRunId: (id) => set({ selectedRunId: id }),
 }));

@@ -1,0 +1,639 @@
+#!/usr/bin/env node
+// jc — jellyclaw autobuild orchestrator CLI.
+//
+// Read-only commands (status, ps, preview, follow, budget, log) read directly
+// from filesystem state. Everything else goes through the inbox: we drop a JSON
+// file at .orchestrator/inbox/<iso>-<cmd>-<rand>.json and exit — the dispatcher
+// picks it up on its next tick.
+//
+// Never mutates .autobuild/state.json directly. The dispatcher is the only
+// writer.
+
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
+import { createReadStream } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { randomBytes } from "node:crypto";
+import { spawn } from "node:child_process";
+
+// ---------------------------------------------------------------------------
+// Paths
+// ---------------------------------------------------------------------------
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+// scripts/orchestrator/jc → repo root is 2 levels up
+const DEFAULT_REPO_ROOT = resolve(HERE, "..", "..");
+
+function repoRoot() {
+  return process.env.AUTOBUILD_ROOT
+    ? resolve(process.env.AUTOBUILD_ROOT)
+    : DEFAULT_REPO_ROOT;
+}
+function autobuildDir() {
+  return join(repoRoot(), ".autobuild");
+}
+function orchDir() {
+  return join(repoRoot(), ".orchestrator");
+}
+function inboxDir() {
+  return join(orchDir(), "inbox");
+}
+function stateFile() {
+  return join(autobuildDir(), "state.json");
+}
+function sessionsDir() {
+  return join(autobuildDir(), "sessions");
+}
+function logsDir() {
+  return join(autobuildDir(), "logs");
+}
+function pausedUntilFile() {
+  return join(orchDir(), "paused-until");
+}
+
+// ---------------------------------------------------------------------------
+// Colors (ANSI, gold/green/amber/red — Obsidian & Gold)
+// ---------------------------------------------------------------------------
+
+const useColor = process.stdout.isTTY && process.env.NO_COLOR == null;
+const C = {
+  reset: useColor ? "\x1b[0m" : "",
+  bold: useColor ? "\x1b[1m" : "",
+  dim: useColor ? "\x1b[2m" : "",
+  gold: useColor ? "\x1b[38;5;179m" : "",
+  green: useColor ? "\x1b[32m" : "",
+  amber: useColor ? "\x1b[33m" : "",
+  red: useColor ? "\x1b[31m" : "",
+  grey: useColor ? "\x1b[38;5;244m" : "",
+  cyan: useColor ? "\x1b[36m" : "",
+};
+const paint = (color, str) => `${C[color] || ""}${str}${C.reset}`;
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function nowIso() {
+  return new Date().toISOString();
+}
+function isoForFilename() {
+  // ISO without colons (filesystem-safe)
+  return nowIso().replace(/:/g, "-");
+}
+function shortRand() {
+  return randomBytes(3).toString("hex");
+}
+function dieMissingRig() {
+  process.stderr.write(
+    `${paint("red", "error:")} rig state dir missing at ${autobuildDir()}\n` +
+      `  run \`scripts/autobuild/bin/autobuild run\` first, or set AUTOBUILD_ROOT\n`,
+  );
+  process.exit(2);
+}
+function dieInvalid(msg) {
+  process.stderr.write(`${paint("red", "error:")} ${msg}\n`);
+  process.exit(2);
+}
+
+function readStateOrNull() {
+  const p = stateFile();
+  if (!existsSync(p)) return null;
+  try {
+    return JSON.parse(readFileSync(p, "utf8"));
+  } catch (err) {
+    process.stderr.write(
+      `${paint("red", "error:")} state.json is corrupt: ${err.message}\n`,
+    );
+    process.exit(2);
+  }
+}
+
+function ensureInboxDir() {
+  const dir = inboxDir();
+  mkdirSync(dir, { recursive: true });
+  return dir;
+}
+
+function writeInbox(cmd, extra = {}) {
+  if (!existsSync(autobuildDir())) {
+    // Don't *require* state.json to exist for inbox writes — but we do require
+    // the repo root to be sane. Absence of .autobuild is the canonical signal.
+    dieMissingRig();
+  }
+  ensureInboxDir();
+  const payload = { cmd, issued_at: nowIso(), ...extra };
+  const name = `${isoForFilename()}-${cmd}-${shortRand()}.json`;
+  const p = join(inboxDir(), name);
+  writeFileSync(p, JSON.stringify(payload, null, 2));
+  process.stdout.write(
+    `${paint("gold", "[jc]")} queued ${paint("bold", cmd)}${
+      extra.target ? ` target=${extra.target}` : ""
+    } → ${paint("dim", p)}\n`,
+  );
+  return 0;
+}
+
+function humanDuration(seconds) {
+  if (seconds == null || !Number.isFinite(seconds) || seconds < 0) return "—";
+  const s = Math.floor(seconds);
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  const rs = s % 60;
+  if (m < 60) return `${m}m ${String(rs).padStart(2, "0")}s`;
+  const h = Math.floor(m / 60);
+  const rm = m % 60;
+  return `${h}h ${String(rm).padStart(2, "0")}m`;
+}
+
+function ago(iso) {
+  if (!iso) return "—";
+  const t = Date.parse(iso);
+  if (!Number.isFinite(t)) return "—";
+  const s = Math.floor((Date.now() - t) / 1000);
+  if (s < 0) return "—";
+  if (s < 60) return `${s}s ago`;
+  if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+  if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+  return `${Math.floor(s / 86400)}d ago`;
+}
+
+function runtimeSeconds(run) {
+  if (!run?.started_at) return null;
+  const start = Date.parse(run.started_at);
+  if (!Number.isFinite(start)) return null;
+  const end = run.ended_at ? Date.parse(run.ended_at) : Date.now();
+  return Math.max(0, Math.floor((end - start) / 1000));
+}
+
+function runState(run) {
+  // Normalize status → color category
+  const s = run?.status || "unknown";
+  return s;
+}
+
+function stateColor(s) {
+  if (s === "running" || s === "healthy") return "green";
+  if (s === "testing" || s === "starting") return "cyan";
+  if (s === "stalled" || s === "needs_review") return "amber";
+  if (s === "escalated" || s === "crashed" || s === "failed") return "red";
+  if (s === "queued" || s === "done" || s === "passed" || s === "completed")
+    return "grey";
+  return "grey";
+}
+
+function headerColor(state) {
+  if (state.halted) return "red";
+  if (state.paused) return "amber";
+  return "green";
+}
+
+function summaryLine(state) {
+  // Compact single-line for status-right: `q=7 run=2/2 today=$4.20`
+  if (!state) return "rig=off";
+  const q = Array.isArray(state.queue) ? state.queue.length : 0;
+  const runs = state.runs || {};
+  const running = Object.values(runs).filter((r) =>
+    ["running", "testing", "starting", "healthy"].includes(r?.status),
+  ).length;
+  const cap = state.concurrency ?? 1;
+  const spent = state.daily_budget_usd?.spent ?? 0;
+  const budgetCap = state.daily_budget_usd?.cap ?? 25;
+  const status = state.halted
+    ? "HALT"
+    : state.paused
+      ? "PAUSED"
+      : "OK";
+  const statusPaint = state.halted
+    ? paint("red", status)
+    : state.paused
+      ? paint("amber", status)
+      : paint("green", status);
+  return `q=${q} run=${running}/${cap} today=$${spent.toFixed(2)}/${budgetCap} ${statusPaint}`;
+}
+
+// ---------------------------------------------------------------------------
+// Subcommands
+// ---------------------------------------------------------------------------
+
+function cmdHelp() {
+  const rows = [
+    ["status", "pretty-print state.json summary"],
+    ["status --line", "compact single-line for tmux status-right"],
+    ["ps", "table of active runs"],
+    ["pause", "queue: pause dispatcher (no new spawns)"],
+    ["resume", "queue: resume dispatcher"],
+    ["halt", "queue: halt rig (stop everything, drain)"],
+    ["abort <id>", "queue: abort a run"],
+    ["approve <id>", "queue: approve an escalated run"],
+    ["rerun <id>", "queue: re-enqueue a completed/failed run"],
+    ["skip <id>", "queue: skip a queued run"],
+    ["tell <id> \"<hint>\"", "queue: send a hint to a running worker"],
+    ["preview <id>", "print last 200 lines of session's tmux.log"],
+    ["follow <id>", "tail -F on session's tmux.log"],
+    ["concurrency <n>|auto", "queue: set concurrency cap"],
+    ["pause-until <HH:MM>", "queue: pause until a wall-clock time"],
+    ["budget", "print today's spend + forecast + per-session caps"],
+    ["log <name>", "tail a named log (orchestrator|dispatcher|tester)"],
+    ["hint <pid> accept|reject", "brain pane (M13) — stub"],
+    ["help", "this help"],
+  ];
+  process.stdout.write(`${paint("gold", "jc")} — jellyclaw autobuild CLI\n\n`);
+  process.stdout.write("Commands:\n");
+  const w = rows.reduce((m, [a]) => Math.max(m, a.length), 0);
+  for (const [c, d] of rows) {
+    process.stdout.write(`  ${paint("bold", c.padEnd(w))}  ${paint("dim", d)}\n`);
+  }
+  process.stdout.write(
+    `\n${paint("dim", `repo: ${repoRoot()}`)}\n` +
+      `${paint("dim", `state: ${stateFile()}`)}\n` +
+      `${paint("dim", `inbox: ${inboxDir()}`)}\n`,
+  );
+  return 0;
+}
+
+function cmdStatus(argv) {
+  if (argv.includes("--line")) {
+    const state = readStateOrNull();
+    process.stdout.write(`${summaryLine(state)}\n`);
+    return 0;
+  }
+  if (!existsSync(autobuildDir())) dieMissingRig();
+  const state = readStateOrNull();
+  if (!state) {
+    process.stdout.write(
+      `${paint("amber", "rig not running")} — no state.json at ${stateFile()}\n`,
+    );
+    return 0;
+  }
+  const runs = state.runs || {};
+  const running = Object.values(runs).filter((r) =>
+    ["running", "testing", "starting", "healthy"].includes(r?.status),
+  );
+  const q = Array.isArray(state.queue) ? state.queue : [];
+  const cap = state.concurrency ?? 1;
+  const spent = state.daily_budget_usd?.spent ?? 0;
+  const budgetCap = state.daily_budget_usd?.cap ?? 25;
+  const hb = ago(state.rig_heartbeat);
+  const statusLabel = state.halted ? "HALT" : state.paused ? "PAUSED" : "OK";
+  const statusPaint = paint(headerColor(state), statusLabel);
+
+  process.stdout.write(
+    `${paint("gold", "jc-rig")} ${paint("dim", `v${state.rig_version || "?"}`)}  ${statusPaint}\n`,
+  );
+  process.stdout.write(
+    `  queue     ${paint("bold", q.length.toString().padStart(3))}\n` +
+      `  running   ${paint("bold", `${running.length}/${cap}`)}\n` +
+      `  today     ${paint("bold", `$${spent.toFixed(2)}/${budgetCap}`)}\n` +
+      `  heartbeat ${paint("dim", hb)}\n` +
+      `  completed ${paint("dim", String((state.completed || []).length))}\n` +
+      `  escalated ${paint("red", String((state.escalated || []).length))}\n`,
+  );
+
+  // paused-until hint
+  try {
+    if (existsSync(pausedUntilFile())) {
+      const until = readFileSync(pausedUntilFile(), "utf8").trim();
+      process.stdout.write(`  paused-until ${paint("amber", until)}\n`);
+    }
+  } catch {}
+
+  return 0;
+}
+
+function cmdPs() {
+  if (!existsSync(autobuildDir())) dieMissingRig();
+  const state = readStateOrNull();
+  if (!state) {
+    process.stdout.write(`${paint("amber", "no state")}\n`);
+    return 0;
+  }
+  const runs = state.runs || {};
+  const ids = Object.keys(runs);
+  if (ids.length === 0) {
+    process.stdout.write(`${paint("dim", "no runs")}\n`);
+    return 0;
+  }
+
+  // Width-aware columns.
+  const cols = [
+    { key: "id", label: "ID", w: 26 },
+    { key: "tier", label: "TIER", w: 4 },
+    { key: "state", label: "STATE", w: 12 },
+    { key: "runtime", label: "RUNTIME", w: 10 },
+    { key: "att", label: "ATT/MAX", w: 8 },
+    { key: "tests", label: "TESTS", w: 7 },
+    { key: "updated", label: "LAST", w: 8 },
+  ];
+  // Header
+  const hdr = cols.map((c) => c.label.padEnd(c.w)).join("  ");
+  process.stdout.write(`${paint("dim", hdr)}\n`);
+  for (const id of ids) {
+    const r = runs[id];
+    const tier = r.tier ?? "?";
+    const s = runState(r);
+    const color = stateColor(s);
+    const rt = humanDuration(runtimeSeconds(r));
+    const att = `${r.attempt ?? 0}/${r.max_retries ?? 0}`;
+    const t = r.tests || { total: 0, passed: 0, failed: 0 };
+    const tests = t.total ? `${t.passed}/${t.total}` : "—";
+    const up = ago(r.updated_at);
+    const row =
+      id.padEnd(cols[0].w).slice(0, cols[0].w) +
+      "  " +
+      String(tier).padEnd(cols[1].w) +
+      "  " +
+      paint(color, s.padEnd(cols[2].w)) +
+      "  " +
+      rt.padEnd(cols[3].w) +
+      "  " +
+      att.padEnd(cols[4].w) +
+      "  " +
+      tests.padEnd(cols[5].w) +
+      "  " +
+      up.padEnd(cols[6].w);
+    process.stdout.write(`${row}\n`);
+  }
+  return 0;
+}
+
+function cmdPause() {
+  return writeInbox("pause");
+}
+function cmdResume() {
+  return writeInbox("resume");
+}
+function cmdHalt() {
+  return writeInbox("halt");
+}
+function cmdAbort(args) {
+  const target = args[0];
+  if (!target) dieInvalid("usage: jc abort <id>");
+  return writeInbox("abort", { target });
+}
+function cmdApprove(args) {
+  const target = args[0];
+  if (!target) dieInvalid("usage: jc approve <id>");
+  return writeInbox("approve", { target });
+}
+function cmdRerun(args) {
+  const target = args[0];
+  if (!target) dieInvalid("usage: jc rerun <id>");
+  return writeInbox("rerun", { target });
+}
+function cmdSkip(args) {
+  const target = args[0];
+  if (!target) dieInvalid("usage: jc skip <id>");
+  return writeInbox("skip", { target });
+}
+function cmdTell(args) {
+  const target = args[0];
+  const payload = args.slice(1).join(" ").trim();
+  if (!target || !payload) dieInvalid('usage: jc tell <id> "<hint>"');
+  return writeInbox("tell", { target, payload });
+}
+function cmdConcurrency(args) {
+  const raw = args[0];
+  if (!raw) dieInvalid("usage: jc concurrency <n>|auto");
+  let payload;
+  if (raw === "auto") {
+    payload = "auto";
+  } else {
+    const n = Number(raw);
+    if (!Number.isInteger(n) || n < 0 || n > 64) {
+      dieInvalid(`concurrency must be an integer in [0,64] or "auto", got ${raw}`);
+    }
+    payload = n;
+  }
+  return writeInbox("concurrency", { payload });
+}
+function cmdPauseUntil(args) {
+  const hhmm = args[0];
+  if (!/^\d{1,2}:\d{2}$/.test(hhmm || "")) {
+    dieInvalid("usage: jc pause-until <HH:MM>");
+  }
+  ensureInboxDir();
+  // Also drop a sentinel file the dispatcher can stat.
+  mkdirSync(orchDir(), { recursive: true });
+  writeFileSync(pausedUntilFile(), hhmm);
+  return writeInbox("pause-until", { payload: hhmm });
+}
+
+function findSessionTmuxLog(id) {
+  // Prefer an exact-prefix match under .autobuild/sessions/<id>*/tmux.log.
+  const root = sessionsDir();
+  if (!existsSync(root)) return null;
+  let matches;
+  try {
+    matches = readdirSync(root);
+  } catch {
+    return null;
+  }
+  // Exact match first, then startsWith, then includes.
+  const candidates = [
+    ...matches.filter((n) => n === id),
+    ...matches.filter((n) => n !== id && n.startsWith(`${id}-`)),
+    ...matches.filter((n) => n !== id && !n.startsWith(`${id}-`) && n.includes(id)),
+  ];
+  for (const name of candidates) {
+    const p = join(root, name, "tmux.log");
+    if (existsSync(p)) return p;
+  }
+  return null;
+}
+
+function cmdPreview(args) {
+  const id = args[0];
+  if (!id) dieInvalid("usage: jc preview <id>");
+  const p = findSessionTmuxLog(id);
+  if (!p) {
+    process.stderr.write(
+      `${paint("amber", "no tmux.log")} for id ${id} under ${sessionsDir()}\n`,
+    );
+    return 1;
+  }
+  const data = readFileSync(p, "utf8");
+  const lines = data.split("\n");
+  const tail = lines.slice(Math.max(0, lines.length - 200));
+  process.stdout.write(tail.join("\n"));
+  if (!data.endsWith("\n")) process.stdout.write("\n");
+  return 0;
+}
+
+function cmdFollow(args) {
+  const id = args[0];
+  if (!id) dieInvalid("usage: jc follow <id>");
+  const p = findSessionTmuxLog(id);
+  if (!p) {
+    process.stderr.write(
+      `${paint("amber", "no tmux.log")} for id ${id} under ${sessionsDir()}\n`,
+    );
+    return 1;
+  }
+  // Exec tail -F in foreground; inherit stdio. Nonzero if tail exits weird.
+  const child = spawn("tail", ["-F", p], { stdio: "inherit" });
+  return new Promise((resolve) => {
+    child.on("exit", (code) => resolve(code ?? 0));
+  });
+}
+
+function cmdBudget() {
+  if (!existsSync(autobuildDir())) dieMissingRig();
+  const state = readStateOrNull();
+  if (!state) {
+    process.stdout.write(`${paint("amber", "no state")}\n`);
+    return 0;
+  }
+  const b = state.daily_budget_usd || { spent: 0, cap: 25, day: "?" };
+  const spent = b.spent ?? 0;
+  const cap = b.cap ?? 25;
+  const pct = cap > 0 ? Math.min(100, (spent / cap) * 100) : 0;
+  const barW = 30;
+  const filled = Math.round((pct / 100) * barW);
+  const bar = "█".repeat(filled) + "░".repeat(barW - filled);
+  const barColor = pct >= 80 ? "red" : pct >= 50 ? "amber" : "green";
+
+  // Forecast: linear extrapolate spent against fraction of day elapsed.
+  const now = new Date();
+  const msIntoDay = now.getHours() * 3600_000 + now.getMinutes() * 60_000 + now.getSeconds() * 1000;
+  const msInDay = 86_400_000;
+  const fracDay = Math.max(0.01, msIntoDay / msInDay);
+  const forecast = spent / fracDay;
+  process.stdout.write(`${paint("gold", "budget")} ${b.day}\n`);
+  process.stdout.write(
+    `  spent    ${paint("bold", `$${spent.toFixed(2)}`)} of $${cap.toFixed(2)}  (${pct.toFixed(1)}%)\n`,
+  );
+  process.stdout.write(`  ${paint(barColor, bar)}\n`);
+  process.stdout.write(
+    `  forecast ${paint("dim", `$${forecast.toFixed(2)} end-of-day (linear)`)}\n`,
+  );
+
+  // Per-session caps (soft self-check $5, hard $10).
+  process.stdout.write(
+    `  gates    ${paint("dim", "self-check $5 • hard kill $10")}\n`,
+  );
+
+  // Top active runs by cost.
+  const runs = Object.entries(state.runs || {})
+    .map(([id, r]) => ({ id, cost: r?.cost_usd ?? 0, status: r?.status }))
+    .filter((x) => x.cost > 0)
+    .sort((a, b) => b.cost - a.cost)
+    .slice(0, 5);
+  if (runs.length > 0) {
+    process.stdout.write(`  top runs\n`);
+    for (const r of runs) {
+      process.stdout.write(
+        `    ${r.id.padEnd(28).slice(0, 28)}  ${paint("bold", `$${r.cost.toFixed(2)}`)}  ${paint("dim", r.status || "?")}\n`,
+      );
+    }
+  }
+  return 0;
+}
+
+function cmdLog(args) {
+  const name = args[0];
+  if (!name) dieInvalid("usage: jc log orchestrator|dispatcher|tester");
+  const allowed = new Set(["orchestrator", "dispatcher", "tester", "autobuild"]);
+  if (!allowed.has(name)) {
+    dieInvalid(`unknown log ${name}; expected one of ${[...allowed].join(", ")}`);
+  }
+  // Prefer repo-root logs/ (for the jsonl pino stream the plist writes), then
+  // .autobuild/logs/<name>.log (what logger.mjs writes).
+  const candidates = [
+    join(repoRoot(), "logs", `${name}.jsonl`),
+    join(repoRoot(), "logs", `${name}.log`),
+    join(logsDir(), `${name}.log`),
+  ];
+  const p = candidates.find((c) => existsSync(c));
+  if (!p) {
+    process.stderr.write(
+      `${paint("amber", "no log file")} — tried:\n  ${candidates.join("\n  ")}\n`,
+    );
+    return 1;
+  }
+  const child = spawn("tail", ["-F", p], { stdio: "inherit" });
+  return new Promise((resolve) => {
+    child.on("exit", (code) => resolve(code ?? 0));
+  });
+}
+
+function cmdHint(args) {
+  // Stub for M13 brain pane.
+  const pid = args[0];
+  const verdict = args[1];
+  if (!pid || !["accept", "reject"].includes(verdict || "")) {
+    process.stdout.write(
+      `${paint("amber", "M13 not yet")} — brain pane is reserved; usage: jc hint <proposal-id> accept|reject\n`,
+    );
+    return 0;
+  }
+  process.stdout.write(`${paint("amber", "M13 not yet")} — would ${verdict} ${pid}\n`);
+  return 0;
+}
+
+// ---------------------------------------------------------------------------
+// Dispatch
+// ---------------------------------------------------------------------------
+
+async function main() {
+  const argv = process.argv.slice(2);
+  const cmd = argv[0];
+  const rest = argv.slice(1);
+  if (!cmd || cmd === "help" || cmd === "-h" || cmd === "--help") return cmdHelp();
+
+  switch (cmd) {
+    case "status":
+      return cmdStatus(rest);
+    case "ps":
+      return cmdPs();
+    case "pause":
+      return cmdPause();
+    case "resume":
+      return cmdResume();
+    case "halt":
+      return cmdHalt();
+    case "abort":
+      return cmdAbort(rest);
+    case "approve":
+      return cmdApprove(rest);
+    case "rerun":
+      return cmdRerun(rest);
+    case "skip":
+      return cmdSkip(rest);
+    case "tell":
+      return cmdTell(rest);
+    case "concurrency":
+      return cmdConcurrency(rest);
+    case "pause-until":
+      return cmdPauseUntil(rest);
+    case "preview":
+      return cmdPreview(rest);
+    case "follow":
+      return await cmdFollow(rest);
+    case "budget":
+      return cmdBudget();
+    case "log":
+      return await cmdLog(rest);
+    case "hint":
+      return cmdHint(rest);
+    default:
+      process.stderr.write(
+        `${paint("red", "unknown command:")} ${cmd}\n` +
+          `run \`jc help\` for the list\n`,
+      );
+      return 2;
+  }
+}
+
+main()
+  .then((code) => process.exit(code ?? 0))
+  .catch((err) => {
+    process.stderr.write(`${paint("red", "fatal:")} ${err?.stack || err}\n`);
+    process.exit(1);
+  });

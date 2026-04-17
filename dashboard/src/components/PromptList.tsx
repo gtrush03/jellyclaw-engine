@@ -1,14 +1,28 @@
 import { useMemo } from 'react';
-import { Inbox, AlertTriangle, Flame } from 'lucide-react';
+import { Inbox, AlertTriangle, Flame, Wrench, ChevronDown, ChevronRight } from 'lucide-react';
 import { usePrompts } from '@/hooks/usePrompts';
 import { usePhases } from '@/hooks/usePhases';
 import { useDashboardStore } from '@/store/dashboard';
-import type { Phase, Prompt } from '@/types';
+import type { Phase, Prompt, Tier } from '@/types';
 import { PromptCard } from './PromptCard';
 import { Skeleton } from './Skeleton';
 import { EmptyState } from './EmptyState';
+import { FixPackProgressBar } from './autobuild/FixPackProgressBar';
+import type { TierCounts } from './autobuild/TierStrip';
+import { UNFUCKING_V2_PHASE_ID } from './PhaseSidebar';
+import { cn } from '@/lib/cn';
 
 const UNFUCKING_PHASE = 99;
+const TIERS: Tier[] = [0, 1, 2, 3, 4];
+
+/**
+ * Prompts that belong to the Unfucking v2 phase are carried as a synthetic
+ * "phase" with id `phase-99b-unfucking-v2`. They're grouped by tier instead
+ * of by prompt id so the operator can watch the fix pack advance top-down.
+ */
+function isUnfuckingV2(id: string): boolean {
+  return id.startsWith(`${UNFUCKING_V2_PHASE_ID}/`);
+}
 
 export function PromptList() {
   const { data: prompts, isLoading: promptsLoading, error: promptsError } = usePrompts();
@@ -17,17 +31,30 @@ export function PromptList() {
   const selectedPromptId = useDashboardStore((s) => s.selectedPromptId);
   const setSelectedPromptId = useDashboardStore((s) => s.setSelectedPromptId);
   const collapsedPhases = useDashboardStore((s) => s.collapsedPhases);
+  const togglePhaseCollapsed = useDashboardStore((s) => s.togglePhaseCollapsed);
+
+  // Partition prompts: regular (grouped by numeric phase) vs unfucking-v2 (tiered).
+  const { regularPrompts, v2Prompts } = useMemo(() => {
+    const regular: Prompt[] = [];
+    const v2: Prompt[] = [];
+    if (!prompts) return { regularPrompts: regular, v2Prompts: v2 };
+    for (const p of prompts) {
+      if (isUnfuckingV2(p.id)) v2.push(p);
+      else regular.push(p);
+    }
+    return { regularPrompts: regular, v2Prompts: v2 };
+  }, [prompts]);
 
   const grouped = useMemo(() => {
-    if (!prompts) return [] as Array<{ phase: number; meta: Phase | undefined; items: Prompt[] }>;
+    if (regularPrompts.length === 0)
+      return [] as Array<{ phase: number; meta: Phase | undefined; items: Prompt[] }>;
     const byPhase = new Map<number, Prompt[]>();
-    for (const p of prompts) {
+    for (const p of regularPrompts) {
       const arr = byPhase.get(p.phase) ?? [];
       arr.push(p);
       byPhase.set(p.phase, arr);
     }
-    // Phase 99 (UNFUCKING) is pinned to the top regardless of numeric order —
-    // it's the active recovery work to make the engine real.
+    // Phase 99 (UNFUCKING) is pinned to the top regardless of numeric order.
     const keys = Array.from(byPhase.keys()).sort((a, b) => {
       if (a === UNFUCKING_PHASE) return -1;
       if (b === UNFUCKING_PHASE) return 1;
@@ -38,7 +65,36 @@ export function PromptList() {
       meta: phases?.find((x) => x.phase === phase),
       items: (byPhase.get(phase) ?? []).sort((a, b) => a.subPrompt.localeCompare(b.subPrompt)),
     }));
-  }, [prompts, phases]);
+  }, [regularPrompts, phases]);
+
+  const v2Grouped = useMemo(() => {
+    const byTier = new Map<Tier, Prompt[]>();
+    const counts: Partial<Record<Tier, TierCounts>> = {};
+    for (const t of TIERS) {
+      byTier.set(t, []);
+      counts[t] = { done: 0, total: 0 };
+    }
+    for (const p of v2Prompts) {
+      if (p.tier === undefined) continue;
+      const arr = byTier.get(p.tier) ?? [];
+      arr.push(p);
+      byTier.set(p.tier, arr);
+      const c = counts[p.tier];
+      if (c) {
+        c.total += 1;
+        if (p.status === 'complete') c.done += 1;
+      }
+    }
+    for (const t of TIERS) {
+      const arr = byTier.get(t);
+      if (arr) arr.sort((a, b) => a.subPrompt.localeCompare(b.subPrompt));
+    }
+    return {
+      byTier,
+      counts,
+      total: v2Prompts.length,
+    };
+  }, [v2Prompts]);
 
   if (promptsLoading) {
     return (
@@ -83,11 +139,92 @@ export function PromptList() {
 
   return (
     <div className="p-6 space-y-10 max-w-5xl mx-auto">
+      {/* Unfucking v2 tier-grouped section (pinned above the numeric phases). */}
+      {v2Grouped.total > 0 && (
+        <section
+          id={`phase-section-${UNFUCKING_V2_PHASE_ID}`}
+          aria-labelledby="phase-h-v2"
+          className="relative rounded-2xl border border-[color:var(--color-gold)]/50 bg-[color:var(--color-gold-faint)]/40 p-5"
+        >
+          <header className="flex items-baseline justify-between mb-4 pb-3 border-b hairline">
+            <div className="flex items-baseline gap-3">
+              <Wrench className="w-5 h-5 text-[color:var(--color-gold)] self-center" />
+              <span className="font-mono text-[11px] tracking-widest text-[color:var(--color-gold)]">
+                UNFUCKING v2
+              </span>
+              <h2
+                id="phase-h-v2"
+                className="text-lg font-semibold text-[color:var(--color-gold-bright)] uppercase tracking-wide"
+              >
+                Fix Pack
+              </h2>
+            </div>
+            <div className="font-mono text-[11px] text-[color:var(--color-text-muted)]">
+              {TIERS.reduce<number>((a, t) => a + (v2Grouped.counts[t]?.done ?? 0), 0)}/
+              {v2Grouped.total} complete
+            </div>
+          </header>
+          <FixPackProgressBar counts={v2Grouped.counts} className="mb-4" />
+          <div className="space-y-5">
+            {TIERS.map((t) => {
+              const items = v2Grouped.byTier.get(t) ?? [];
+              if (items.length === 0) return null;
+              const sectionKey = 1000 + t; // stable pseudo-phase id for the collapsed-set
+              const collapsed = collapsedPhases.has(sectionKey);
+              const done = items.filter((p) => p.status === 'complete').length;
+              return (
+                <section key={t} aria-labelledby={`tier-h-${t}`}>
+                  <button
+                    type="button"
+                    onClick={() => togglePhaseCollapsed(sectionKey)}
+                    className="w-full flex items-baseline justify-between mb-2 pb-1 border-b hairline text-left"
+                  >
+                    <div className="flex items-center gap-2">
+                      {collapsed ? (
+                        <ChevronRight className="w-3 h-3 text-[color:var(--color-text-muted)]" />
+                      ) : (
+                        <ChevronDown className="w-3 h-3 text-[color:var(--color-text-muted)]" />
+                      )}
+                      <span
+                        id={`tier-h-${t}`}
+                        className="font-mono text-[11px] tracking-widest text-[color:var(--color-gold-bright)]"
+                      >
+                        T{t}
+                      </span>
+                      <span
+                        aria-hidden
+                        className="h-1.5 w-6 rounded-full"
+                        style={{ background: `var(--color-tier-${t})` }}
+                      />
+                    </div>
+                    <span className="font-mono text-[11px] text-[color:var(--color-text-muted)] tabular-nums">
+                      {done}/{items.length}
+                    </span>
+                  </button>
+                  {!collapsed && (
+                    <div className="grid gap-3">
+                      {items.map((p) => (
+                        <PromptCard
+                          key={p.id}
+                          prompt={p}
+                          active={p.id === selectedPromptId}
+                          onClick={() => setSelectedPromptId(p.id)}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </section>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
       {grouped.map(({ phase, meta, items }) => {
         const collapsed = collapsedPhases.has(phase);
-        const isUnfucking = phase === UNFUCKING_PHASE;
+        const isLegacyUnfucking = phase === UNFUCKING_PHASE;
 
-        if (isUnfucking) {
+        if (isLegacyUnfucking) {
           const completed = items.filter((p) => p.status === 'complete').length;
           return (
             <section
@@ -110,7 +247,10 @@ export function PromptList() {
                   </span>
                   <h2
                     id={`phase-h-${phase}`}
-                    className="text-lg font-bold text-[color:var(--color-warning,#ff8a00)] uppercase tracking-wide"
+                    className={cn(
+                      'text-lg font-bold uppercase tracking-wide',
+                      'text-[color:var(--color-warning,#ff8a00)]',
+                    )}
                   >
                     {meta?.name ?? 'Unfucking — Make the Engine Real'}
                   </h2>

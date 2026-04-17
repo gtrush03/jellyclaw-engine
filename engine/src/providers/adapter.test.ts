@@ -432,8 +432,8 @@ describe("adapter: session.started only once", () => {
     const { events, state } = runAll(chunks);
     const starts = events.filter((e) => e.type === "session.started");
     expect(starts.length).toBe(1);
-    // Second message_start still updates usage.
-    expect(state.inputTokens).toBe(20);
+    // Both message_starts contribute input tokens (accumulation across turns).
+    expect(state.inputTokens).toBe(30);
   });
 });
 
@@ -472,5 +472,61 @@ describe("adapter: purity (same state transition is deterministic)", () => {
     const { events: a } = runAll(FIXTURE_A, 1_000_000);
     const { events: b } = runAll(FIXTURE_A, 1_000_000);
     expect(a).toEqual(b);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// T1-07: usage accumulation tests
+// ---------------------------------------------------------------------------
+
+describe("adapter: usage-accumulates", () => {
+  it("output_tokens in usage.updated events is monotonically non-decreasing across turns", () => {
+    // Simulate three message_delta chunks with per-turn usage deltas.
+    // The adapter should ACCUMULATE, so emitted output_tokens should be 100, 300, 600.
+    const chunks: ProviderChunk[] = [
+      {
+        type: "message_start",
+        message: { usage: { input_tokens: 10 } },
+      },
+      // Turn 1: delta output = 100
+      {
+        type: "message_delta",
+        delta: { stop_reason: null },
+        usage: { output_tokens: 100 },
+      },
+      // Turn 2: delta output = 200
+      {
+        type: "message_delta",
+        delta: { stop_reason: null },
+        usage: { output_tokens: 200 },
+      },
+      // Turn 3: delta output = 300
+      {
+        type: "message_delta",
+        delta: { stop_reason: "end_turn" },
+        usage: { output_tokens: 300 },
+      },
+    ];
+
+    const { events } = runAll(chunks);
+    const usageEvents = events.filter((e) => e.type === "usage.updated") as Extract<
+      AgentEvent,
+      { type: "usage.updated" }
+    >[];
+
+    // Should have 3 usage.updated events (one per message_delta).
+    expect(usageEvents).toHaveLength(3);
+
+    // Accumulated values: 100, 100+200=300, 300+300=600 (strictly monotonic).
+    expect(usageEvents[0]?.output_tokens).toBe(100);
+    expect(usageEvents[1]?.output_tokens).toBe(300);
+    expect(usageEvents[2]?.output_tokens).toBe(600);
+
+    // Verify monotonically non-decreasing.
+    for (let i = 1; i < usageEvents.length; i++) {
+      expect(usageEvents[i]?.output_tokens).toBeGreaterThanOrEqual(
+        usageEvents[i - 1]?.output_tokens ?? 0,
+      );
+    }
   });
 });

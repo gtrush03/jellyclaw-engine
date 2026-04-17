@@ -11,7 +11,7 @@
  */
 
 import { existsSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
-import { basename, isAbsolute, resolve, sep } from "node:path";
+import { basename, isAbsolute, resolve } from "node:path";
 import { createPatch } from "diff";
 import { z } from "zod";
 
@@ -20,9 +20,9 @@ import editSchema from "../../../test/fixtures/tools/claude-code-schemas/edit.js
 };
 
 import { explainMissingMatch } from "./edit-diagnostics.js";
+import { ensureWithinAllowedRoots } from "./permissions.js";
 import {
   AmbiguousMatchError,
-  CwdEscapeError,
   EditRequiresReadError,
   InvalidInputError,
   type JsonSchema,
@@ -48,12 +48,7 @@ export interface EditOutput {
 }
 
 function ensureInsideCwd(resolved: string, ctx: ToolContext): void {
-  const cwd = ctx.cwd;
-  const inside = resolved === cwd || resolved.startsWith(cwd + sep);
-  if (inside) return;
-  if (!ctx.permissions.isAllowed("edit.outside_cwd")) {
-    throw new CwdEscapeError(resolved, cwd);
-  }
+  ensureWithinAllowedRoots(resolved, ctx, "edit.outside_cwd");
 }
 
 function buildDiffPreview(path: string, before: string, after: string): string {

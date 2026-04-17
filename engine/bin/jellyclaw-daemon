@@ -1,0 +1,8 @@
+#!/usr/bin/env node
+// Node-only shim for the scheduler daemon (T4-01). Runs under node because
+// the daemon uses better-sqlite3 which has native bindings. Bun support
+// for native modules can be inconsistent.
+import("../dist/cli/main.js").catch((e) => {
+  process.stderr.write(`${String(e?.stack ?? e)}\n`);
+  process.exit(1);
+});

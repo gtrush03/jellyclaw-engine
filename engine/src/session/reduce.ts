@@ -43,17 +43,17 @@ function bumpSeqTs(state: { lastSeq: number; lastTs: number }, ev: AgentEvent): 
   if (ev.ts > state.lastTs) state.lastTs = ev.ts;
 }
 
-function accumulateUsage(
-  prev: CumulativeUsage,
+function takeLatestUsage(
+  _prev: CumulativeUsage,
   ev: Extract<AgentEvent, { type: "usage.updated" }>,
 ): CumulativeUsage {
   const costCents = ev.cost_usd === undefined ? 0 : Math.round(ev.cost_usd * 100);
   return {
-    inputTokens: prev.inputTokens + ev.input_tokens,
-    outputTokens: prev.outputTokens + ev.output_tokens,
-    cacheReadTokens: prev.cacheReadTokens + ev.cache_read_tokens,
-    cacheWriteTokens: prev.cacheWriteTokens + ev.cache_write_tokens,
-    costUsdCents: prev.costUsdCents + costCents,
+    inputTokens: ev.input_tokens,
+    outputTokens: ev.output_tokens,
+    cacheReadTokens: ev.cache_read_tokens,
+    cacheWriteTokens: ev.cache_write_tokens,
+    costUsdCents: costCents,
   };
 }
 
@@ -228,7 +228,7 @@ export function reduceEvents(
       }
 
       case "usage.updated": {
-        usage = accumulateUsage(usage, ev);
+        usage = takeLatestUsage(usage, ev);
         break;
       }
 

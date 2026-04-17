@@ -22,9 +22,11 @@ import type { HookRunResult } from "../hooks/types.js";
 import { firstMatch } from "./rules.js";
 import {
   type AskHandler,
+  type AskHandlerResult,
   type CompiledPermissions,
   type DecideOptions,
   EDIT_TOOLS,
+  INTERACTIVE_TOOLS,
   type PermissionAuditEntry,
   type PermissionDecision,
   type PermissionRule,
@@ -134,7 +136,31 @@ async function invokeAsk(
       ? { reason, mode: perms.mode, matchedRule }
       : { reason, mode: perms.mode };
     const result = await handler(call, ctx);
+    // Handle the answer variant — only valid for AskUserQuestion.
+    // For all other tools, answer collapses to deny.
+    if (typeof result === "object" && result.kind === "answer") {
+      return call.name === "AskUserQuestion" ? "allow" : "deny";
+    }
     return result === "allow" ? "allow" : "deny";
+  } catch {
+    return "deny";
+  }
+}
+
+/**
+ * Invoke the askHandler and return the full result including answer text.
+ * Used by AskUserQuestion to get the user's free-text response.
+ */
+export async function invokeAskForAnswer(
+  handler: AskHandler | undefined,
+  call: ToolCall,
+  perms: CompiledPermissions,
+  reason: string,
+): Promise<AskHandlerResult> {
+  if (handler === undefined) return "deny";
+  try {
+    const ctx = { reason, mode: perms.mode };
+    return await handler(call, ctx);
   } catch {
     return "deny";
   }
@@ -170,6 +196,15 @@ export async function decide(opts: DecideOptions): Promise<PermissionDecision> {
   if (perms.mode === "plan" && !sideEffectFree) {
     emit(audit, call, perms, sessionId, "deny", "mode:plan side-effectful tool", secrets);
     return "deny";
+  }
+
+  // Step 2.5 — INTERACTIVE_TOOLS always go through ask, skip deny-rule matching.
+  // These tools have no side effects beyond "render the question" so they bypass
+  // the deny-wins invariant and always invoke the askHandler.
+  if (INTERACTIVE_TOOLS.has(call.name)) {
+    const decision = await invokeAsk(opts.askHandler, call, perms, "interactive-tool");
+    emit(audit, call, perms, sessionId, decision, "interactive-tool (asked)", secrets);
+    return decision;
   }
 
   // Step 3 — DENY-WINS INVARIANT.

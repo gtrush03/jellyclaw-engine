@@ -23,15 +23,15 @@
 
 import { randomUUID } from "node:crypto";
 import { existsSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
-import { isAbsolute, resolve, sep } from "node:path";
+import { isAbsolute, resolve } from "node:path";
 import { z } from "zod";
 
 import notebookEditSchema from "../../../test/fixtures/tools/claude-code-schemas/notebookedit.json" with {
   type: "json",
 };
 
+import { ensureWithinAllowedRoots } from "./permissions.js";
 import {
-  CwdEscapeError,
   InvalidInputError,
   InvalidNotebookError,
   type JsonSchema,
@@ -77,12 +77,7 @@ interface NotebookJson {
 }
 
 function ensureInsideCwd(resolved: string, ctx: ToolContext): void {
-  const cwd = ctx.cwd;
-  const inside = resolved === cwd || resolved.startsWith(cwd + sep);
-  if (inside) return;
-  if (!ctx.permissions.isAllowed("notebook.outside_cwd")) {
-    throw new CwdEscapeError(resolved, cwd);
-  }
+  ensureWithinAllowedRoots(resolved, ctx, "notebook.outside_cwd");
 }
 
 function ensureCellId(cell: NotebookCell): string {

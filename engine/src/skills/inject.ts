@@ -28,12 +28,13 @@ export interface InjectionResult {
 
 export const DEFAULT_INJECTION_MAX_BYTES = 1536;
 
-const HEADER = "# Available skills (invoke by name via the use_skill tool):\n";
+const HEADER = "# Available skills (invoke by name via the Skill tool):\n";
 
 const SOURCE_PRIORITY: Record<SkillSource, number> = {
   user: 0,
   project: 1,
-  legacy: 2,
+  "legacy-user": 2,
+  legacy: 3,
 };
 
 function compareSkills(a: Skill, b: Skill): number {

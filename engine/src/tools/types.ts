@@ -16,6 +16,7 @@
 
 import type { z } from "zod";
 import type { Logger } from "../logger.js";
+import type { PermissionModeController } from "../permissions/types.js";
 import type { SubagentService } from "../subagents/types.js";
 
 export type JsonSchema = {
@@ -29,6 +30,11 @@ export type JsonSchema = {
 export interface ToolContext {
   /** Project root. All tool I/O is jailed below this unless config grants otherwise. */
   readonly cwd: string;
+  /**
+   * Additional allowed root directories (T2-10). Paths under any of these are
+   * permitted by path tools in addition to `cwd`. Set via `--add-dir` CLI flag.
+   */
+  readonly additionalRoots?: readonly string[];
   /** Opaque session identifier; used for scoping caches + background process logs. */
   readonly sessionId: string;
   /**
@@ -72,6 +78,11 @@ export interface TodoItem {
 }
 
 /**
+ * Result from asking the user a question via the AskUserQuestion tool.
+ */
+export type AskUserResult = "allow" | "deny" | { readonly kind: "answer"; readonly text: string };
+
+/**
  * Minimal permission surface exposed to tools. The real engine implementation
  * (Phase 08) resolves `allow` / `ask` / `deny` against config + hook runner.
  * For Phase 04 we only need the synchronous `isAllowed` check.
@@ -83,6 +94,17 @@ export interface PermissionService {
    * Phase 04 — an interactive prompt will be wired in Phase 08.
    */
   isAllowed(key: string): boolean;
+  /**
+   * Ask the user a question and return their response. Used by the
+   * AskUserQuestion tool to get free-text answers. Returns "deny" if no
+   * handler is configured or the user declines.
+   */
+  askForAnswer?(question: string, options?: string[]): Promise<AskUserResult>;
+  /**
+   * Get the mutable permission mode controller. Used by EnterPlanMode and
+   * ExitPlanMode tools to toggle plan mode mid-session.
+   */
+  getModeController?(): PermissionModeController;
 }
 
 export interface Tool<I = unknown, O = unknown> {

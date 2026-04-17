@@ -1,0 +1,16 @@
+{
+  "type": "object",
+  "properties": {
+    "action": {
+      "type": "string",
+      "enum": ["read", "write", "append", "delete"],
+      "description": "The action to perform: read returns current memory, write replaces it, append adds to it, delete removes it."
+    },
+    "content": {
+      "type": "string",
+      "description": "Required for write/append; ignored for read/delete."
+    }
+  },
+  "required": ["action"],
+  "additionalProperties": false
+}

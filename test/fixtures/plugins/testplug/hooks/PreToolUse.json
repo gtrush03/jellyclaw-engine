@@ -1,0 +1,6 @@
+{
+  "event": "PreToolUse",
+  "command": "echo",
+  "args": ["hook-fired"],
+  "blocking": true
+}

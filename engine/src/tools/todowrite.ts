@@ -19,13 +19,7 @@ import { z } from "zod";
 import todowriteSchema from "../../../test/fixtures/tools/claude-code-schemas/todowrite.json" with {
   type: "json",
 };
-import {
-  type JsonSchema,
-  MultipleInProgressError,
-  SessionUnavailableError,
-  type TodoItem,
-  type Tool,
-} from "./types.js";
+import { type JsonSchema, MultipleInProgressError, type TodoItem, type Tool } from "./types.js";
 
 export const todoItemSchema = z.object({
   content: z.string().min(1),
@@ -57,7 +51,8 @@ export const todowriteTool: Tool<TodowriteInput, TodowriteOutput> = {
     const parsed = todowriteInputSchema.parse(input);
 
     if (!ctx.session) {
-      throw new SessionUnavailableError("TodoWrite");
+      ctx.logger.warn({ tool: "TodoWrite" }, "session handle missing; returning no-op");
+      return { todos: [], count: 0 };
     }
 
     const inProgressCount = parsed.todos.reduce(

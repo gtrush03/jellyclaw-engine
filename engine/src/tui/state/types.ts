@@ -62,6 +62,13 @@ export interface UiUsage {
 
 export type UiStatus = "idle" | "streaming" | "awaiting-permission" | "error";
 
+export type UiModalKind = "api-key" | null;
+
+export type UiConnection =
+  | { readonly kind: "connected" }
+  | { readonly kind: "reconnecting"; readonly attempt: number; readonly nextRetryMs: number }
+  | { readonly kind: "disconnected"; readonly reason: string };
+
 export interface UiState {
   readonly sessionId: string | null;
   readonly runId: string | null;
@@ -71,6 +78,8 @@ export interface UiState {
   readonly items: readonly TranscriptItem[];
   readonly status: UiStatus;
   readonly pendingPermission: PendingPermission | null;
+  readonly modal: UiModalKind;
+  readonly connection: UiConnection;
   readonly usage: UiUsage;
   readonly errorMessage: string | null;
   /** Monotonic counter used as a tick for the animated spinner. */
@@ -100,6 +109,8 @@ export function createInitialState(overrides: Partial<UiState> = {}): UiState {
     items: [],
     status: "idle",
     pendingPermission: null,
+    modal: null,
+    connection: { kind: "connected" },
     usage: {
       inputTokens: 0,
       outputTokens: 0,
@@ -128,4 +139,9 @@ export type UiAction =
   | { readonly kind: "clear-transcript" }
   | { readonly kind: "new-session" }
   | { readonly kind: "set-model"; readonly model: string }
-  | { readonly kind: "system-message"; readonly id: string; readonly text: string };
+  | { readonly kind: "system-message"; readonly id: string; readonly text: string }
+  | { readonly kind: "open-modal"; readonly modal: Exclude<UiModalKind, null> }
+  | { readonly kind: "close-modal" }
+  | { readonly kind: "connection-lost"; readonly reason: string }
+  | { readonly kind: "reconnecting"; readonly attempt: number; readonly nextRetryMs: number }
+  | { readonly kind: "connection-restored" };

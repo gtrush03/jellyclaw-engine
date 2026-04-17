@@ -18,8 +18,6 @@
 
 import { z } from "zod";
 import { AgentRegistry } from "./agents/registry.js";
-import type { OpenCodeHandle } from "./bootstrap/opencode-server.js";
-import { startOpenCode } from "./bootstrap/opencode-server.js";
 import { defaultConfig, type JellyclawConfig, loadConfigFromFile, parseConfig } from "./config.js";
 import { ConfigInvalidError, type Engine, type EngineInternals, newEngine } from "./engine.js";
 import { HookRegistry } from "./hooks/registry.js";
@@ -120,8 +118,6 @@ export async function createEngine(options: EngineOptions = {}): Promise<Engine>
 
   // Progressive construction — track everything we've built so rollback can
   // run in reverse order if a later step throws.
-  let opencode: OpenCodeHandle | null = null;
-  let opencodePassword: string | null = null;
   let db: Db | null = null;
   let skills: SkillRegistry | null = null;
   let agents: AgentRegistry | null = null;
@@ -129,11 +125,7 @@ export async function createEngine(options: EngineOptions = {}): Promise<Engine>
   let hooks: HookRegistry | null = null;
 
   try {
-    // Step 3 — start OpenCode (loopback, minted password)
-    opencode = await startOpenCode({});
-    opencodePassword = opencode.password;
-
-    // Step 4 — open SQLite index
+    // Step 3 — open SQLite index
     db = await openDb({ paths: sessionPaths, logger });
 
     // Step 5 — registries in parallel
@@ -211,8 +203,6 @@ export async function createEngine(options: EngineOptions = {}): Promise<Engine>
         hooks,
         permissions,
       },
-      opencode,
-      opencodePassword,
       providerOverride: options.providerOverride ?? null,
       skillWatcher: null,
       cwd,
@@ -238,13 +228,6 @@ export async function createEngine(options: EngineOptions = {}): Promise<Engine>
         db.close();
       } catch (e) {
         logger.warn({ err: e }, "createEngine rollback: db.close failed");
-      }
-    }
-    if (opencode) {
-      try {
-        await opencode.kill();
-      } catch (e) {
-        logger.warn({ err: e }, "createEngine rollback: opencode.kill failed");
       }
     }
     throw err;

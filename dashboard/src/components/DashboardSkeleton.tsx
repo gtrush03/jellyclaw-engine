@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactElement } from "react";
 
 export interface DashboardSkeletonProps {
   /** Number of phase placeholder rows in the sidebar */
@@ -22,7 +22,7 @@ function shimmerStyle(): CSSProperties {
 export function DashboardSkeleton({
   phaseCount = 8,
   className = "",
-}: DashboardSkeletonProps): JSX.Element {
+}: DashboardSkeletonProps): ReactElement {
   return (
     <div
       className={`flex h-full w-full flex-col gap-4 p-4 ${className}`}

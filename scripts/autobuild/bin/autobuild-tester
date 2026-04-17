@@ -1,0 +1,42 @@
+#!/usr/bin/env node
+// autobuild-tester — invoke the tester on one session for debugging.
+//
+// Usage: autobuild-tester <session-id>
+//
+// Reads .autobuild/sessions/<session-id>/prompt.md (the captured prompt) and
+// runs the frontmatter's tests[] against the current repo cwd. Writes
+// test-results.json into the same session dir. Exits 0 iff all tests pass.
+
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import { sessionDir, repoRoot } from "../lib/paths.mjs";
+import { parsePrompt } from "../lib/prompt-parser.mjs";
+import { runTests } from "../tester.mjs";
+
+async function main() {
+  const sid = process.argv[2];
+  if (!sid) {
+    console.error("usage: autobuild-tester <session-id>");
+    process.exit(2);
+  }
+  const sdir = sessionDir(sid);
+  const promptFile = join(sdir, "prompt.md");
+  if (!existsSync(promptFile)) {
+    console.error(`no prompt.md at ${promptFile}`);
+    process.exit(1);
+  }
+  // parsePrompt takes a file path, and the captured prompt.md has the same
+  // YAML frontmatter as the source.
+  const parsed = parsePrompt(promptFile);
+  const { overall, summary } = await runTests(parsed, {
+    sessionDir: sdir,
+    cwd: repoRoot(),
+  });
+  console.log(JSON.stringify(summary, null, 2));
+  process.exit(overall ? 0 : 1);
+}
+
+main().catch((err) => {
+  console.error(err.stack || err.message || String(err));
+  process.exit(1);
+});

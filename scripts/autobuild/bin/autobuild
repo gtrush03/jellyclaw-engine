@@ -1,0 +1,152 @@
+#!/usr/bin/env node
+// autobuild — CLI entrypoint for the autobuild rig.
+//
+// Usage:
+//   autobuild init
+//   autobuild queue add <prompt_id>
+//   autobuild queue list
+//   autobuild tick
+//   autobuild run
+//   autobuild status
+//   autobuild abort <id>
+
+import { mkdirSync, writeFileSync, readFileSync, existsSync } from "node:fs";
+import { join } from "node:path";
+import {
+  autobuildDir,
+  queueFile,
+  stateFile,
+  inboxDir,
+  promptPath,
+  promptsDir,
+} from "../lib/paths.mjs";
+import { initStateIfMissing, readState, updateState } from "../state.mjs";
+import { tickOnce, runForever, initAutobuild } from "../dispatcher.mjs";
+import { logger } from "../lib/logger.mjs";
+import { parsePrompt } from "../lib/prompt-parser.mjs";
+
+function readQueue() {
+  if (!existsSync(queueFile())) return { order: [] };
+  return JSON.parse(readFileSync(queueFile(), "utf8"));
+}
+
+function writeQueue(q) {
+  mkdirSync(autobuildDir(), { recursive: true });
+  writeFileSync(queueFile(), JSON.stringify(q, null, 2));
+}
+
+function cmdInit() {
+  initAutobuild();
+  console.log(`autobuild initialized at ${autobuildDir()}`);
+}
+
+function cmdQueueAdd(promptId) {
+  if (!promptId) {
+    console.error("usage: autobuild queue add <prompt_id>");
+    process.exit(2);
+  }
+  if (!existsSync(promptPath(promptId))) {
+    console.error(`prompt not found: ${promptPath(promptId)}`);
+    process.exit(1);
+  }
+  // Validate frontmatter before accepting.
+  const parsed = parsePrompt(promptPath(promptId));
+  initAutobuild();
+  const q = readQueue();
+  if (!q.order.includes(promptId)) q.order.push(promptId);
+  writeQueue(q);
+  updateState((s) => {
+    if (!s.queue.includes(promptId)) s.queue.push(promptId);
+  });
+  console.log(`queued ${promptId} (T${parsed.tier}): ${parsed.title}`);
+}
+
+function cmdQueueList() {
+  const q = readQueue();
+  if (q.order.length === 0) {
+    console.log("queue is empty");
+    return;
+  }
+  for (const id of q.order) console.log(`  ${id}`);
+}
+
+async function cmdTick() {
+  const report = await tickOnce({ log: logger() });
+  console.log(JSON.stringify(report, null, 2));
+}
+
+async function cmdRun() {
+  await runForever({ log: logger() });
+}
+
+function cmdStatus() {
+  if (!existsSync(stateFile())) {
+    console.log("no state.json yet — run `autobuild init`");
+    return;
+  }
+  const s = readState();
+  console.log(`rig ${s.rig_version} — heartbeat ${s.rig_heartbeat}`);
+  console.log(`paused=${s.paused} halted=${s.halted}`);
+  console.log(
+    `daily budget: $${(s.daily_budget_usd.spent ?? 0).toFixed(2)} / $${s.daily_budget_usd.cap} (${s.daily_budget_usd.day})`,
+  );
+  console.log(`queue (${s.queue.length}):`);
+  for (const id of s.queue) {
+    const r = s.runs[id];
+    console.log(`  ${id} — ${r?.status ?? "queued"}${r?.tier != null ? ` (T${r.tier})` : ""}`);
+  }
+  console.log(`completed (${s.completed.length}): ${s.completed.join(", ") || "(none)"}`);
+  console.log(`escalated (${s.escalated.length}): ${s.escalated.join(", ") || "(none)"}`);
+}
+
+function cmdAbort(id) {
+  if (!id) {
+    console.error("usage: autobuild abort <prompt_id>");
+    process.exit(2);
+  }
+  initAutobuild();
+  mkdirSync(inboxDir(), { recursive: true });
+  const file = join(inboxDir(), `${Date.now()}-abort-${id}.json`);
+  writeFileSync(file, JSON.stringify({ cmd: "abort", target: id, ts: new Date().toISOString() }));
+  console.log(`abort command queued at ${file}`);
+}
+
+async function main() {
+  const [cmd, ...rest] = process.argv.slice(2);
+  switch (cmd) {
+    case "init":
+      return cmdInit();
+    case "queue": {
+      const sub = rest[0];
+      if (sub === "add") return cmdQueueAdd(rest[1]);
+      if (sub === "list") return cmdQueueList();
+      console.error("usage: autobuild queue <add|list> [id]");
+      process.exit(2);
+    }
+    case "tick":
+      return cmdTick();
+    case "run":
+      return cmdRun();
+    case "status":
+      return cmdStatus();
+    case "abort":
+      return cmdAbort(rest[0]);
+    default:
+      console.error(
+        "usage: autobuild <init|queue|tick|run|status|abort> …\n" +
+          "  init                     — scaffold .autobuild/\n" +
+          "  queue add <prompt_id>    — append to queue.json\n" +
+          "  queue list               — list queued prompt IDs\n" +
+          "  tick                     — run one loop iteration (manual / cron)\n" +
+          "  run                      — run the dispatcher daemon (infinite)\n" +
+          "  status                   — pretty-print state.json\n" +
+          "  abort <prompt_id>        — inject abort command into inbox",
+      );
+      process.exit(2);
+  }
+}
+
+main().catch((err) => {
+  console.error(err.stack || err.message || String(err));
+  process.exit(1);
+});

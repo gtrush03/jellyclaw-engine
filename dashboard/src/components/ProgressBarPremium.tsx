@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import type { ReactElement } from "react";
 
 /**
  * ProgressBarPremium — thin gold bar with animated shimmer while progressing,
@@ -25,7 +26,7 @@ export function ProgressBarPremium({
   totalSections = 4,
   label = "Progress",
   className = "",
-}: ProgressBarPremiumProps): JSX.Element {
+}: ProgressBarPremiumProps): ReactElement {
   const clamped = Math.max(0, Math.min(100, value));
   const [pulseKey, setPulseKey] = useState<number>(0);
   const prev = useRef<number>(clamped);
