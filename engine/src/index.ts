@@ -28,6 +28,9 @@ export {
 } from "./engine.js";
 export { createLogger } from "./logger.js";
 
+// SDK exports (T3-12)
+export { query } from "./sdk/index.js";
+
 // ---------------------------------------------------------------------------
 // Type-only exports — all from public-types.ts
 // ---------------------------------------------------------------------------
@@ -50,3 +53,6 @@ export type {
   Skill,
   Usage,
 } from "./public-types.js";
+
+// SDK type exports (T3-12)
+export type { Query, QueryOptions, SDKMessage } from "./sdk/index.js";

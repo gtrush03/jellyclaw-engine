@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ReactElement, ReactNode } from "react";
 
 export type EmptyStateVariant = "no-prompt-selected" | "no-phases" | "error";
 
@@ -14,7 +14,7 @@ const GOLD = "#928466";
 const GOLD_MUTED = "rgba(146, 132, 102, 0.35)";
 const FG = "#e8e6e1";
 
-function Frame({ children }: { children: ReactNode }): JSX.Element {
+function Frame({ children }: { children: ReactNode }): ReactElement {
   // ASCII-style gold frame, rendered as SVG so it scales crisply.
   return (
     <svg
@@ -47,7 +47,7 @@ function Frame({ children }: { children: ReactNode }): JSX.Element {
   );
 }
 
-function NoPromptSvg(): JSX.Element {
+function NoPromptSvg(): ReactElement {
   return (
     <Frame>
       {/* stacked "cards" hinting at a list */}
@@ -92,7 +92,7 @@ function NoPromptSvg(): JSX.Element {
   );
 }
 
-function NoPhasesSvg(): JSX.Element {
+function NoPhasesSvg(): ReactElement {
   return (
     <Frame>
       <g
@@ -116,7 +116,7 @@ function NoPhasesSvg(): JSX.Element {
   );
 }
 
-function ErrorSvg(): JSX.Element {
+function ErrorSvg(): ReactElement {
   return (
     <Frame>
       <g
@@ -144,7 +144,7 @@ function ErrorSvg(): JSX.Element {
 
 const DEFAULTS: Record<
   EmptyStateVariant,
-  { title: string; description: string; svg: () => JSX.Element }
+  { title: string; description: string; svg: () => ReactElement }
 > = {
   "no-prompt-selected": {
     title: "Select a prompt",
@@ -172,7 +172,7 @@ export function EmptyState({
   description,
   action,
   className = "",
-}: EmptyStateProps): JSX.Element {
+}: EmptyStateProps): ReactElement {
   const d = DEFAULTS[variant];
   const Svg = d.svg;
   return (

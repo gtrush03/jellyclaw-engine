@@ -2,15 +2,21 @@
  * Skill types + Zod schemas for frontmatter validation.
  *
  * A skill is a markdown file with YAML frontmatter. It lives under one of
- * three search roots (user → project → legacy) and is loaded into an
- * in-memory registry at engine boot. This module defines only shapes and
- * errors; discovery/parsing/registry live in sibling modules.
+ * four search roots (user → project → legacy-user → legacy) and is loaded
+ * into an in-memory registry at engine boot. This module defines only shapes
+ * and errors; discovery/parsing/registry live in sibling modules.
  */
 
 import { z } from "zod";
 
-/** Which search root a skill was loaded from. First-wins across sources. */
-export type SkillSource = "user" | "project" | "legacy";
+/**
+ * Which search root a skill was loaded from. First-wins across sources.
+ * - user: ~/.jellyclaw/skills (jellyclaw user-scoped)
+ * - project: ./.jellyclaw/skills (jellyclaw project-scoped)
+ * - legacy-user: ~/.claude/skills (Claude Code user-scoped)
+ * - legacy: ./.claude/skills (Claude Code project-scoped)
+ */
+export type SkillSource = "user" | "project" | "legacy-user" | "legacy";
 
 /** Frontmatter contract, validated at parse time. */
 export const SkillFrontmatter = z.object({

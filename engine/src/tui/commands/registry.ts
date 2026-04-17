@@ -130,14 +130,8 @@ function handleCwd(_cmd: ParsedCommand, ctx: CommandContext): void {
 }
 
 function handleKey(_cmd: ParsedCommand, ctx: CommandContext): void {
-  // The API-key rotation flow lives in `engine/src/cli/credentials-prompt.ts`
-  // and drives raw stdio — we can't run it while Ink owns the terminal. Exit
-  // with a hint so the user can run `jellyclaw key` and come back.
-  ctx.pushSystem(
-    "API-key rotation requires a non-TUI terminal — exiting.\n" +
-      "Run `jellyclaw key` to rotate, then start the TUI again.",
-  );
-  ctx.exit(0);
+  ctx.dispatchAction({ kind: "open-modal", modal: "api-key" });
+  ctx.pushSystem("rotate API key — paste a new key below, or Esc to cancel");
 }
 
 function handleEnd(_cmd: ParsedCommand, ctx: CommandContext): void {
@@ -223,7 +217,7 @@ export const COMMANDS: readonly CommandDefinition[] = [
     handler: handleResume,
   },
   { name: "cwd", description: "print the current working directory", handler: handleCwd },
-  { name: "key", description: "rotate API key (exits TUI)", handler: handleKey },
+  { name: "key", description: "rotate API key (inline, no restart)", handler: handleKey },
   {
     name: "end",
     aliases: ["exit", "quit"],

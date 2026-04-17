@@ -318,6 +318,128 @@ export function buildProgram(): Command {
       passExitCode(await mod.doctorAction());
     });
 
+  // --- auth ---------------------------------------------------------------
+  // Subscription OAuth and API key management (T3-10).
+  // Lazy-load the auth subcommand tree to keep `--help` snappy.
+  const auth = program.command("auth").description("manage authentication credentials");
+  auth
+    .command("login-subscription")
+    .description("login via Claude Pro/Max subscription OAuth")
+    .action(async () => {
+      const mod = (await import("./auth-cmd.js")) as unknown as {
+        loginSubscriptionAction: () => Promise<number>;
+      };
+      passExitCode(await mod.loginSubscriptionAction());
+    });
+  auth
+    .command("logout-subscription")
+    .description("remove subscription credentials (preserves API keys)")
+    .action(async () => {
+      const mod = (await import("./auth-cmd.js")) as unknown as {
+        logoutSubscriptionAction: () => Promise<number>;
+      };
+      passExitCode(await mod.logoutSubscriptionAction());
+    });
+  auth
+    .command("status")
+    .description("show which auth modes are configured (never prints tokens)")
+    .action(async () => {
+      const mod = (await import("./auth-cmd.js")) as unknown as {
+        statusAction: () => Promise<number>;
+      };
+      passExitCode(await mod.statusAction());
+    });
+
+  // --- daemon -------------------------------------------------------------
+  // T4-01: Scheduler daemon control.
+  const daemon = program.command("daemon").description("scheduler daemon control");
+
+  daemon
+    .command("start")
+    .description("start the scheduler daemon")
+    .option("--foreground", "run in foreground (do not daemonize)")
+    .option("--state-dir <dir>", "override state directory (~/.jellyclaw or $XDG_DATA_HOME/jellyclaw)")
+    .action(async (options: { foreground?: boolean; stateDir?: string }) => {
+      const mod = (await import("./daemon.js")) as typeof import("./daemon.js");
+      const code = await mod.daemonStartAction({
+        foreground: options.foreground,
+        stateDir: options.stateDir,
+      });
+      if (code !== 0) throw new ExitError(code);
+    });
+
+  daemon
+    .command("stop")
+    .description("stop the scheduler daemon")
+    .option("--state-dir <dir>", "override state directory")
+    .action(async (options: { stateDir?: string }) => {
+      const mod = (await import("./daemon.js")) as typeof import("./daemon.js");
+      const code = await mod.daemonStopAction({ stateDir: options.stateDir });
+      if (code !== 0) throw new ExitError(code);
+    });
+
+  daemon
+    .command("status")
+    .description("show scheduler daemon status")
+    .option("--state-dir <dir>", "override state directory")
+    .option("--pretty", "human-readable output")
+    .action(async (options: { stateDir?: string; pretty?: boolean }) => {
+      const mod = (await import("./daemon.js")) as typeof import("./daemon.js");
+      const code = await mod.daemonStatusAction({
+        stateDir: options.stateDir,
+        pretty: options.pretty,
+      });
+      if (code !== 0) throw new ExitError(code);
+    });
+
+  daemon
+    .command("tail")
+    .description("tail job events (live stream)")
+    .option("--state-dir <dir>", "override state directory")
+    .action(async (options: { stateDir?: string }) => {
+      const mod = (await import("./daemon.js")) as typeof import("./daemon.js");
+      const code = await mod.daemonTailAction({ stateDir: options.stateDir });
+      if (code !== 0) throw new ExitError(code);
+    });
+
+  // --- plugins -------------------------------------------------------------
+  // T4-05: Plugin system management.
+  const plugins = program.command("plugins").description("manage installed plugins");
+
+  plugins
+    .command("list")
+    .description("list installed plugins")
+    .option("--json", "output as JSON")
+    .option("--plugins-dir <dir>", "override plugins directory (comma-separated for multiple)")
+    .action(async (options: { json?: boolean; pluginsDir?: string }) => {
+      const mod = (await import("./plugins.js")) as typeof import("./plugins.js");
+      const code = await mod.pluginsListAction({
+        json: options.json,
+        pluginsDir: options.pluginsDir,
+      });
+      if (code !== 0) throw new ExitError(code);
+    });
+
+  plugins
+    .command("reload")
+    .description("reload all plugins")
+    .option("--plugins-dir <dir>", "override plugins directory")
+    .action(async (options: { pluginsDir?: string }) => {
+      const mod = (await import("./plugins.js")) as typeof import("./plugins.js");
+      const code = await mod.pluginsReloadAction({ pluginsDir: options.pluginsDir });
+      if (code !== 0) throw new ExitError(code);
+    });
+
+  plugins
+    .command("doctor")
+    .description("diagnose plugin issues")
+    .option("--plugins-dir <dir>", "override plugins directory")
+    .action(async (options: { pluginsDir?: string }) => {
+      const mod = (await import("./plugins.js")) as typeof import("./plugins.js");
+      const code = await mod.pluginsDoctorAction({ pluginsDir: options.pluginsDir });
+      if (code !== 0) throw new ExitError(code);
+    });
+
   return program;
 }
 
@@ -394,7 +516,10 @@ const invokedDirectly: boolean = (() => {
     if (!entry) return false;
     const here = fileURLToPath(import.meta.url);
     return (
-      entry === here || entry.endsWith("/dist/cli/main.js") || entry.endsWith("/bin/jellyclaw")
+      entry === here ||
+      entry.endsWith("/dist/cli/main.js") ||
+      entry.endsWith("/bin/jellyclaw") ||
+      entry.endsWith("/bin/jellyclaw-daemon")
     );
   } catch {
     return false;
@@ -402,7 +527,16 @@ const invokedDirectly: boolean = (() => {
 })();
 
 if (invokedDirectly) {
-  void main(process.argv.slice(2)).then((code) => {
+  // Basename dispatch: if invoked as jellyclaw-daemon, prepend "daemon" to argv.
+  const entry = process.argv[1] ?? "";
+  const basename = entry.split("/").pop() ?? "";
+  let argv = process.argv.slice(2);
+
+  if (basename === "jellyclaw-daemon") {
+    argv = ["daemon", ...argv];
+  }
+
+  void main(argv).then((code) => {
     process.exit(code);
   });
 }

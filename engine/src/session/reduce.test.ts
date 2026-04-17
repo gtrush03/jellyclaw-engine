@@ -1,8 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import type { AgentEvent } from "../events.js";
 import { projectHash } from "./paths.js";
 import { reduceEvents } from "./reduce.js";
+import { replayJsonl } from "./replay.js";
 
 // ---------------------------------------------------------------------------
 // Event builders — keep tests declarative. seq/ts monotonically increasing.
@@ -254,12 +258,15 @@ describe("reduceEvents", () => {
     expect(state.permissions[0]).toMatchObject({ outcome: "denied", deniedBy: "user" });
   });
 
-  it("usage.updated accumulates across events + rounds cost_usd to cents", () => {
-    const s = new EventStream().sessionStarted().usage(100, 50, 0.012).usage(10, 5, 0.001);
+  it("usage.updated takes last-seen cumulative values + rounds cost_usd to cents", () => {
+    // Events carry cumulative totals (adapter accumulates per-turn deltas).
+    // Reducer takes last-seen, NOT sum.
+    const s = new EventStream().sessionStarted().usage(100, 50, 0.012).usage(110, 55, 0.013);
     const state = reduceEvents(s.events, { truncatedTail: false });
+    // Final state matches last event, not sum of both.
     expect(state.usage.inputTokens).toBe(110);
     expect(state.usage.outputTokens).toBe(55);
-    // 0.012 → 1 cent (round), 0.001 → 0 cent. Total 1.
+    // 0.013 → 1 cent (round).
     expect(state.usage.costUsdCents).toBe(1);
   });
 
@@ -300,16 +307,20 @@ describe("reduceEvents", () => {
   it("20-turn scenario: messages, usage cumulative, lastSeq all consistent", () => {
     const s = new EventStream().sessionStarted();
     for (let i = 0; i < 20; i++) {
+      // Events carry cumulative totals (as adapter would emit).
+      const cumulativeInput = (i + 1) * 10;
+      const cumulativeOutput = (i + 1) * 5;
       s.assistantChunk(`turn-${i} `, true)
         .toolCalled(`tool-${i}`)
         .toolResult(`tool-${i}`)
-        .usage(10, 5, 0.001)
+        .usage(cumulativeInput, cumulativeOutput, 0.001 * (i + 1))
         .sessionCompleted();
     }
     const state = reduceEvents(s.events, { truncatedTail: false });
     // 1 user + 20 assistant
     expect(state.messages).toHaveLength(21);
     expect(state.toolCalls).toHaveLength(20);
+    // Last event has cumulative values: 200, 100.
     expect(state.usage.inputTokens).toBe(200);
     expect(state.usage.outputTokens).toBe(100);
     expect(state.turns).toBe(20);
@@ -319,5 +330,72 @@ describe("reduceEvents", () => {
     const seqs = state.messages.map((m) => m.firstSeq);
     const sorted = [...seqs].sort((a, b) => a - b);
     expect(seqs).toEqual(sorted);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// T1-07: usage accumulation tests
+// ---------------------------------------------------------------------------
+
+describe("reduceEvents: usage-no-double-count", () => {
+  it("takes last-seen cumulative values, does not sum events", () => {
+    // Simulate adapter output: cumulative totals 100, 300, 600.
+    const s = new EventStream()
+      .sessionStarted()
+      .usage(100, 100) // cumulative after turn 1
+      .usage(300, 300) // cumulative after turn 2
+      .usage(600, 600); // cumulative after turn 3
+    const state = reduceEvents(s.events, { truncatedTail: false });
+
+    // Reducer takes last-seen → 600, NOT sum (100+300+600=1000).
+    expect(state.usage.outputTokens).toBe(600);
+    expect(state.usage.inputTokens).toBe(600);
+  });
+});
+
+describe("reduceEvents: usage-replay-round-trip", () => {
+  let tmpDir: string;
+  let logPath: string;
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), "jellyclaw-usage-roundtrip-"));
+    mkdirSync(tmpDir, { recursive: true });
+    logPath = join(tmpDir, "session.jsonl");
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it("write events to JSONL, replay+reduce, final usage matches in-memory reduce", async () => {
+    // Build events with cumulative usage values.
+    const s = new EventStream()
+      .sessionStarted()
+      .usage(100, 100)
+      .usage(300, 300)
+      .usage(600, 600)
+      .sessionCompleted();
+
+    // In-memory reduce.
+    const inMemoryState = reduceEvents(s.events, { truncatedTail: false });
+
+    // Write to JSONL.
+    const jsonlContent = `${s.events.map((e) => JSON.stringify(e)).join("\n")}\n`;
+    writeFileSync(logPath, jsonlContent, "utf8");
+
+    // Replay from JSONL and reduce.
+    const replayed = await replayJsonl(logPath);
+    const replayedState = reduceEvents(replayed.events, { truncatedTail: replayed.truncatedTail });
+
+    // Final usage should match.
+    expect(replayedState.usage.inputTokens).toBe(inMemoryState.usage.inputTokens);
+    expect(replayedState.usage.outputTokens).toBe(inMemoryState.usage.outputTokens);
+    expect(replayedState.usage.cacheReadTokens).toBe(inMemoryState.usage.cacheReadTokens);
+    expect(replayedState.usage.cacheWriteTokens).toBe(inMemoryState.usage.cacheWriteTokens);
+    expect(replayedState.usage.costUsdCents).toBe(inMemoryState.usage.costUsdCents);
+
+    // Verify values are what we expect: last event's cumulative total.
+    expect(replayedState.usage.inputTokens).toBe(600);
+    expect(replayedState.usage.outputTokens).toBe(600);
   });
 });

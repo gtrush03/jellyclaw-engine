@@ -5,8 +5,8 @@ export default defineConfig({
     include: [
       "test/**/*.test.ts",
       "test/**/*.test.tsx",
-      "test/**/*.bench.ts",
       "engine/src/**/*.test.ts",
+      "engine/src/**/*.test.tsx",
       "engine/test/**/*.test.ts",
       "engine/test/**/*.test.tsx",
       "shared/src/**/*.test.ts",

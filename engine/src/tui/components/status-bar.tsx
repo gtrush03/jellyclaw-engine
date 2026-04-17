@@ -16,9 +16,9 @@
  * main row.
  */
 
-import type { ReactNode } from "react";
 import { Box, Text } from "ink";
-import type { UiStatus, UiUsage } from "../state/types.js";
+import type { ReactNode } from "react";
+import type { UiConnection, UiStatus, UiUsage } from "../state/types.js";
 import { brand, pickRowAccents } from "../theme/brand.js";
 import { Jellyfish } from "./jellyfish.js";
 
@@ -30,6 +30,8 @@ export interface StatusBarProps {
   /** Monotonic tick from state — drives spinner frame selection. */
   tick: number;
   reducedMotion: boolean;
+  /** Connection health state. */
+  connection?: UiConnection;
 }
 
 function formatTokens(usage: UiUsage): string {
@@ -52,6 +54,18 @@ function isResolvedModel(model: string): boolean {
   if (trimmed.length === 0) return false;
   if (trimmed === "(default)") return false;
   return true;
+}
+
+function ConnectionBadge(props: { connection: UiConnection }): JSX.Element | null {
+  const conn = props.connection;
+  if (conn.kind === "connected") {
+    return null;
+  }
+  if (conn.kind === "reconnecting") {
+    return <Text color={brand.amberEye}>{`\u27F3 reconnecting (attempt ${conn.attempt})`}</Text>;
+  }
+  // disconnected
+  return <Text color={brand.error}>{`\u2717 disconnected: ${conn.reason}`}</Text>;
 }
 
 export function StatusBar(props: StatusBarProps): JSX.Element {
@@ -102,6 +116,11 @@ export function StatusBar(props: StatusBarProps): JSX.Element {
       reducedMotion={props.reducedMotion}
     />,
   );
+
+  // Connection badge (only shown when not connected)
+  if (props.connection !== undefined && props.connection.kind !== "connected") {
+    slots.push(<ConnectionBadge key="connection" connection={props.connection} />);
+  }
 
   const rendered: ReactNode[] = [];
   for (let i = 0; i < slots.length; i += 1) {

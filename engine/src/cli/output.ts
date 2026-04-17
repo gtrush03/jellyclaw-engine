@@ -133,6 +133,13 @@ class TextWriter implements OutputWriter {
       case "usage.updated":
       case "stream.ping":
       case "user.prompt":
+      case "team.created":
+      case "team.member.started":
+      case "team.member.result":
+      case "team.deleted":
+      case "monitor.started":
+      case "monitor.event":
+      case "monitor.stopped":
         // Not user-facing chrome; suppressed in text mode. (user.prompt is
         // persisted to the JSONL transcript; echoing it back to stdout would
         // duplicate what the TUI already rendered.)

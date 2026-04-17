@@ -601,7 +601,203 @@ describe("writer invariants", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Suite 4 — Live smoke (gated via RUN_LIVE=1)
+// Suite 4 — system.init field completeness (T3-11)
+// ---------------------------------------------------------------------------
+
+describe("system-init-fields", () => {
+  it("first frame of any session contains all 20+ fields present in Claude Code's real system.init", async () => {
+    const { parsed } = await runWriter(buildATextEvents());
+    const init = parsed[0];
+    expect(init).toBeDefined();
+    if (!init) throw new Error("no init frame");
+
+    // Required fields from spec
+    expect(init.type).toBe("system");
+    expect(init.subtype).toBe("init");
+    expect(init.session_id).toBeDefined();
+    expect(init.model).toBeDefined();
+    expect(init.cwd).toBeDefined();
+    expect(init.tools).toBeDefined();
+    expect(init.permissionMode).toBeDefined();
+    expect(init.apiKeySource).toBeDefined();
+    expect(init.claude_code_version).toBeDefined();
+    expect(init.mcp_servers).toBeDefined();
+    expect(init.slash_commands).toBeDefined();
+    expect(init.agents).toBeDefined();
+    expect(init.skills).toBeDefined();
+    expect(init.plugins).toBeDefined();
+    expect(init.output_style).toBeDefined();
+    expect(init.cache_creation).toBeDefined();
+    expect(init.uuid).toBeDefined();
+
+    // Verify cache_creation has expected structure
+    const cache = init.cache_creation as Record<string, unknown>;
+    expect(cache.ephemeral_5m_input_tokens).toBeDefined();
+    expect(cache.ephemeral_1h_input_tokens).toBeDefined();
+  });
+});
+
+describe("system-init-empty-defaults", () => {
+  it("agents/skills/slash_commands/plugins default to [] (not undefined); permissionMode defaults to 'default'", async () => {
+    const { parsed } = await runWriter(buildATextEvents());
+    const init = parsed[0] as Record<string, unknown>;
+    expect(init).toBeDefined();
+
+    // These should be arrays, not undefined
+    expect(Array.isArray(init.agents)).toBe(true);
+    expect(Array.isArray(init.skills)).toBe(true);
+    expect(Array.isArray(init.slash_commands)).toBe(true);
+    expect(Array.isArray(init.plugins)).toBe(true);
+    expect(Array.isArray(init.mcp_servers)).toBe(true);
+
+    // permissionMode should default to "default"
+    expect(init.permissionMode).toBe("default");
+
+    // output_style should default to "default"
+    expect(init.output_style).toBe("default");
+  });
+});
+
+describe("system-init-uuid", () => {
+  it("each frame carries a per-event uuid (v4); the system.init uuid differs from subsequent assistant frame uuids", async () => {
+    const { parsed } = await runWriter(buildATextEvents());
+
+    // All frames should have a uuid
+    for (const frame of parsed) {
+      expect(frame.uuid).toBeDefined();
+      expect(typeof frame.uuid).toBe("string");
+      // UUID v4 format check: 8-4-4-4-12 hex chars
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      expect((frame.uuid as string).match(uuidRegex)).not.toBeNull();
+    }
+
+    // All uuids should be unique
+    const uuids = parsed.map((f) => f.uuid as string);
+    const uniqueUuids = new Set(uuids);
+    expect(uniqueUuids.size).toBe(uuids.length);
+
+    // system.init uuid should differ from assistant frame uuid
+    const initUuid = parsed[0]?.uuid;
+    const assistantFrame = parsed.find((f) => f.type === "assistant");
+    if (assistantFrame) {
+      expect(assistantFrame.uuid).not.toBe(initUuid);
+    }
+  });
+});
+
+describe("system-init-api-key-source", () => {
+  it("apiKeySource reflects actual auth: 'env' when ANTHROPIC_API_KEY is set", async () => {
+    // The default writer opts don't specify apiKeySource, so it should infer from env
+    const { parsed } = await runWriter(buildATextEvents());
+    const init = parsed[0] as Record<string, unknown>;
+    // When ANTHROPIC_API_KEY is set (which it typically is in test), should be "env"
+    // When not set, should be "none"
+    const expected = process.env.ANTHROPIC_API_KEY ? "env" : "none";
+    expect(init.apiKeySource).toBe(expected);
+  });
+
+  it("apiKeySource can be explicitly set to 'subscription'", async () => {
+    const stdout = new MemStream();
+    const { ClaudeStreamJsonWriter } = await import("./output-claude-stream-json.js");
+    const writer = new ClaudeStreamJsonWriter(asStream(stdout), {
+      cwd: "/tmp",
+      tools: ["Bash"],
+      permissionMode: "default",
+      apiKeySource: "subscription",
+    });
+    const events: AgentEvent[] = [
+      {
+        type: "session.started",
+        ...envelope("sess-api-key-test", 0),
+        wish: "test",
+        agent: "default",
+        model: "claude-haiku-4-5-20251001",
+        provider: "anthropic",
+        cwd: "/tmp",
+      },
+      {
+        type: "session.completed",
+        ...envelope("sess-api-key-test", 1),
+        turns: 0,
+        duration_ms: 100,
+      },
+    ];
+    for (const ev of events) await writer.write(ev);
+    await writer.finish();
+    const lines = stdout.lines();
+    const init = JSON.parse(lines[0] ?? "{}") as Record<string, unknown>;
+    expect(init.apiKeySource).toBe("subscription");
+  });
+
+  it("apiKeySource can be set to 'apiKeyHelper'", async () => {
+    const stdout = new MemStream();
+    const { ClaudeStreamJsonWriter } = await import("./output-claude-stream-json.js");
+    const writer = new ClaudeStreamJsonWriter(asStream(stdout), {
+      cwd: "/tmp",
+      tools: ["Bash"],
+      apiKeySource: "apiKeyHelper",
+    });
+    await writer.write({
+      type: "session.started",
+      ...envelope("sess-helper-test", 0),
+      wish: "test",
+      agent: "default",
+      model: "claude-haiku-4-5-20251001",
+      provider: "anthropic",
+      cwd: "/tmp",
+    });
+    await writer.write({
+      type: "session.completed",
+      ...envelope("sess-helper-test", 1),
+      turns: 0,
+      duration_ms: 100,
+    });
+    await writer.finish();
+    const lines = stdout.lines();
+    const init = JSON.parse(lines[0] ?? "{}") as Record<string, unknown>;
+    expect(init.apiKeySource).toBe("apiKeyHelper");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Suite 5 — Result frame enrichment (T3-11)
+// ---------------------------------------------------------------------------
+
+describe("result-frame-enrichment", () => {
+  it("result frame includes cache_creation breakdown and modelUsage", async () => {
+    const { parsed } = await runWriter(buildATextEvents());
+    const result = parsed.find((f) => f.type === "result") as Record<string, unknown> | undefined;
+    expect(result).toBeDefined();
+    if (!result) throw new Error("no result frame");
+
+    // cache_creation breakdown
+    const cache = result.cache_creation as Record<string, unknown> | undefined;
+    expect(cache).toBeDefined();
+    expect(cache?.ephemeral_5m_input_tokens).toBeDefined();
+    expect(cache?.ephemeral_1h_input_tokens).toBeDefined();
+
+    // modelUsage sub-object
+    const modelUsage = result.modelUsage as Record<string, unknown> | undefined;
+    expect(modelUsage).toBeDefined();
+
+    // modelUsage should have a key for the model used
+    const modelKeys = Object.keys(modelUsage ?? {});
+    expect(modelKeys.length).toBeGreaterThan(0);
+
+    // Each model entry should have the expected fields
+    const modelEntry = modelUsage?.[modelKeys[0] ?? ""] as Record<string, unknown> | undefined;
+    expect(modelEntry?.inputTokens).toBeDefined();
+    expect(modelEntry?.outputTokens).toBeDefined();
+    expect(modelEntry?.cacheReadInputTokens).toBeDefined();
+    expect(modelEntry?.cacheCreationInputTokens).toBeDefined();
+    expect(modelEntry?.webSearchRequests).toBe(0);
+    expect(modelEntry?.costUSD).toBeDefined();
+    expect(modelEntry?.contextWindow).toBe(200_000);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Suite 6 — Live smoke (gated via RUN_LIVE=1)
 // ---------------------------------------------------------------------------
 
 const runLive = process.env.RUN_LIVE === "1";

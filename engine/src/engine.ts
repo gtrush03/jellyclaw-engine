@@ -12,7 +12,6 @@
 import { randomUUID } from "node:crypto";
 import type { EventEmitter } from "node:events";
 import type { AgentRegistry } from "./agents/registry.js";
-import type { OpenCodeHandle } from "./bootstrap/opencode-server.js";
 import type { JellyclawConfig } from "./config.js";
 import type { AgentEvent } from "./events.js";
 import type { HookRegistry } from "./hooks/registry.js";
@@ -81,9 +80,6 @@ export interface EngineInternals {
     hooks: HookRegistry | null;
     permissions: CompiledPermissions | null;
   };
-  opencode: OpenCodeHandle | null;
-  /** Held for teardown; never exposed through `engine.config`. */
-  opencodePassword: string | null;
   providerOverride: unknown;
   skillWatcher: { stop(): Promise<void> } | null;
   cwd: string;
@@ -298,14 +294,6 @@ export class Engine {
           internals.db.close();
         } catch (err) {
           log.warn({ err }, "engine.dispose: db.close failed");
-        }
-      }
-
-      if (internals.opencode) {
-        try {
-          await internals.opencode.kill();
-        } catch (err) {
-          log.warn({ err }, "engine.dispose: opencode.kill failed");
         }
       }
     })();

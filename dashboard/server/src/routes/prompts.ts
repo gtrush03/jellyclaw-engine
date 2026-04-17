@@ -18,8 +18,8 @@ const IdParam = z
   .string()
   .min(1)
   .max(128)
-  .regex(/^phase-\d{1,2}(?:\.\d+)?\/[a-z0-9][a-z0-9-]*$/i, {
-    message: "id must look like 'phase-01/02-implement' or 'phase-10.5/01-implement'",
+  .regex(/^phase-[a-z0-9][a-z0-9.\-]*\/[a-z0-9][a-z0-9.\-]*$/i, {
+    message: "id must look like 'phase-01/02-implement', 'phase-10.5/01-implement', or 'phase-99b-unfucking-v2/T0-01-slug'",
   });
 
 function deriveStatus(

@@ -34,9 +34,20 @@ import { z } from "zod";
 // Schema
 // ---------------------------------------------------------------------------
 
+export const SubscriptionCredentialsSchema = z.object({
+  kind: z.literal("oauth"),
+  accessToken: z.string().min(10),
+  refreshToken: z.string().min(10).optional(),
+  expiresAt: z.number().int().nonnegative().optional(), // unix ms
+  obtainedAt: z.number().int().nonnegative(),
+});
+
+export type SubscriptionCredentials = z.infer<typeof SubscriptionCredentialsSchema>;
+
 export const CredentialsSchema = z.object({
   anthropicApiKey: z.string().min(10).optional(),
   openaiApiKey: z.string().min(10).optional(),
+  subscription: SubscriptionCredentialsSchema.optional(),
 });
 
 export type Credentials = z.infer<typeof CredentialsSchema>;
@@ -130,10 +141,7 @@ export async function saveCredentials(creds: Credentials, path?: string): Promis
 /**
  * Merge-and-save: updates only the fields provided, preserves the rest.
  */
-export async function updateCredentials(
-  patch: Credentials,
-  path?: string,
-): Promise<Credentials> {
+export async function updateCredentials(patch: Credentials, path?: string): Promise<Credentials> {
   const current = await loadCredentials(path);
   const merged: Credentials = { ...current, ...patch };
   await saveCredentials(merged, path);

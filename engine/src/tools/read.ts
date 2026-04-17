@@ -24,13 +24,8 @@ import { z } from "zod";
 import readSchema from "../../../test/fixtures/tools/claude-code-schemas/read.json" with {
   type: "json",
 };
-import {
-  CwdEscapeError,
-  InvalidInputError,
-  type JsonSchema,
-  type Tool,
-  type ToolContext,
-} from "./types.js";
+import { ensureWithinAllowedRoots } from "./permissions.js";
+import { InvalidInputError, type JsonSchema, type Tool, type ToolContext } from "./types.js";
 
 const DEFAULT_TEXT_LIMIT = 2000;
 const MAX_PDF_PAGES_PER_CALL = 20;
@@ -100,12 +95,7 @@ function parsePagesRange(raw: string): PdfRange {
 }
 
 function ensureInsideCwd(resolved: string, ctx: ToolContext): void {
-  const cwd = ctx.cwd;
-  const inside = resolved === cwd || resolved.startsWith(cwd + path.sep);
-  if (inside) return;
-  if (!ctx.permissions.isAllowed("read.outside_cwd")) {
-    throw new CwdEscapeError(resolved, cwd);
-  }
+  ensureWithinAllowedRoots(resolved, ctx, "read.outside_cwd");
 }
 
 function normalizeNotebookSource(source: unknown): string {

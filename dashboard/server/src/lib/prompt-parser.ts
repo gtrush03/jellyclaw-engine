@@ -10,8 +10,22 @@ import {
 import type { PromptSummary } from "../types.js";
 
 /**
+ * Autobuild-rig frontmatter field: a test definition the rig will run
+ * after completion-detection. `kind` is a discriminator; kind-specific
+ * fields pass through via the index signature.
+ */
+export interface PromptTest {
+  name: string;
+  kind: "jellyclaw-run" | "smoke-suite" | "http-roundtrip" | "shell";
+  description?: string;
+  [k: string]: unknown;
+}
+
+/**
  * Metadata scraped from the top of a prompt markdown file.
  * These live as `**Key:** value` lines above the session-startup block.
+ * Autobuild-rig fields (tier, tests, …) come from YAML frontmatter — they're
+ * all optional so prompts in the old format continue to parse.
  */
 export interface ParsedPrompt {
   id: string;
@@ -27,6 +41,16 @@ export interface ParsedPrompt {
   raw: string;
   /** The task body — between the SESSION STARTUP and SESSION CLOSEOUT markers, markers stripped */
   body: string;
+  // ---------- optional autobuild-rig frontmatter ----------
+  tier?: 0 | 1 | 2 | 3 | 4;
+  scope?: string[];
+  depends_on_fix?: string[];
+  tests?: PromptTest[];
+  human_gate?: boolean;
+  max_turns?: number;
+  max_cost_usd?: number;
+  max_retries?: number;
+  estimated_duration_min?: number;
 }
 
 const STARTUP_BEGIN = "<!-- BEGIN SESSION STARTUP -->";
@@ -68,6 +92,63 @@ function extractBody(raw: string): string {
   return out.trim();
 }
 
+const VALID_TIERS = new Set([0, 1, 2, 3, 4]);
+const VALID_TEST_KINDS = new Set([
+  "jellyclaw-run",
+  "smoke-suite",
+  "http-roundtrip",
+  "shell",
+]);
+
+function asOptionalNumber(v: unknown): number | undefined {
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  if (typeof v === "string" && v.trim() !== "") {
+    const n = Number(v);
+    if (!Number.isNaN(n)) return n;
+  }
+  return undefined;
+}
+
+function asOptionalBoolean(v: unknown): boolean | undefined {
+  if (typeof v === "boolean") return v;
+  return undefined;
+}
+
+function asOptionalStringArray(v: unknown): string[] | undefined {
+  if (!Array.isArray(v)) return undefined;
+  const out = v.filter((x): x is string => typeof x === "string");
+  return out.length === v.length ? out : undefined;
+}
+
+function asOptionalTier(v: unknown): 0 | 1 | 2 | 3 | 4 | undefined {
+  const n = asOptionalNumber(v);
+  if (n === undefined) return undefined;
+  if (!VALID_TIERS.has(n)) return undefined;
+  return n as 0 | 1 | 2 | 3 | 4;
+}
+
+function asOptionalTests(v: unknown): PromptTest[] | undefined {
+  if (!Array.isArray(v)) return undefined;
+  const out: PromptTest[] = [];
+  for (const entry of v) {
+    if (!entry || typeof entry !== "object") continue;
+    const obj = entry as Record<string, unknown>;
+    const name = obj.name;
+    const kind = obj.kind;
+    if (typeof name !== "string" || typeof kind !== "string") continue;
+    if (!VALID_TEST_KINDS.has(kind)) continue;
+    const { name: _n, kind: _k, description, ...rest } = obj;
+    const test: PromptTest = {
+      name,
+      kind: kind as PromptTest["kind"],
+      ...rest,
+    };
+    if (typeof description === "string") test.description = description;
+    out.push(test);
+  }
+  return out.length > 0 ? out : undefined;
+}
+
 /**
  * Given an absolute path to a prompt file (must be under PROMPTS_DIR), parse it.
  */
@@ -77,6 +158,7 @@ export async function parsePromptFile(absPath: string): Promise<ParsedPrompt> {
   // gray-matter is tolerant: if the file has no frontmatter it returns content=raw.
   const parsed = matter(raw);
   const content = parsed.content;
+  const data = (parsed.data ?? {}) as Record<string, unknown>;
 
   const rel = path.relative(PROMPTS_DIR, absPath);
   // rel = "phase-01/02-implement.md"
@@ -87,7 +169,8 @@ export async function parsePromptFile(absPath: string): Promise<ParsedPrompt> {
   const subPrompt = file.replace(/\.md$/i, "");
   const id = `${phaseDir}/${subPrompt}`;
 
-  return {
+  // Base prompt shape — old format compatibility, all new fields optional.
+  const out: ParsedPrompt = {
     id,
     phase,
     subPrompt,
@@ -100,6 +183,29 @@ export async function parsePromptFile(absPath: string): Promise<ParsedPrompt> {
     raw,
     body: extractBody(content),
   };
+
+  // Merge optional autobuild-rig frontmatter. Skip any field that doesn't
+  // validate — never let malformed YAML wedge the entire prompt list.
+  const tier = asOptionalTier(data.tier);
+  if (tier !== undefined) out.tier = tier;
+  const scope = asOptionalStringArray(data.scope);
+  if (scope) out.scope = scope;
+  const dependsOnFix = asOptionalStringArray(data.depends_on_fix);
+  if (dependsOnFix) out.depends_on_fix = dependsOnFix;
+  const tests = asOptionalTests(data.tests);
+  if (tests) out.tests = tests;
+  const humanGate = asOptionalBoolean(data.human_gate);
+  if (humanGate !== undefined) out.human_gate = humanGate;
+  const maxTurns = asOptionalNumber(data.max_turns);
+  if (maxTurns !== undefined) out.max_turns = maxTurns;
+  const maxCostUsd = asOptionalNumber(data.max_cost_usd);
+  if (maxCostUsd !== undefined) out.max_cost_usd = maxCostUsd;
+  const maxRetries = asOptionalNumber(data.max_retries);
+  if (maxRetries !== undefined) out.max_retries = maxRetries;
+  const estDur = asOptionalNumber(data.estimated_duration_min);
+  if (estDur !== undefined) out.estimated_duration_min = estDur;
+
+  return out;
 }
 
 /**
@@ -152,7 +258,7 @@ export function toSummary(
   p: ParsedPrompt,
   status: PromptSummary["status"],
 ): PromptSummary {
-  return {
+  const base: PromptSummary = {
     id: p.id,
     phase: p.phase,
     subPrompt: p.subPrompt,
@@ -164,6 +270,16 @@ export function toSummary(
     filePath: p.filePath,
     status,
   };
+  if (p.tier !== undefined) base.tier = p.tier;
+  if (p.scope !== undefined) base.scope = p.scope;
+  if (p.depends_on_fix !== undefined) base.depends_on_fix = p.depends_on_fix;
+  if (p.tests !== undefined) base.tests = p.tests;
+  if (p.human_gate !== undefined) base.human_gate = p.human_gate;
+  if (p.max_turns !== undefined) base.max_turns = p.max_turns;
+  if (p.max_cost_usd !== undefined) base.max_cost_usd = p.max_cost_usd;
+  if (p.max_retries !== undefined) base.max_retries = p.max_retries;
+  if (p.estimated_duration_min !== undefined) base.estimated_duration_min = p.estimated_duration_min;
+  return base;
 }
 
 /**

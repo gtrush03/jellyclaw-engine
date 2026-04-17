@@ -241,3 +241,53 @@ describe("renderTable", () => {
     expect(table).toContain("gamma");
   });
 });
+
+// ---------------------------------------------------------------------------
+// T4-07 acceptance test
+// ---------------------------------------------------------------------------
+
+describe("doctor-clean-install-exits-0", () => {
+  it("exits 0 when all checks pass (simulating clean install)", async () => {
+    // This test simulates a clean install scenario where:
+    // - Node version is adequate (>= 20.6)
+    // - Runtime is detected correctly
+    // - opencode-ai is pinned correctly
+    // - Patch sentinels are present
+    // - ~/.jellyclaw/ is writable
+    // - API key is present (or only warns if missing)
+    // - MCP servers are reachable (or only warns)
+    // - SQLite integrity is ok
+    const stdout = new MemStream();
+    const code = await doctorAction({
+      stdout: asStream(stdout),
+      deps: makeDeps(), // All checks pass by default
+    });
+    expect(code).toBe(0);
+    // Output should show all passing checks (✓ symbol)
+    expect(stdout.text()).toContain("✓");
+    // Should not show any "fail" status (✗ symbol)
+    expect(stdout.text()).not.toContain("✗");
+  });
+
+  it("exits 0 even with warnings (clean install with optional items missing)", async () => {
+    // Simulate clean install where API key is not set (warning, not error)
+    const stdout = new MemStream();
+    const code = await doctorAction({
+      stdout: asStream(stdout),
+      deps: makeDeps({
+        checkApiKey: async () => ({
+          name: "ANTHROPIC_API_KEY",
+          status: "warn",
+          detail: "not set (optional for clean install verification)",
+        }),
+        checkMcpServers: async () => ({
+          name: "MCP servers",
+          status: "warn",
+          detail: "no MCP config found (optional)",
+        }),
+      }),
+    });
+    // Should still exit 0 because warnings don't flip exit code
+    expect(code).toBe(0);
+  });
+});

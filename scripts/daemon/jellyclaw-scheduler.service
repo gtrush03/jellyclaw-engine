@@ -1,0 +1,23 @@
+[Unit]
+Description=Jellyclaw Scheduler Daemon
+Documentation=https://github.com/gtrush03/jellyclaw-engine
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/jellyclaw-daemon start --foreground
+Restart=on-failure
+RestartSec=5
+Environment=XDG_DATA_HOME=%h/.local/share
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+
+# Resource limits
+Nice=10
+IOSchedulingClass=idle
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=default.target

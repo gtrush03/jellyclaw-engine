@@ -25,13 +25,8 @@ import grepSchema from "../../../test/fixtures/tools/claude-code-schemas/grep.js
   type: "json",
 };
 
-import {
-  CwdEscapeError,
-  type JsonSchema,
-  type Tool,
-  type ToolContext,
-  ToolError,
-} from "./types.js";
+import { ensureWithinAllowedRoots } from "./permissions.js";
+import { type JsonSchema, type Tool, type ToolContext, ToolError } from "./types.js";
 
 const MAX_OUTPUT_CHARS = 50_000;
 const MAX_CONTEXT = 50;
@@ -76,12 +71,7 @@ interface RgRun {
 }
 
 function ensureInsideCwd(resolved: string, ctx: ToolContext): void {
-  const cwd = ctx.cwd;
-  const inside = resolved === cwd || resolved.startsWith(cwd + path.sep);
-  if (inside) return;
-  if (!ctx.permissions.isAllowed("grep.outside_cwd")) {
-    throw new CwdEscapeError(resolved, cwd);
-  }
+  ensureWithinAllowedRoots(resolved, ctx, "grep.outside_cwd");
 }
 
 function ensureRgBinary(): void {

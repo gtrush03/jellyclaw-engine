@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import type { ReactElement } from "react";
 
 export type LiveStatus = "connected" | "disconnected" | "reconnecting";
 
@@ -27,7 +28,7 @@ export function LiveIndicator({
   status,
   lastUpdate = null,
   className = "",
-}: LiveIndicatorProps): JSX.Element {
+}: LiveIndicatorProps): ReactElement {
   const [, force] = useState<number>(0);
 
   // Tick once a second so the tooltip stays fresh

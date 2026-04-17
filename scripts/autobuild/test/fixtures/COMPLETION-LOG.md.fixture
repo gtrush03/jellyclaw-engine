@@ -1,0 +1,40 @@
+# Jellyclaw Engine — Completion Log
+
+**Last updated:** 2026-04-15
+**Current phase:** Phase 99 — Unfucking (in progress, 5/8 prompts)
+
+## Overall progress
+
+[████████████░░░░░░░░░] 12/21 phases complete (57%)
+
+## Phase checklist
+
+### Foundation
+- [x] ✅ Phase 00 — Repo scaffolding
+- [x] ✅ Phase 01 — OpenCode pinning and patching
+
+### Core engine
+- [x] ✅ Phase 10 — CLI + HTTP server + library
+- [ ] 🔄 Phase 99 — Unfucking (5/8 prompts complete)
+
+## Phase completion details
+
+### Phase 00 — Repo scaffolding
+- **Status:** ✅ Complete
+- **Started:** 2026-04-15
+- **Completed:** 2026-04-15
+- **Duration (actual):** 0.5 hour
+- **Session count:** 1
+- **Commits:** 6644aaf
+- **Tests passing:** 6/6
+- **Notes:** Scaffold verified end-to-end.
+
+### Phase 01 — OpenCode pinning and patching
+- **Status:** ✅ Complete
+- **Started:** 2026-04-15
+- **Completed:** 2026-04-15
+- **Duration (actual):** ~1 day
+- **Session count:** 2
+- **Commits:** dcb0601, 06d7d8a
+- **Tests passing:** 48/48
+- **Notes:** Hand-edited prose about pinning should be preserved verbatim.

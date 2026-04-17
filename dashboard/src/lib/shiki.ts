@@ -13,6 +13,7 @@ export const obsidianGoldTheme: ThemeRegistrationRaw = {
     'editor.background': '#00000000',
     'editor.foreground': '#e8e6e1',
   },
+  settings: [],
   tokenColors: [
     { scope: ['comment', 'punctuation.definition.comment'], settings: { foreground: '#6b6760', fontStyle: 'italic' } },
     { scope: ['string', 'string.quoted'], settings: { foreground: '#b8a67f' } },

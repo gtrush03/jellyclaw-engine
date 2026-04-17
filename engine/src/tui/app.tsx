@@ -15,6 +15,13 @@ import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 
 import type { AgentEvent } from "../events.js";
 import type { JellyclawClient } from "./client.js";
+import {
+  type CommandContext,
+  executeCommand,
+  parseSlash,
+  type UiCommandAction,
+} from "./commands/dispatch.js";
+import { ApiKeyPrompt } from "./components/api-key-prompt.js";
 import { BootAnimation } from "./components/boot-animation.js";
 import { InputBox } from "./components/input-box.js";
 import { PermissionModal } from "./components/permission-modal.js";
@@ -22,13 +29,8 @@ import { Splash } from "./components/splash.js";
 import { StatusBar } from "./components/status-bar.js";
 import { Transcript } from "./components/transcript.js";
 import { useEvents } from "./hooks/use-events.js";
+import { useReconnect } from "./hooks/use-reconnect.js";
 import { useReducedMotion } from "./hooks/use-reduced-motion.js";
-import {
-  type CommandContext,
-  executeCommand,
-  parseSlash,
-  type UiCommandAction,
-} from "./commands/dispatch.js";
 import { reduce } from "./state/reducer.js";
 import { createInitialState, type UiAction, type UiState } from "./state/types.js";
 
@@ -68,9 +70,7 @@ export function App(props: AppProps): JSX.Element {
 
   const [state, dispatch] = useReducer(reduce, initialState ?? createInitialState({ cwd }));
   const [draft, setDraft] = useState("");
-  const [bootDone, setBootDone] = useState<boolean>(
-    initialState !== undefined || reducedMotion,
-  );
+  const [bootDone, setBootDone] = useState<boolean>(initialState !== undefined || reducedMotion);
   const [confirmExitMsg, setConfirmExitMsg] = useState<string | null>(null);
   const confirmExitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const exitArmed = useRef(false);
@@ -86,13 +86,32 @@ export function App(props: AppProps): JSX.Element {
   const handleEvent = useCallback((ev: AgentEvent): void => {
     dispatch(ev);
   }, []);
-  const handleError = useCallback((_err: unknown): void => {
-    // Fold transient stream failures into a system error item — the reducer
-    // does not see a synthesised AgentEvent here because `session.error` shapes
-    // are server-issued. Surface a UI-only error item instead.
-    dispatch({ kind: "clear-error" });
+  const handleError = useCallback((err: unknown): void => {
+    const reason = err instanceof Error ? err.message : String(err);
+    dispatch({ kind: "connection-lost", reason });
   }, []);
   useEvents({ client, runId: state.runId, onEvent: handleEvent, onError: handleError });
+
+  // ---- Reconnect logic ---------------------------------------------------------
+  const reopenStream = useCallback(async (): Promise<void> => {
+    if (state.sessionId === null) {
+      throw new Error("no session to reconnect");
+    }
+    for await (const ev of client.resumeSession(state.sessionId)) {
+      dispatch(ev);
+    }
+    dispatch({ kind: "connection-restored" });
+  }, [client, state.sessionId]);
+
+  const handleReconnectAttempt = useCallback((attempt: number, delayMs: number): void => {
+    dispatch({ kind: "reconnecting", attempt, nextRetryMs: delayMs });
+  }, []);
+
+  useReconnect({
+    trigger: reopenStream,
+    onAttempt: handleReconnectAttempt,
+    active: state.connection.kind !== "connected",
+  });
 
   // ---- Resume / continue (best-effort, fire-and-forget) ----------------------
   useEffect(() => {
@@ -198,16 +217,7 @@ export function App(props: AppProps): JSX.Element {
         }
       })();
     },
-    [
-      client,
-      cwd,
-      state.sessionId,
-      state.runId,
-      state.currentModel,
-      state.usage,
-      inkApp,
-      onExit,
-    ],
+    [client, cwd, state.sessionId, state.runId, state.currentModel, state.usage, inkApp, onExit],
   );
 
   // ---- Permission resolve ----------------------------------------------------
@@ -276,7 +286,8 @@ export function App(props: AppProps): JSX.Element {
   const transcriptRows = Math.max(1, rows - 5);
   void cols;
 
-  const inputDisabled = state.status === "streaming" || state.status === "awaiting-permission";
+  const inputDisabled =
+    state.status === "streaming" || state.status === "awaiting-permission" || state.modal !== null;
   const placeholder =
     state.runId === null && state.items.length === 0 ? "type a prompt to start" : "send a message";
 
@@ -289,6 +300,7 @@ export function App(props: AppProps): JSX.Element {
         status={state.status}
         tick={state.tick}
         reducedMotion={reducedMotion}
+        connection={state.connection}
       />
       {/* Boot animation plays once at startup, then yields to the real splash.
           Splash itself stays pinned at top for the duration of the session —
@@ -309,6 +321,12 @@ export function App(props: AppProps): JSX.Element {
           />
         ) : null}
       </Box>
+      {state.modal === "api-key" ? (
+        <ApiKeyPrompt
+          onAccepted={() => dispatch({ kind: "close-modal" })}
+          onCancelled={() => dispatch({ kind: "close-modal" })}
+        />
+      ) : null}
       {state.pendingPermission !== null ? (
         <PermissionModal permission={state.pendingPermission} onResolve={onResolvePermission} />
       ) : null}

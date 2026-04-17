@@ -11,8 +11,8 @@
  * carry the business logic and are invoked via `executeCommand`.
  */
 
-import type { JellyclawClient } from "../client.js";
 import type { AgentEvent } from "../../events.js";
+import type { JellyclawClient } from "../client.js";
 
 // ---------------------------------------------------------------------------
 // Parsed command shape
@@ -98,7 +98,9 @@ export type UiCommandAction =
   | { readonly kind: "clear-transcript" }
   | { readonly kind: "new-session" }
   | { readonly kind: "set-model"; readonly model: string }
-  | { readonly kind: "run-cancelled" };
+  | { readonly kind: "run-cancelled" }
+  | { readonly kind: "open-modal"; readonly modal: "api-key" }
+  | { readonly kind: "close-modal" };
 
 export interface CommandResult {
   /**
@@ -119,13 +121,9 @@ export async function executeCommand(
   cmd: ParsedCommand,
   ctx: CommandContext,
 ): Promise<CommandResult> {
-  const def = COMMANDS.find(
-    (c) => c.name === cmd.name || (c.aliases ?? []).includes(cmd.name),
-  );
+  const def = COMMANDS.find((c) => c.name === cmd.name || (c.aliases ?? []).includes(cmd.name));
   if (def === undefined) {
-    ctx.pushSystem(
-      `unknown command: /${cmd.name} — type /help to list available commands`,
-    );
+    ctx.pushSystem(`unknown command: /${cmd.name} — type /help to list available commands`);
     return { status: "unknown" };
   }
   try {

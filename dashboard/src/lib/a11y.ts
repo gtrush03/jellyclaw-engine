@@ -63,8 +63,9 @@ export function useFocusTrap<T extends HTMLElement>(
         container.focus();
         return;
       }
-      const first = items[0];
-      const last = items[items.length - 1];
+      // items.length === 0 is guarded above, so these are always defined.
+      const first = items[0]!;
+      const last = items[items.length - 1]!;
       const activeEl = document.activeElement as HTMLElement | null;
 
       if (e.shiftKey) {

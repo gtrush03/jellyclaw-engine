@@ -33,6 +33,10 @@ export interface BrandPalette {
   readonly tidewaterDim: string;
   readonly success: string;
   readonly error: string;
+  /** Diff view: added lines — gold-tinted green. */
+  readonly diffAdd: string;
+  /** Diff view: deleted lines — muted rust. */
+  readonly diffDel: string;
 }
 
 export const brand: BrandPalette = {
@@ -47,6 +51,8 @@ export const brand: BrandPalette = {
   tidewaterDim: "#3B475F",
   success: "#4ADE80",
   error: "#FF5577",
+  diffAdd: "#5A8C66",
+  diffDel: "#8C5A5A",
 };
 
 /**

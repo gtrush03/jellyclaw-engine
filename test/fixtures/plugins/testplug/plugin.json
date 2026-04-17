@@ -1,0 +1,6 @@
+{
+  "id": "testplug",
+  "version": "1.0.0",
+  "description": "Test plugin for T4-05 acceptance tests",
+  "author": "jellyclaw-test"
+}

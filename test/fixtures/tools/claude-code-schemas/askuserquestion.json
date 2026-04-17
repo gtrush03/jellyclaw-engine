@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "question": {
+      "description": "The question to ask the user.",
+      "type": "string"
+    },
+    "options": {
+      "description": "Optional multiple-choice options.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": ["question"]
+}

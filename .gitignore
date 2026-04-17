@@ -88,3 +88,29 @@ tmp/
 engine/scratch/*
 !engine/scratch/repro-5894.ts
 !engine/scratch/emit-hello.ts
+
+# Autobuild rig
+.autobuild/sessions/
+.autobuild/archive/
+.autobuild/context.json
+.autobuild/state.json
+.autobuild/state.json.bak
+
+# Orchestrator
+.orchestrator/inbox/
+.orchestrator/control.sock
+.orchestrator/pid
+.orchestrator/paused*
+.orchestrator/halted
+
+# Logs
+logs/
+
+# Autobuild rig (whole-directory rules)
+.autobuild/
+.orchestrator/
+.autobuild-simple/
+.claude/
+desktop/src-tauri/target/
+target/
+desktop/src-tauri/binaries/

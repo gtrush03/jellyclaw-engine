@@ -29,10 +29,12 @@ export type ReducerInput = AgentEvent | UiAction;
  * change, the same reference for ignored events.
  */
 export function reduce(state: UiState, input: ReducerInput): UiState {
-  if ("kind" in input) {
-    return reduceUiAction(state, input);
+  // Discriminate: UiAction has `kind` but no `type`; AgentEvent has `type`.
+  // Note: monitor.started has both `kind` and `type`, so check for `type` first.
+  if ("type" in input) {
+    return reduceAgentEvent(state, input as AgentEvent);
   }
-  return reduceAgentEvent(state, input);
+  return reduceUiAction(state, input as UiAction);
 }
 
 // ---------------------------------------------------------------------------
@@ -195,6 +197,19 @@ function reduceAgentEventInner(state: UiState, event: AgentEvent): UiState {
     case "stream.ping":
       return { ...state, tick: state.tick + 1 };
 
+    // Team events (T4-03) — not rendered in TUI.
+    case "team.created":
+    case "team.member.started":
+    case "team.member.result":
+    case "team.deleted":
+      return state;
+
+    // Monitor events (T4-04) — not rendered in TUI.
+    case "monitor.started":
+    case "monitor.event":
+    case "monitor.stopped":
+      return state;
+
     default:
       // Defensive fallthrough — should be unreachable since AgentEvent is a
       // discriminated union validated upstream by zod.
@@ -280,6 +295,43 @@ function reduceUiAction(state: UiState, action: UiAction): UiState {
         done: true,
       };
       return { ...state, items: appendItem(state.items, msg) };
+    }
+
+    case "open-modal":
+      return { ...state, modal: action.modal };
+
+    case "close-modal":
+      return { ...state, modal: null };
+
+    case "connection-lost":
+      return {
+        ...state,
+        connection: { kind: "disconnected", reason: action.reason },
+      };
+
+    case "reconnecting":
+      return {
+        ...state,
+        connection: {
+          kind: "reconnecting",
+          attempt: action.attempt,
+          nextRetryMs: action.nextRetryMs,
+        },
+      };
+
+    case "connection-restored": {
+      const reconnectedMsg: TextMessage = {
+        kind: "text",
+        id: `reconnected-${Date.now().toString(36)}`,
+        role: "system",
+        text: "\u2713 reconnected",
+        done: true,
+      };
+      return {
+        ...state,
+        connection: { kind: "connected" },
+        items: appendItem(state.items, reconnectedMsg),
+      };
     }
 
     default:

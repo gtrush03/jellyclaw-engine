@@ -1,0 +1,60 @@
+# T4-07: .npmignore for @jellyclaw/engine package
+# Target tarball size: <30MB
+
+# Explicitly include (negate rules for clarity)
+!dist/
+!bin/
+!README.md
+!LICENSE
+!CHANGELOG.md
+!patches/
+
+# Exclude test files
+*.test.ts
+*.test.js
+*.spec.ts
+*.spec.js
+__tests__/
+test/
+tests/
+
+# Exclude source TypeScript (dist/ has compiled output)
+src/
+
+# Exclude development artifacts
+.autobuild/
+.orchestrator/
+.claude/
+logs/
+*.log
+
+# Exclude desktop application
+desktop/
+
+# Exclude documentation and prompts (not needed for npm)
+docs/
+phases/
+prompts/
+integration/
+
+# Exclude compiled binary (too large; use brew for binary)
+dist/bin/
+
+# Exclude build config
+tsconfig.json
+tsup.config.ts
+biome.json
+vitest.config.ts
+.eslintrc*
+.prettierrc*
+
+# Exclude CI/CD
+.github/
+
+# Exclude scripts (not needed for end users)
+scripts/
+
+# Exclude node_modules symlinks and caches
+node_modules/
+.bun/
+bun.lockb

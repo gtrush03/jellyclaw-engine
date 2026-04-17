@@ -5,6 +5,7 @@ import { Toaster } from 'sonner';
 import App from './App';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import './theme.css';
+import './styles/autobuild.css';
 
 const queryClient = new QueryClient({
   defaultOptions: {

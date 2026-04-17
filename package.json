@@ -77,7 +77,8 @@
     "ink-testing-library": "^4.0.0",
     "tsup": "latest",
     "typescript": "5",
-    "vitest": "latest"
+    "vitest": "latest",
+    "yaml": "^2.8.3"
   },
   "engines": {
     "node": ">=20.6",

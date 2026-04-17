@@ -1,0 +1,108 @@
+{
+  "total": 5,
+  "passed": 5,
+  "failed": 0,
+  "duration_ms": 20577,
+  "parallel": true,
+  "tests": [
+    {
+      "name": "smoke-01-boot",
+      "passed": true,
+      "duration_ms": 6078,
+      "details": {
+        "steps": [
+          {
+            "step": "--help",
+            "code": 0,
+            "timedOut": false
+          },
+          {
+            "step": "--version",
+            "code": 0,
+            "timedOut": false
+          },
+          {
+            "step": "jellyclaw-serve --help",
+            "code": 0,
+            "timedOut": false,
+            "stdoutLen": 645
+          }
+        ]
+      }
+    },
+    {
+      "name": "smoke-02-simple-prompt",
+      "passed": true,
+      "duration_ms": 6158,
+      "details": {
+        "kindCounts": {
+          "session.started": 1,
+          "agent.message": 2,
+          "usage.updated": 1,
+          "session.completed": 1,
+          "__done__": 1
+        },
+        "eventCount": 6
+      }
+    },
+    {
+      "name": "smoke-03-parallel-tools",
+      "passed": true,
+      "duration_ms": 11962,
+      "details": {
+        "toolsSeen": [
+          "Glob",
+          "Read",
+          "Grep"
+        ],
+        "kindCounts": {
+          "session.started": 1,
+          "tool.called": 3,
+          "usage.updated": 2,
+          "permission.requested": 3,
+          "permission.granted": 3,
+          "tool.result": 1,
+          "tool.error": 2,
+          "agent.message": 9,
+          "session.completed": 1,
+          "__done__": 1
+        },
+        "eventCount": 26
+      }
+    },
+    {
+      "name": "smoke-04-long-chain",
+      "passed": true,
+      "duration_ms": 20568,
+      "details": {
+        "bashCalls": 6,
+        "peakInputTokens": 4837,
+        "kindCounts": {
+          "session.started": 1,
+          "tool.called": 6,
+          "usage.updated": 7,
+          "permission.requested": 6,
+          "permission.granted": 6,
+          "tool.result": 6,
+          "agent.message": 4,
+          "session.completed": 1,
+          "__done__": 1
+        },
+        "eventCount": 38
+      }
+    },
+    {
+      "name": "smoke-05-http-roundtrip",
+      "passed": true,
+      "duration_ms": 3529,
+      "details": {
+        "checks": [
+          "health-authed",
+          "runs-400",
+          "runs-401"
+        ]
+      }
+    }
+  ],
+  "ts": "2026-04-17T06:48:09.782Z"
+}

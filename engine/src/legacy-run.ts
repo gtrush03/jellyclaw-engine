@@ -44,6 +44,26 @@ export interface RunOptions {
   sessionId?: string;
   config?: LegacyCreateEngineOptions["config"];
   configPath?: LegacyCreateEngineOptions["configPath"];
+  /** Maximum tool-use turns. Defaults to DEFAULT_MAX_TURNS (50) if unset. */
+  maxTurns?: number;
+  /** Maximum cumulative cost in USD. When exceeded, the loop aborts with max_cost_usd_exceeded. */
+  maxCostUsd?: number;
+  /** Permission mode override from CLI --permission-mode flag (T2-05). */
+  permissionMode?: "default" | "acceptEdits" | "bypassPermissions" | "plan";
+  /** Prior messages for session resumption (T2-07). Prepended to conversation history. */
+  priorMessages?: ReadonlyArray<{ role: "user" | "assistant"; content: string }>;
+  /** Session ID to resume (T2-07). When provided, loads prior transcript. */
+  resume?: string;
+  /** Continue from the latest session for the current project (T2-08). */
+  continue?: boolean;
+  /** Tool names to allow (T2-09). When set, only these tools are enabled. Supports wildcards like `mcp__*`. */
+  allowedTools?: readonly string[];
+  /** Tool names to deny (T2-09). These tools are disabled. Supports wildcards like `mcp__github__*`. */
+  disallowedTools?: readonly string[];
+  /** Append to the system prompt (T2-10). Added after soul and skill injection. */
+  appendSystemPrompt?: string;
+  /** Additional allowed directories (T2-10). Path tools can access these in addition to cwd. */
+  addDir?: readonly string[];
 }
 
 async function resolveConfig(options: LegacyCreateEngineOptions): Promise<JellyclawConfig> {

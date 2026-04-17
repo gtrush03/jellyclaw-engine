@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { ReactElement } from "react";
 
 export interface ShortcutRow {
   keys: readonly string[];
@@ -132,7 +133,7 @@ export function KeyboardHelp({
   open,
   onClose,
   shortcuts = DEFAULT_SHORTCUTS,
-}: KeyboardHelpProps): JSX.Element | null {
+}: KeyboardHelpProps): ReactElement | null {
   const dialogRef = useRef<HTMLDivElement>(null);
   const [mounted, setMounted] = useState<boolean>(false);
 
