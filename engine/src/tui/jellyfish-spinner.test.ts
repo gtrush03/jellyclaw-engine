@@ -8,6 +8,7 @@ import {
   jellyfishSpinnerCompactAscii,
   jellyfishSpinnerHero,
   jellyfishSpinnerHeroAscii,
+  jellyfishSpinnerMinimal,
   renderFrame,
 } from "./jellyfish-spinner.js";
 
@@ -85,6 +86,29 @@ describe("jellyfish-spinner: ascii fallback", () => {
       expect(lines).toHaveLength(3);
       for (const line of lines) expect(width(line)).toBe(11);
     }
+  });
+});
+
+describe("jellyfish-spinner: minimal variant", () => {
+  it("has exactly 3 frames at 120ms", () => {
+    expect(jellyfishSpinnerMinimal.frames).toHaveLength(3);
+    expect(jellyfishSpinnerMinimal.interval).toBe(120);
+  });
+
+  it("frames are . .. ...", () => {
+    expect(jellyfishSpinnerMinimal.frames[0]).toBe(".");
+    expect(jellyfishSpinnerMinimal.frames[1]).toBe("..");
+    expect(jellyfishSpinnerMinimal.frames[2]).toBe("...");
+  });
+
+  it("static frame is ...", () => {
+    expect(jellyfishSpinnerMinimal.staticFrame).toBe("...");
+  });
+
+  it("frame cadence is ≈120ms ±10%", () => {
+    const interval = jellyfishSpinnerMinimal.interval;
+    expect(interval).toBeGreaterThanOrEqual(108); // 120 - 10%
+    expect(interval).toBeLessThanOrEqual(132); // 120 + 10%
   });
 });
 

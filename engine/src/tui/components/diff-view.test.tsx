@@ -1,8 +1,15 @@
 /**
- * Tests for DiffView component (T3-07).
+ * Tests for DiffView component (T1-03 polish).
+ *
+ * Covers:
+ *   - +/-/ctx line rendering.
+ *   - Hunk header with `+adds / -dels` summary.
+ *   - Collapse path for diffs over `maxRows`.
+ *   - Enter-to-expand hint in the collapsed summary.
  */
 
 import { render } from "ink-testing-library";
+import stripAnsi from "strip-ansi";
 import { describe, expect, it } from "vitest";
 import type { DiffLine } from "../lib/diff.js";
 import { unifiedDiff } from "../lib/diff.js";
@@ -57,8 +64,35 @@ describe("DiffView: write-renders-full-insert", () => {
 });
 
 describe("DiffView: large-diff-collapses", () => {
-  it("collapses diffs with more than maxRows lines", () => {
-    // Create 50 added lines
+  it("collapses diffs with more than maxRows lines (default 60)", () => {
+    // Create 70 added lines (exceeds default 60)
+    const lines: DiffLine[] = Array.from({ length: 70 }, (_, i) => ({
+      kind: "add" as const,
+      text: `line ${i + 1}`,
+    }));
+
+    const { lastFrame } = render(<DiffView diff={lines} />);
+    const frame = lastFrame();
+
+    // Should contain the elided marker
+    expect(frame).toContain("lines elided");
+
+    // Should contain first lines
+    expect(frame).toContain("line 1");
+    expect(frame).toContain("line 30");
+
+    // Should contain last lines
+    expect(frame).toContain("line 41");
+    expect(frame).toContain("line 70");
+
+    // Should contain the expand hint (Enter key per T1-03 spec).
+    expect(frame).toContain("press Enter to expand");
+    // Summary surfaces adds / dels counts.
+    expect(frame).toContain("+70");
+    expect(frame).toContain("-0");
+  });
+
+  it("collapses with custom maxRows", () => {
     const lines: DiffLine[] = Array.from({ length: 50 }, (_, i) => ({
       kind: "add" as const,
       text: `line ${i + 1}`,
@@ -69,31 +103,35 @@ describe("DiffView: large-diff-collapses", () => {
 
     // Should contain the elided marker
     expect(frame).toContain("lines elided");
-
-    // Should contain first lines
-    expect(frame).toContain("line 1");
-    expect(frame).toContain("line 20");
-
-    // Should contain last lines
-    expect(frame).toContain("line 31");
-    expect(frame).toContain("line 50");
-
-    // Should contain the expand hint
-    expect(frame).toContain("[press 'd' to expand]");
+    expect(frame).toContain("press Enter to expand");
   });
 
   it("does not collapse when under maxRows", () => {
-    const lines: DiffLine[] = Array.from({ length: 30 }, (_, i) => ({
+    const lines: DiffLine[] = Array.from({ length: 50 }, (_, i) => ({
       kind: "add" as const,
       text: `line ${i + 1}`,
     }));
 
-    const { lastFrame } = render(<DiffView diff={lines} maxRows={40} />);
+    // Default maxRows is now 60
+    const { lastFrame } = render(<DiffView diff={lines} />);
     const frame = lastFrame();
 
-    // Should NOT contain the elided marker
+    // Should NOT contain the elided marker (50 < 60)
     expect(frame).not.toContain("lines elided");
-    expect(frame).not.toContain("[press 'd' to expand]");
+    expect(frame).not.toContain("press Enter to expand");
+  });
+
+  it("renders a hunk header with +adds / -dels summary", () => {
+    const diff: DiffLine[] = [
+      { kind: "add", text: "one" },
+      { kind: "add", text: "two" },
+      { kind: "del", text: "zero" },
+    ];
+    const { lastFrame } = render(<DiffView diff={diff} filePath="/file.ts" />);
+    const plain = stripAnsi(lastFrame());
+    expect(plain).toContain("/file.ts");
+    expect(plain).toContain("+2");
+    expect(plain).toContain("-1");
   });
 });
 

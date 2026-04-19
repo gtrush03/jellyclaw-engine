@@ -12,6 +12,11 @@
  *   - Abyss        `#0A1020` — main background
  *   - Tidewater    `#5A6B8C` — muted / borderSubtle
  *
+ * v2.0 additions (T6-04-DESIGN-BRIEF.md):
+ *   - Neutral Bridge `#A8B5CA` — secondary text, disabled states (AA 4.8:1)
+ *   - Foam Dark     `#D1D5E1` — metadata, timestamps (AAA 7.2:1)
+ *   - Abyss Light   `#161E3A` — nested panels, modal overlays
+ *
  * Per-session variance: hashing the session id picks one of 4 preset accent
  * rotations so each session looks visually distinct without straying from the
  * palette. The variant only rotates the *row-accent* trio (user / assistant /
@@ -21,16 +26,25 @@
  * 6-digit hex. No runtime deps.
  */
 
+/** Palette version — bump minor for additive changes, major for breaking. */
+export const PALETTE_VERSION = "2.0.0";
+
 export interface BrandPalette {
   readonly jellyCyan: string;
   readonly medusaViolet: string;
   readonly amberEye: string;
   readonly blushPink: string;
   readonly foam: string;
+  /** Secondary text for metadata, timestamps — AAA 7.2:1 against abyss. */
+  readonly foamDark: string;
   readonly abyss: string;
+  /** Nested panels, modal overlays — second surface tier. */
+  readonly abyssLight: string;
   readonly panel: string;
   readonly tidewater: string;
   readonly tidewaterDim: string;
+  /** Secondary text, disabled states — AA 4.8:1 against abyss. */
+  readonly neutralBridge: string;
   readonly success: string;
   readonly error: string;
   /** Diff view: added lines — gold-tinted green. */
@@ -45,10 +59,13 @@ export const brand: BrandPalette = {
   amberEye: "#FFB547",
   blushPink: "#FF6FB5",
   foam: "#E8ECF5",
+  foamDark: "#D1D5E1",
   abyss: "#0A1020",
+  abyssLight: "#161E3A",
   panel: "#0E1830",
   tidewater: "#5A6B8C",
   tidewaterDim: "#3B475F",
+  neutralBridge: "#A8B5CA",
   success: "#4ADE80",
   error: "#FF5577",
   diffAdd: "#5A8C66",

@@ -26,9 +26,12 @@ export function useAnimationTick(options: UseAnimationTickOptions): number {
   useEffect(() => {
     if (reducedMotion) return undefined;
     if (!active) return undefined;
-    const handle = setInterval(() => {
-      setTick((t) => (t + 1) % 1_000_000);
-    }, Math.max(16, interval));
+    const handle = setInterval(
+      () => {
+        setTick((t) => (t + 1) % 1_000_000);
+      },
+      Math.max(16, interval),
+    );
     return (): void => {
       clearInterval(handle);
     };

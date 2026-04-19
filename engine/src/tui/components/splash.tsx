@@ -12,10 +12,17 @@
  *
  * Compact mode (once a session exists) collapses to a 2-line header so the
  * splash stays pinned without eating screen real estate.
+ *
+ * Key bindings:
+ * - Enter: start session (onStart callback)
+ * - Escape: quit application (onQuit callback)
  */
 
-import { Box, Text } from "ink";
+import { Box, Text, useInput } from "ink";
 import { brand, GRADIENT_BELL, GRADIENT_JELLY, gradient } from "../theme/brand.js";
+
+/** Version from package.json, injected at build time or read dynamically. */
+const VERSION = "0.0.1";
 
 export interface SplashProps {
   /** CWD printed under the tagline — short form. */
@@ -24,6 +31,12 @@ export interface SplashProps {
   readonly model: string;
   /** Optional short session id, shown only when a session exists. */
   readonly sessionId?: string | null;
+  /** Callback when Enter is pressed to start. */
+  readonly onStart?: () => void;
+  /** Callback when Escape is pressed to quit. */
+  readonly onQuit?: () => void;
+  /** Override version string for testing. */
+  readonly version?: string;
 }
 
 export function Splash(props: SplashProps): JSX.Element {
@@ -36,6 +49,17 @@ export function Splash(props: SplashProps): JSX.Element {
   // Compact mode: once a session exists, collapse the splash to a 2-line
   // header so it stays pinned without eating screen real estate.
   const compact = sessionShort !== null;
+  const versionStr = props.version ?? VERSION;
+
+  // Handle Enter to start, Escape to quit.
+  useInput((_input, key) => {
+    if (key.return && props.onStart) {
+      props.onStart();
+    }
+    if (key.escape && props.onQuit) {
+      props.onQuit();
+    }
+  });
 
   if (compact) {
     return (
@@ -55,14 +79,19 @@ export function Splash(props: SplashProps): JSX.Element {
           <Text color={brand.medusaViolet}>{shortCwd(props.cwd)}</Text>
         </Box>
         <Box>
-          <Text>{gradient("\u2500".repeat(Math.min(64, shortCwd(props.cwd).length + 40)), GRADIENT_BELL)}</Text>
+          <Text>
+            {gradient(
+              "\u2500".repeat(Math.min(64, shortCwd(props.cwd).length + 40)),
+              GRADIENT_BELL,
+            )}
+          </Text>
         </Box>
       </Box>
     );
   }
 
   // Full splash — first-launch / empty-session view.
-  const hint = "type to begin \u00B7 /help for commands \u00B7 ctrl-c twice to quit";
+  const hint = "ENTER to start \u00B7 /help for commands \u00B7 ESC to quit";
   return (
     <Box flexDirection="column" paddingX={2} paddingY={1}>
       <Box>
@@ -86,8 +115,9 @@ export function Splash(props: SplashProps): JSX.Element {
         <Text color={brand.tidewaterDim}>cwd </Text>
         <Text color={brand.medusaViolet}>{shortCwd(props.cwd)}</Text>
       </Box>
-      <Box marginTop={1}>
+      <Box marginTop={1} justifyContent="space-between">
         <Text color={brand.tidewaterDim}>{hint}</Text>
+        <Text color={brand.tidewaterDim}>v{versionStr}</Text>
       </Box>
     </Box>
   );

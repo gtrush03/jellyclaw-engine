@@ -1,38 +1,48 @@
 /**
- * Markdown renderer for assistant messages.
+ * Markdown renderer for assistant messages (T1-03 polish).
  *
- * A hand-rolled, dependency-free subset parser. Given a raw markdown string,
- * produces a tree of Ink `<Text>` / `<Box>` nodes. The parser is intentionally
- * small (~250 lines) and targets the 90% of realistic assistant output:
+ * A hand-rolled, dependency-free subset parser (~250 lines). Given a raw
+ * markdown string, produces a tree of Ink `<Text>` / `<Box>` nodes. Targets
+ * the 90% of realistic assistant output:
  *
- *   - ATX headings `# H1` / `## H2` / `### H3`        (brand-coloured bold + rule)
- *   - bold `**x**`, italic `*x*` / `_x_`, strike `~~x~~`
- *   - inline code  `` `x` ``                          (inverse foam)
+ * Block-level:
+ *   - ATX headings `# H1` / `## H2` / `### H3`        (gradient/bold + underline)
  *   - fenced code blocks ```lang\n...\n```            (bordered box + lang tag)
  *   - bullet lists `- x` / `* x`                      (◦ glyph, 2-space indent)
- *   - numbered lists `1. x`                           (number. x)
- *   - block quotes `> x`                              (left rule + dim)
+ *   - numbered lists `1. x`                           (padded numbers)
+ *   - block quotes `> x`                              (left rule + dim italic)
  *   - horizontal rule `---` / `***` / `___`           (gradient line)
- *   - links [text](url)                               (underline + cyan + dim url)
  *
- * Not supported (trade-offs made for footprint):
+ * Inline:
+ *   - bold `**x**` / `__x__`, italic `*x*` / `_x_`, strike `~~x~~`
+ *   - inline code `` `x` ``                           (amber on panel bg)
+ *   - links `[text](url)`                             (underline cyan + dim url)
+ *
+ * Not supported (trade-offs for footprint):
  *   - nested lists (flat only — indent is ignored)
  *   - tables (fallback to raw)
  *   - reference-style links / images
- *   - html passthrough
+ *   - HTML passthrough
  *
- * Streaming safety: a partially-written fenced block (opening ``` seen, close
- * not yet arrived) is rendered as a pending block so the user sees code in a
- * frame as it streams. Incomplete inline spans degrade to plain text.
+ * Streaming safety:
+ *   - Partially-written fenced block (opening ``` seen, close not yet arrived)
+ *     renders as a pending block with amber border so the user sees code in a
+ *     frame as it streams.
+ *   - Incomplete inline spans (`**bold without close`) degrade to plain text.
+ *   - The parser never throws on malformed input — worst case is raw passthrough.
  */
 
 import { Box, Text } from "ink";
 import type { ReactNode } from "react";
+import { borders } from "../theme/borders.js";
 import { brand, GRADIENT_BELL, GRADIENT_JELLY, gradient } from "../theme/brand.js";
+import { density } from "../theme/density.js";
+import { typography } from "../theme/typography.js";
 
 export interface MarkdownProps {
+  /** Raw markdown source to render. */
   readonly source: string;
-  /** Assistant accent colour — used for headings + list glyphs. */
+  /** Assistant accent colour — used for headings, list glyphs, quotes. */
   readonly accentColor: string;
 }
 
@@ -43,7 +53,12 @@ export interface MarkdownProps {
 type Block =
   | { readonly kind: "heading"; readonly level: 1 | 2 | 3; readonly text: string }
   | { readonly kind: "paragraph"; readonly text: string }
-  | { readonly kind: "code"; readonly lang: string; readonly body: string; readonly closed: boolean }
+  | {
+      readonly kind: "code";
+      readonly lang: string;
+      readonly body: string;
+      readonly closed: boolean;
+    }
   | { readonly kind: "rule" }
   | { readonly kind: "quote"; readonly text: string }
   | { readonly kind: "ulist"; readonly items: readonly string[] }
@@ -187,20 +202,25 @@ function renderInline(source: string, baseColor: string, keyPrefix: string): Rea
     }
     // Dispatch on which group matched
     if (m[1] !== undefined && m[2] !== undefined) {
-      // inline code
+      // inline code — mono weight + diffAdd background per brief.
       nodes.push(
-        <Text key={`${keyPrefix}-c${idx}`} color={brand.amberEye} backgroundColor={brand.panel}>
+        <Text
+          key={`${keyPrefix}-c${idx}`}
+          color={brand.foam}
+          backgroundColor={brand.diffAdd}
+          bold={typography.mono.bold}
+        >
           {` ${m[2]} `}
         </Text>,
       );
       idx += 1;
     } else if (m[3] !== undefined && m[4] !== undefined) {
-      // link
+      // link — underlined foam per brief; url preview stays dim.
       const label = m[3];
       const url = m[4];
       nodes.push(
         <Text key={`${keyPrefix}-l${idx}`}>
-          <Text color={brand.jellyCyan} underline>
+          <Text color={brand.foam} underline>
             {label}
           </Text>
           <Text color={brand.tidewaterDim}>{` (${url})`}</Text>
@@ -250,7 +270,9 @@ function renderHeading(
     return (
       <Box key={key} flexDirection="column" marginTop={1}>
         <Text bold>{gradient(text, GRADIENT_JELLY)}</Text>
-        <Text color={brand.tidewaterDim}>{gradient("\u2500".repeat(Math.min(40, text.length + 4)), GRADIENT_BELL)}</Text>
+        <Text color={brand.tidewaterDim}>
+          {gradient("\u2500".repeat(Math.min(40, text.length + 4)), GRADIENT_BELL)}
+        </Text>
       </Box>
     );
   }
@@ -260,9 +282,7 @@ function renderHeading(
         <Text bold color={accentColor}>
           {text}
         </Text>
-        <Text color={brand.tidewaterDim}>
-          {"\u2500".repeat(Math.min(32, text.length + 2))}
-        </Text>
+        <Text color={brand.tidewaterDim}>{"\u2500".repeat(Math.min(32, text.length + 2))}</Text>
       </Box>
     );
   }
@@ -280,15 +300,16 @@ function renderHeading(
 }
 
 function renderCode(lang: string, body: string, closed: boolean, key: string): ReactNode {
+  // Pending (unclosed) blocks get amber border to indicate streaming
   const borderColor = closed ? brand.tidewaterDim : brand.amberEye;
   return (
     <Box
       key={key}
       flexDirection="column"
-      borderStyle="round"
+      borderStyle={borders.round.style}
       borderColor={borderColor}
-      paddingX={1}
-      marginY={0}
+      paddingX={density.padX.sm}
+      marginY={density.gap.xs}
     >
       {lang.length > 0 ? (
         <Text color={brand.amberEye} bold>
@@ -306,7 +327,7 @@ function renderCode(lang: string, body: string, closed: boolean, key: string): R
 
 function renderQuote(text: string, key: string): ReactNode {
   return (
-    <Box key={key} marginY={0}>
+    <Box key={key} marginY={density.gap.xs}>
       <Text color={brand.medusaViolet}>{"\u2502 "}</Text>
       <Box flexDirection="column">
         {text.split("\n").map((line, idx) => (
@@ -321,7 +342,7 @@ function renderQuote(text: string, key: string): ReactNode {
 
 function renderRule(key: string): ReactNode {
   return (
-    <Box key={key} marginY={0}>
+    <Box key={key} marginY={density.gap.xs}>
       <Text>{gradient("\u2500".repeat(48), GRADIENT_JELLY)}</Text>
     </Box>
   );
@@ -337,7 +358,7 @@ function renderUList(
     <Box key={key} flexDirection="column">
       {items.map((item, idx) => (
         <Box key={`${key}-i${idx}`}>
-          <Text color={accentColor}>{"  \u25E6 "}</Text>
+          <Text color={accentColor}>{"  \u2022 "}</Text>
           <Text>{renderInline(item, baseColor, `${key}-i${idx}`)}</Text>
         </Box>
       ))}

@@ -207,6 +207,14 @@ export function isAsciiMode(input: AsciiModeInput = {}): boolean {
 }
 
 export type SpinnerSize = "compact" | "hero";
+export type SpinnerVariant = "tentacle" | "bell" | "minimal";
+
+/** Minimal spinner for dumb terminals: 3 frames `.` `..` `...` */
+export const jellyfishSpinnerMinimal: Spinner = {
+  interval: 120,
+  frames: [".", "..", "..."],
+  staticFrame: "...",
+};
 
 export interface RenderOptions {
   readonly size?: SpinnerSize;

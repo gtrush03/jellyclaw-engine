@@ -21,6 +21,8 @@ import { Box, Text } from "ink";
 import { unifiedDiff } from "../lib/diff.js";
 import type { ToolCallMessage, TranscriptItem, UiStatus } from "../state/types.js";
 import { brand, GRADIENT_JELLY, gradient, pickRowAccents } from "../theme/brand.js";
+import { density } from "../theme/density.js";
+import { typography } from "../theme/typography.js";
 import { DiffView } from "./diff-view.js";
 import { Markdown } from "./markdown.js";
 import { Thinking } from "./thinking.js";
@@ -28,7 +30,11 @@ import { ToolCall } from "./tool-call.js";
 
 export interface TranscriptProps {
   items: readonly TranscriptItem[];
-  /** Max visible lines (layout height). Excess rows crop from the top. */
+  /**
+   * Max visible rows (layout height). Excess rows crop from the top — older
+   * rows are not re-rendered so they stay in the terminal's native scroll-back
+   * buffer (akin to a `useMaxHeight()` render budget).
+   */
   rows: number;
   /** Session id threaded in so row accents rotate per-session. */
   sessionId?: string | null;
@@ -82,11 +88,11 @@ function TranscriptRow(props: RowProps): JSX.Element {
     // Route Edit/Write/NotebookEdit through DiffView
     const diffView = tryRenderDiffView(item, props.toolColor);
     if (diffView !== null) {
-      return <Box marginTop={1}>{diffView}</Box>;
+      return <Box marginTop={density.gap.md}>{diffView}</Box>;
     }
 
     return (
-      <Box marginTop={1}>
+      <Box marginTop={density.gap.md}>
         <ToolCall
           message={item}
           accentColor={props.toolColor}
@@ -98,21 +104,28 @@ function TranscriptRow(props: RowProps): JSX.Element {
 
   if (item.kind === "error") {
     return (
-      <Box marginTop={1}>
+      <Box marginTop={density.gap.md}>
         <Text color={brand.error}>{"\u2502 "}</Text>
         <Text bold color={brand.error}>
           {`\u2717 ${item.code}`}
         </Text>
         <Text color={brand.tidewater}>{" \u00B7 "}</Text>
-        <Text color={brand.foam}>{item.message}</Text>
+        <Text wrap="wrap" color={brand.foam}>
+          {item.message}
+        </Text>
       </Box>
     );
   }
 
   if (item.role === "system") {
     return (
-      <Box marginTop={1}>
-        <Text color={brand.tidewaterDim} italic>
+      <Box marginTop={density.gap.md}>
+        <Text
+          color={brand.tidewaterDim}
+          italic={typography.emphasis.italic ?? true}
+          dimColor={typography.caption.dim}
+          wrap="wrap"
+        >
           {"\u00B7 "}
           {item.text}
         </Text>
@@ -121,23 +134,26 @@ function TranscriptRow(props: RowProps): JSX.Element {
   }
 
   if (item.role === "user") {
+    // Row layout: <accent-bar> <role-prefix> <content> with density.md spacing.
     return (
-      <Box flexDirection="column" marginTop={1}>
+      <Box flexDirection="column" marginTop={density.gap.md}>
         <Box>
           <Text color={props.userColor} bold>
             {"\u2502 "}
           </Text>
           <Text color={brand.tidewaterDim}>{"you \u203A "}</Text>
-          <Text color={brand.foam}>{item.text}</Text>
+          <Text wrap="wrap" color={brand.foam}>
+            {item.text}
+          </Text>
         </Box>
       </Box>
     );
   }
 
-  // assistant
+  // assistant — routes body through Markdown renderer for rich formatting
   const isStreamingThisRow = props.isLast && props.status === "streaming" && item.done === false;
   return (
-    <Box flexDirection="column" marginTop={1}>
+    <Box flexDirection="column" marginTop={density.gap.md}>
       <Box>
         <Text color={props.assistantColor} bold>
           {"\u2502 "}
@@ -149,12 +165,12 @@ function TranscriptRow(props: RowProps): JSX.Element {
         ) : null}
       </Box>
       {item.text.length > 0 ? (
-        <Box marginLeft={2}>
+        <Box marginLeft={density.padX.md}>
           <Markdown source={item.text} accentColor={props.assistantColor} />
         </Box>
       ) : null}
       {isStreamingThisRow && item.text.length > 0 ? (
-        <Box marginLeft={2}>
+        <Box marginLeft={density.padX.md}>
           <Thinking
             accentColor={props.assistantColor}
             reducedMotion={props.reducedMotion}

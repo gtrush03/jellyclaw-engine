@@ -1,0 +1,92 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`theme tokens > borders > matches snapshot 1`] = `
+{
+  "ascii": {
+    "color": "#3B475F",
+    "style": "classic",
+  },
+  "round": {
+    "color": "#3B475F",
+    "style": "round",
+  },
+  "single": {
+    "color": "#3B475F",
+    "style": "single",
+  },
+}
+`;
+
+exports[`theme tokens > brand palette > matches snapshot 1`] = `
+{
+  "abyss": "#0A1020",
+  "abyssLight": "#161E3A",
+  "amberEye": "#FFB547",
+  "blushPink": "#FF6FB5",
+  "diffAdd": "#5A8C66",
+  "diffDel": "#8C5A5A",
+  "error": "#FF5577",
+  "foam": "#E8ECF5",
+  "foamDark": "#D1D5E1",
+  "jellyCyan": "#3BA7FF",
+  "medusaViolet": "#9E7BFF",
+  "neutralBridge": "#A8B5CA",
+  "panel": "#0E1830",
+  "success": "#4ADE80",
+  "tidewater": "#5A6B8C",
+  "tidewaterDim": "#3B475F",
+}
+`;
+
+exports[`theme tokens > density > matches snapshot 1`] = `
+{
+  "gap": {
+    "lg": 2,
+    "md": 1,
+    "sm": 1,
+    "xs": 0,
+  },
+  "padX": {
+    "lg": 3,
+    "md": 2,
+    "none": 0,
+    "sm": 1,
+  },
+  "padY": {
+    "lg": 2,
+    "md": 1,
+    "none": 0,
+    "sm": 0,
+  },
+}
+`;
+
+exports[`theme tokens > typography > matches snapshot 1`] = `
+{
+  "body": {
+    "bold": false,
+    "dim": false,
+  },
+  "caption": {
+    "bold": false,
+    "dim": true,
+  },
+  "emphasis": {
+    "bold": false,
+    "dim": false,
+    "italic": true,
+  },
+  "heading": {
+    "bold": true,
+    "dim": false,
+  },
+  "mono": {
+    "bold": false,
+    "dim": false,
+  },
+  "pill": {
+    "bold": true,
+    "dim": false,
+  },
+}
+`;

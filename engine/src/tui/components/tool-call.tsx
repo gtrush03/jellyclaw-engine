@@ -1,33 +1,46 @@
 /**
- * Bordered tool-call card.
+ * Bordered tool-call card (T1-03 polish).
  *
- * Renders a single `ToolCallMessage` with header (tool name + status glyph),
- * stringified input body, optional collapsed output / error rows, and a
- * duration footer. Long output snaps to its first 6 lines with a soft
- * `… (N more lines)` tail so bash-noisy sessions stay readable.
+ * Renders a single `ToolCallMessage` with a banner, a 2-line JSON arg summary,
+ * an optionally-collapsed output block, and a duration footer. Long output
+ * snaps to its first 10 lines (per spec) with a soft
+ * `… (N more lines) [?] show more` hint so bash-noisy sessions stay readable.
  *
- * Status glyph:
- *   - pending → amber `◐◓◑◒` rotating quarter (via <ToolSpinner />)
- *   - ok      → green `✓`
- *   - error   → red `✗`
+ * Banner: `[tool] <tool-name> … <spinner|✔|✖>` on one line.
+ *
+ * Status glyph + colour:
+ *   - pending → `amberEye` + rotating quarter spinner (via <ToolSpinner />)
+ *   - ok      → `success` green `✓`
+ *   - error   → `error` red `✗`
  *
  * Frame colour is the per-session `tool` accent (typically amber, occasionally
- * blush).
+ * blush). Press `?` over a tool-call row to expand/collapse detailed output
+ * (keymap bound via `useInput`).
  */
 
-import { Box, Text } from "ink";
+import { Box, Text, useInput } from "ink";
+import { useState } from "react";
 import type { ToolCallMessage } from "../state/types.js";
+import { borders } from "../theme/borders.js";
 import { brand } from "../theme/brand.js";
+import { density } from "../theme/density.js";
+import { typography } from "../theme/typography.js";
 import { ToolSpinner } from "./tool-spinner.js";
 
+/** Max chars for stringified input/output before truncation. */
 const MAX_LEN = 600;
-const COLLAPSE_LINES = 6;
+/** Collapse output to first N lines (per spec: ≤ 10 lines). */
+const COLLAPSE_LINES = 10;
+/** Summary lines for collapsed JSON args. */
+const ARGS_SUMMARY_LINES = 2;
 
 export interface ToolCallProps {
   message: ToolCallMessage;
   /** Per-session accent; defaults to amber. */
   accentColor?: string;
   reducedMotion?: boolean;
+  /** If true, attach `useInput` for `?` expand/collapse. Off in tests. */
+  interactive?: boolean;
 }
 
 function stringify(value: unknown): string {
@@ -44,7 +57,10 @@ function truncate(s: string, max = MAX_LEN): string {
   return `${s.slice(0, max - 1)}\u2026`;
 }
 
-function collapseLines(s: string, max = COLLAPSE_LINES): {
+function collapseLines(
+  s: string,
+  max = COLLAPSE_LINES,
+): {
   readonly body: string;
   readonly extra: number;
 } {
@@ -53,61 +69,112 @@ function collapseLines(s: string, max = COLLAPSE_LINES): {
   return { body: lines.slice(0, max).join("\n"), extra: lines.length - max };
 }
 
+/** Summarize JSON args to first N lines for collapsed view. */
+function summarizeArgs(value: unknown, maxLines = ARGS_SUMMARY_LINES): string {
+  const full = truncate(stringify(value));
+  const collapsed = collapseLines(full, maxLines);
+  if (collapsed.extra > 0) {
+    return `${collapsed.body}\u2026`;
+  }
+  return collapsed.body;
+}
+
+/** Status colour — running/ok/error → amber/success/error. */
+function statusColor(status: ToolCallMessage["status"]): string {
+  if (status === "ok") return brand.success;
+  if (status === "error") return brand.error;
+  return brand.amberEye;
+}
+
 export function ToolCall(props: ToolCallProps): JSX.Element {
   const { message } = props;
   const accent = props.accentColor ?? brand.amberEye;
-  const inputBody = truncate(stringify(message.input));
+  const [expanded, setExpanded] = useState(false);
+
+  const interactive = props.interactive === true;
+  useInput(
+    (input) => {
+      if (input === "?") {
+        setExpanded((prev) => !prev);
+      }
+    },
+    { isActive: interactive },
+  );
+
+  // Summarize args (JSON, 2-line summary per spec). When expanded, show full.
+  const fullArgs = truncate(stringify(message.input));
+  const inputBody = expanded ? fullArgs : summarizeArgs(message.input, ARGS_SUMMARY_LINES);
+
+  const statusTint = statusColor(message.status);
 
   return (
-    <Box flexDirection="column" borderStyle="round" borderColor={accent} paddingX={1} marginY={0}>
+    <Box
+      flexDirection="column"
+      borderStyle={borders.round.style}
+      borderColor={accent}
+      paddingX={density.padX.sm}
+      marginY={density.gap.xs}
+    >
+      {/* Banner: [tool] <tool-name> … <spinner|✔|✖> */}
       <Box>
         <Text bold color={accent}>
-          {"\u25C7 tool "}
+          {"[tool] "}
         </Text>
         <Text bold color={brand.foam}>
           {message.toolName}
         </Text>
-        <Text color={brand.tidewaterDim}>{"  "}</Text>
+        <Text color={brand.tidewaterDim}>{" \u2026 "}</Text>
         {message.status === "pending" ? (
-          <ToolSpinner color={brand.amberEye} reducedMotion={props.reducedMotion === true} />
+          <ToolSpinner color={statusTint} reducedMotion={props.reducedMotion === true} />
         ) : message.status === "ok" ? (
-          <Text color={brand.success} bold>
+          <Text color={statusTint} bold>
             {"\u2713"}
           </Text>
         ) : (
-          <Text color={brand.error} bold>
+          <Text color={statusTint} bold>
             {"\u2717"}
           </Text>
         )}
         {message.durationMs !== undefined ? (
           <>
             <Text color={brand.tidewaterDim}>{"  \u00B7  "}</Text>
-            <Text color={brand.tidewaterDim}>{`${message.durationMs}ms`}</Text>
+            <Text color={brand.foamDark} dimColor={typography.caption.dim}>
+              {`${message.durationMs}ms`}
+            </Text>
           </>
         ) : null}
       </Box>
+      {/* Args summary (2-line JSON summary; full on expand) */}
       <Text color={brand.tidewater}>{inputBody}</Text>
-      {message.output !== undefined ? (() => {
-        const full = truncate(stringify(message.output));
-        const collapsed = collapseLines(full);
-        return (
-          <Box flexDirection="column">
-            {collapsed.body.split("\n").map((line, idx) => (
-              <Text key={`out-${idx}`} color={brand.foam}>
-                {idx === 0 ? "\u2192 " : "  "}
-                {line}
-              </Text>
-            ))}
-            {collapsed.extra > 0 ? (
-              <Text color={brand.tidewaterDim} italic>
-                {`  \u2026 (${collapsed.extra} more line${collapsed.extra === 1 ? "" : "s"})`}
-              </Text>
-            ) : null}
-          </Box>
-        );
-      })() : null}
+      {/* Output (truncated to ≤ COLLAPSE_LINES; hint to expand when collapsed) */}
+      {message.output !== undefined
+        ? (() => {
+            const full = truncate(stringify(message.output));
+            const collapsed = collapseLines(full);
+            const lines = expanded ? full.split("\n") : collapsed.body.split("\n");
+            const extra = expanded ? 0 : collapsed.extra;
+            return (
+              <Box flexDirection="column">
+                {lines.map((line, idx) => (
+                  <Text key={`out-${idx}-${line.slice(0, 24)}`} color={brand.foam}>
+                    {idx === 0 ? "\u2192 " : "  "}
+                    {line}
+                  </Text>
+                ))}
+                {extra > 0 ? (
+                  <Text color={brand.tidewaterDim} italic dimColor={typography.caption.dim}>
+                    {`  \u2026 (${extra} more line${extra === 1 ? "" : "s"}) [?] show more`}
+                  </Text>
+                ) : null}
+              </Box>
+            );
+          })()
+        : null}
+      {/* Error display */}
       {message.errorCode !== undefined || message.errorMessage !== undefined ? (
-        <Text color={brand.error}>{`\u2192 ${message.errorCode ?? "error"}: ${message.errorMessage ?? ""}`}</Text>
+        <Text color={brand.error}>
+          {`\u2192 ${message.errorCode ?? "error"}: ${message.errorMessage ?? ""}`}
+        </Text>
       ) : null}
     </Box>
   );

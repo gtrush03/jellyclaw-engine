@@ -1,5 +1,5 @@
 /**
- * Multi-line input hook (T3-06).
+ * Multi-line input hook (T3-06, refined T1-04).
  *
  * Replaces ink-text-input with raw stdin via Ink's `useInput`. Supports:
  * - Enter: submit
@@ -9,6 +9,10 @@
  * - Ctrl-E: jump to line end
  * - Backspace: delete char before caret (merges lines at col 0)
  * - Printable chars: insert at caret (handles multi-char paste)
+ * - Bracketed paste markers (`\x1b[200~…\x1b[201~`) are stripped before insert.
+ * - Optional history hooks: `onHistoryPrev` fires on Up-at-first-line,
+ *   `onHistoryNext` fires on Down-at-last-line. Both receive no args and
+ *   return a string to replace the buffer with, or `undefined` to no-op.
  */
 
 import { useInput } from "ink";
@@ -31,18 +35,29 @@ export interface UseMultilineInputArgs {
   readonly onChange: (next: string) => void;
   readonly onSubmit: (text: string) => void;
   readonly disabled?: boolean;
+  /** Called on Up-arrow when caret is on the first line. */
+  readonly onHistoryPrev?: () => string | undefined;
+  /** Called on Down-arrow when caret is past the last line of history nav. */
+  readonly onHistoryNext?: () => string | undefined;
 }
 
 /**
- * Split a string into lines for caret navigation.
+ * Bracketed paste markers arrive as `ESC[200~` / `ESC[201~`. We build the
+ * patterns from `String.fromCharCode(0x1b)` rather than an escaped literal so
+ * Biome's `noControlCharactersInRegex` rule stays clean.
  */
+const ESC = String.fromCharCode(0x1b);
+const PASTE_START = new RegExp(`${ESC}\\[200~`, "g");
+const PASTE_END = new RegExp(`${ESC}\\[201~`, "g");
+
+function stripBracketedPaste(raw: string): string {
+  return raw.replace(PASTE_START, "").replace(PASTE_END, "");
+}
+
 function splitLines(value: string): string[] {
   return value.split("\n");
 }
 
-/**
- * Convert a flat offset to (line, col).
- */
 function offsetToCaret(value: string, offset: number): Caret {
   const lines = splitLines(value);
   let remaining = offset;
@@ -53,14 +68,10 @@ function offsetToCaret(value: string, offset: number): Caret {
     }
     remaining -= line.length + 1; // +1 for the \n
   }
-  // Past the end: clamp to final position
   const lastLine = lines.length - 1;
   return { line: lastLine, col: (lines[lastLine] ?? "").length };
 }
 
-/**
- * Convert (line, col) to flat offset.
- */
 function caretToOffset(value: string, caret: Caret): number {
   const lines = splitLines(value);
   let offset = 0;
@@ -72,9 +83,6 @@ function caretToOffset(value: string, caret: Caret): number {
   return offset;
 }
 
-/**
- * Clamp caret to valid position within value.
- */
 function clampCaret(value: string, caret: Caret): Caret {
   const lines = splitLines(value);
   const line = Math.max(0, Math.min(caret.line, lines.length - 1));
@@ -83,24 +91,18 @@ function clampCaret(value: string, caret: Caret): Caret {
   return { line, col };
 }
 
-/**
- * Check if a character is printable (not a control character).
- */
 function isPrintable(input: string): boolean {
   if (input.length === 0) return false;
-  // Control characters are below 0x20 (except for multi-char paste which is always printable)
+  // Multi-char input is always considered printable (e.g. paste).
   if (input.length > 1) return true;
   const code = input.charCodeAt(0);
   return code >= 0x20;
 }
 
 export function useMultilineInput(args: UseMultilineInputArgs): MultilineInputState {
-  const { value, onChange, onSubmit, disabled } = args;
+  const { value, onChange, onSubmit, disabled, onHistoryPrev, onHistoryNext } = args;
 
-  // Internal caret state - tracks position as offset, converted to (line, col) on return
   const [offset, setOffset] = useState(value.length);
-
-  // Compute caret from current offset
   const caret = offsetToCaret(value, Math.min(offset, value.length));
 
   const handleInput = useCallback(
@@ -125,13 +127,11 @@ export function useMultilineInput(args: UseMultilineInputArgs): MultilineInputSt
       const currentOffset = Math.min(offset, value.length);
       const currentCaret = offsetToCaret(value, currentOffset);
 
-      // Enter (no shift) → submit
       if (key.return === true && key.shift !== true) {
         onSubmit(value);
         return;
       }
 
-      // Shift+Enter → insert newline
       if (key.return === true && key.shift === true) {
         const newValue = `${value.slice(0, currentOffset)}\n${value.slice(currentOffset)}`;
         onChange(newValue);
@@ -139,62 +139,68 @@ export function useMultilineInput(args: UseMultilineInputArgs): MultilineInputSt
         return;
       }
 
-      // Left arrow
       if (key.leftArrow === true) {
-        if (currentOffset > 0) {
-          setOffset(currentOffset - 1);
-        }
+        if (currentOffset > 0) setOffset(currentOffset - 1);
         return;
       }
 
-      // Right arrow
       if (key.rightArrow === true) {
-        if (currentOffset < value.length) {
-          setOffset(currentOffset + 1);
-        }
+        if (currentOffset < value.length) setOffset(currentOffset + 1);
         return;
       }
 
-      // Up arrow
       if (key.upArrow === true) {
         if (currentCaret.line > 0) {
           const targetLine = currentCaret.line - 1;
           const targetLineContent = lines[targetLine] ?? "";
           const targetCol = Math.min(currentCaret.col, targetLineContent.length);
-          const newCaret = { line: targetLine, col: targetCol };
-          setOffset(caretToOffset(value, newCaret));
+          setOffset(caretToOffset(value, { line: targetLine, col: targetCol }));
+          return;
+        }
+        if (onHistoryPrev !== undefined) {
+          const next = onHistoryPrev();
+          if (next !== undefined) {
+            onChange(next);
+            setOffset(next.length);
+          }
         }
         return;
       }
 
-      // Down arrow
       if (key.downArrow === true) {
         if (currentCaret.line < lines.length - 1) {
           const targetLine = currentCaret.line + 1;
           const targetLineContent = lines[targetLine] ?? "";
           const targetCol = Math.min(currentCaret.col, targetLineContent.length);
-          const newCaret = { line: targetLine, col: targetCol };
-          setOffset(caretToOffset(value, newCaret));
+          setOffset(caretToOffset(value, { line: targetLine, col: targetCol }));
+          return;
+        }
+        if (onHistoryNext !== undefined) {
+          const next = onHistoryNext();
+          if (next !== undefined) {
+            onChange(next);
+            setOffset(next.length);
+          } else {
+            onChange("");
+            setOffset(0);
+          }
         }
         return;
       }
 
-      // Ctrl-A → start of line
       if (key.ctrl === true && input === "a") {
-        const newCaret = { line: currentCaret.line, col: 0 };
-        setOffset(caretToOffset(value, newCaret));
+        setOffset(caretToOffset(value, { line: currentCaret.line, col: 0 }));
         return;
       }
 
-      // Ctrl-E → end of line
       if (key.ctrl === true && input === "e") {
         const currentLineContent = lines[currentCaret.line] ?? "";
-        const newCaret = { line: currentCaret.line, col: currentLineContent.length };
-        setOffset(caretToOffset(value, newCaret));
+        setOffset(
+          caretToOffset(value, { line: currentCaret.line, col: currentLineContent.length }),
+        );
         return;
       }
 
-      // Backspace / Delete
       if (key.backspace === true || key.delete === true) {
         if (currentOffset > 0) {
           const newValue = value.slice(0, currentOffset - 1) + value.slice(currentOffset);
@@ -204,15 +210,16 @@ export function useMultilineInput(args: UseMultilineInputArgs): MultilineInputSt
         return;
       }
 
-      // Printable characters (including multi-char paste)
       if (isPrintable(input)) {
-        const newValue = value.slice(0, currentOffset) + input + value.slice(currentOffset);
+        const cleaned = stripBracketedPaste(input);
+        if (cleaned.length === 0) return;
+        const newValue = value.slice(0, currentOffset) + cleaned + value.slice(currentOffset);
         onChange(newValue);
-        setOffset(currentOffset + input.length);
+        setOffset(currentOffset + cleaned.length);
         return;
       }
     },
-    [value, offset, onChange, onSubmit, disabled],
+    [value, offset, onChange, onSubmit, disabled, onHistoryPrev, onHistoryNext],
   );
 
   useInput(handleInput, { isActive: disabled !== true });
@@ -222,3 +229,6 @@ export function useMultilineInput(args: UseMultilineInputArgs): MultilineInputSt
     caret: clampCaret(value, caret),
   };
 }
+
+/** Re-exported for tests and integrators that need standalone paste cleaning. */
+export { stripBracketedPaste };

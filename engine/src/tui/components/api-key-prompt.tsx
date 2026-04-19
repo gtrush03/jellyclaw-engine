@@ -18,6 +18,7 @@ import Spinner from "ink-spinner";
 import TextInput from "ink-text-input";
 import { useCallback, useState } from "react";
 import { updateCredentials } from "../../cli/credentials.js";
+import { brand } from "../theme/brand.js";
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -90,8 +91,6 @@ async function extractErrorMessage(res: Response): Promise<string> {
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
-
-const CYAN = "#3BA7FF";
 
 export function ApiKeyPrompt(props: ApiKeyPromptProps): JSX.Element {
   const { onAccepted, onCancelled, fetchImpl, saveImpl } = props;
@@ -225,7 +224,7 @@ export function ApiKeyPrompt(props: ApiKeyPromptProps): JSX.Element {
       </Box>
       <Text color="gray">Get one at https://console.anthropic.com/settings/keys</Text>
       <Box marginTop={1}>
-        <Text color={CYAN}>{"› "}</Text>
+        <Text color={brand.jellyCyan}>{"› "}</Text>
         <TextInput value={value} onChange={setValue} onSubmit={onSubmit} mask="•" />
       </Box>
       <Box marginTop={1}>

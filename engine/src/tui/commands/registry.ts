@@ -1,10 +1,15 @@
 /**
- * Slash-command registry.
+ * Slash-command registry (T3-08, refined T1-04).
  *
  * Each entry is a pure descriptor + async handler. Handlers receive a
  * `CommandContext` (see `./dispatch.ts`) and mutate state only via the
  * provided callbacks (`pushSystem`, `dispatchAction`, `dispatchEvent`,
  * `exit`). They must NOT call React, Ink, or the reducer directly.
+ *
+ * The T1-04 spec requires at least `/help`, `/clear`, `/exit`, `/key`, and
+ * `/model` to be discoverable via the slash-command hint strip. `/exit` is
+ * kept as a first-class entry (not just an alias of `/end`) so prefix
+ * matches like `/ex` land on the user-expected name.
  */
 
 import { readdir, stat } from "node:fs/promises";
@@ -139,6 +144,11 @@ function handleEnd(_cmd: ParsedCommand, ctx: CommandContext): void {
   ctx.exit(0);
 }
 
+/** Same as `/end` — exposed as a first-class command so `/ex` prefix-matches. */
+function handleExit(cmd: ParsedCommand, ctx: CommandContext): void {
+  handleEnd(cmd, ctx);
+}
+
 function handleCost(_cmd: ParsedCommand, ctx: CommandContext): void {
   const u = ctx.usage;
   const total = u.inputTokens + u.outputTokens + u.cacheReadTokens + u.cacheWriteTokens;
@@ -219,9 +229,15 @@ export const COMMANDS: readonly CommandDefinition[] = [
   { name: "cwd", description: "print the current working directory", handler: handleCwd },
   { name: "key", description: "rotate API key (inline, no restart)", handler: handleKey },
   {
-    name: "end",
-    aliases: ["exit", "quit"],
+    name: "exit",
+    aliases: ["quit"],
     description: "exit the TUI",
+    handler: handleExit,
+  },
+  {
+    name: "end",
+    aliases: ["bye"],
+    description: "exit the TUI (alias of /exit)",
     handler: handleEnd,
   },
   { name: "cost", description: "show session usage + cost", handler: handleCost },
