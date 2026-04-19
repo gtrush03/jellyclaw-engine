@@ -1,62 +1,103 @@
-# 004 — Playwright MCP version pin
+# Patch 004 — `@playwright/mcp` version pin
 
-**Not a code patch.** This note documents jellyclaw's dependency policy for the Playwright MCP server, which ships with the default `mcp.json` template.
+**Status:** Active pin.
+**Current pin:** `^0.0.70` (previously `0.0.41`, bumped 2026-04-17 in T1-01).
+**Location:** `engine/package.json` (moved from root `package.json:68` devDeps in this bump).
 
-## The pin
+## Why we pin at all
 
-In `engine/templates/mcp.json`:
+The Microsoft `@playwright/mcp` server ships weekly releases. Between 0.0.41 and 0.0.70,
+the tool surface stabilized and the "missing tool" regression documented in the previous
+pin rationale was fixed upstream.
 
-```json
-{
-  "mcpServers": {
-    "playwright": {
-      "command": "npx",
-      "args": ["-y", "@playwright/mcp@0.0.41"]
-    }
-  }
-}
+## Tool parity verified against 0.0.70
+
+Core tool names — unchanged from 0.0.41:
+
+- `browser_navigate` — navigate to URL
+- `browser_navigate_back` — go back in history
+- `browser_tabs` — list/create/close/select tabs
+- `browser_wait_for` — wait for text or time
+- `browser_close` — close the page
+- `browser_click` — click element
+- `browser_type` — type text into element
+- `browser_hover` — hover over element
+- `browser_drag` — drag and drop
+- `browser_press_key` — press keyboard key
+- `browser_select_option` — select dropdown option
+- `browser_fill_form` — fill multiple form fields
+- `browser_file_upload` — upload files
+- `browser_handle_dialog` — handle browser dialogs
+- `browser_resize` — resize browser window
+- `browser_snapshot` — capture accessibility snapshot
+- `browser_take_screenshot` — capture screenshot
+- `browser_console_messages` — get console messages
+- `browser_network_requests` — get network requests
+- `browser_evaluate` — evaluate JavaScript (DANGEROUS)
+- `browser_run_code` — run Playwright code (DANGEROUS)
+
+## Chrome Web Store extension — new path added in v0.0.67
+
+Microsoft shipped the "Playwright MCP Bridge" extension on the Chrome Web Store
+(ID `mmlmfjhmonkocbjadbfplnigmagldckm`). With the `--extension` flag,
+the MCP server connects to the user's real Chrome (default profile, real logins)
+without exposing `--remote-debugging-port`. See `docs/chrome-setup.md`.
+
+## Verification receipts (2026-04-17)
+
+- npm registry: `@playwright/mcp@0.0.70` — published 2026-04-01
+- GitHub release: v0.0.70 — "Maintenance release off 1.59 branch point"
+- Bundled Playwright dep: `playwright@1.60.0-alpha-1774999321000` per the npm manifest dependencies
+
+## Smoke test
+
+```bash
+bun run engine/scripts/mcp-list.ts --config test/fixtures/mcp/playwright.test-config.json
+# Expect: playwright server ready; tools include browser_navigate, browser_snapshot, etc.
 ```
 
-The `@0.0.41` pin is deliberate and load-bearing.
+Run before merging any future bump.
 
-## Why 0.0.41 specifically
+## Integration test
 
-Ecosystem scan (March–April 2026) surfaced a regression in `@playwright/mcp` versions after `0.0.41`:
+```bash
+JELLYCLAW_PW_MCP_TEST=1 bun run test test/integration/playwright-mcp.test.ts
+# Expect: 5 passed
+```
 
-- Several tool definitions (`browser_fill_form`, `browser_select_option`, `browser_run_code`, some `browser_tabs` variants) are missing from the server manifest in newer releases. Agents that depend on these tools — which includes every Genie recipe that drives web forms — silently fail with "tool not available."
-- The dev team is tracking this as a definition-loading regression; no upstream fix has shipped as of this writing.
-- `0.0.41` is the last version where the full tool surface is reliably present. It's stable, it works, and downgrading is a one-line change.
-
-Until upstream cuts a fixed release with confirmed full-surface parity, jellyclaw pins to `0.0.41` in the default template. The verification runner (`engine/test/mcp-smoke.ts`) asserts that the expected tool list matches — if a user upgrades and tools go missing, CI catches it before a prompt does.
+The test drives a real Chrome on port 9333 (never 9222) and asserts tool
+registration, navigation, and screenshot capture.
 
 ## How to override
 
-Users who need a newer version (e.g., to pick up a new browser capability that only exists in later releases) can override in their personal config. The `mcp.json` in the user's config dir takes precedence over the template.
+Users who need a different version can override in their personal config:
 
 ```json
 {
-  "mcpServers": {
-    "playwright": {
+  "mcp": [
+    {
+      "transport": "stdio",
+      "name": "playwright",
       "command": "npx",
       "args": ["-y", "@playwright/mcp@latest"]
     }
-  }
+  ]
 }
 ```
 
-When overriding, run `jellyclaw doctor --mcp` to print the detected tool list and confirm the tools your recipes depend on are present. If any are missing, jellyclaw surfaces a `W/mcp:missing-tools` warning in the startup banner and in telemetry (if telemetry is opted in).
+When overriding, run `jellyclaw doctor --mcp` to verify tools are present.
 
-## When we unpin
+## When we bump again
 
-We unpin under two conditions, both required:
+We bump under two conditions:
 
-1. Upstream releases a version that advertises a full superset of the 0.0.41 tool set.
-2. Our smoke test passes against that version on macOS, Linux, and Windows CI.
+1. Upstream releases a version with meaningful improvements or security fixes.
+2. Our integration test at `test/integration/playwright-mcp.test.ts` passes.
 
-When that happens, the `mcp.json` template will bump and this document will be updated with the new pin (not removed — we always pin, we just pin higher).
+This document will be updated with new receipts (not removed — we always document the pin).
 
 ## Related
 
-- `engine/test/mcp-smoke.ts` — the test that keeps us honest.
-- `SECURITY.md` §3.4 — security rationale for pinning MCP dependencies in general.
-- Upstream issue tracker: search `@playwright/mcp missing tool definitions` on the Microsoft/Playwright GitHub.
+- `test/integration/playwright-mcp.test.ts` — regression gate
+- `docs/playwright-setup.md` — user-facing setup guide
+- `SECURITY.md` §3.4 — security rationale for pinning MCP dependencies
