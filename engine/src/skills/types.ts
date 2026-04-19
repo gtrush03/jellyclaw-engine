@@ -27,8 +27,19 @@ export const SkillFrontmatter = z.object({
 });
 export type SkillFrontmatter = z.infer<typeof SkillFrontmatter>;
 
-/** Maximum skill body size in bytes (utf-8). Enforced at parse time. */
-export const SKILL_BODY_MAX_BYTES = 8 * 1024;
+/**
+ * Maximum skill body size in bytes (utf-8). Enforced at parse time.
+ * Real-world skills regularly exceed 8 KiB (the pre-2026-04 value). 32 KiB
+ * accommodates production Claude Code skills without artificial truncation.
+ */
+export const SKILL_BODY_MAX_BYTES = 32 * 1024;
+
+/**
+ * Hard ceiling for a skill body. Anything larger is rejected outright as
+ * abusive — even the largest legitimate skills observed in the wild are
+ * well under this bound.
+ */
+export const SKILL_BODY_HARD_CEILING_BYTES = 64 * 1024;
 
 /** A fully-loaded skill, ready to index. */
 export interface Skill {

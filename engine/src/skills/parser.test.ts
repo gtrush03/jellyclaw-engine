@@ -105,7 +105,7 @@ body
     expect(skill.frontmatter.description).toHaveLength(1536);
   });
 
-  it("rejects body exceeding 8 KB (measured in bytes)", () => {
+  it("rejects body exceeding the byte cap (measured in bytes)", () => {
     const bigBody = "x".repeat(SKILL_BODY_MAX_BYTES + 1);
     const path = write(
       "big.md",
@@ -117,7 +117,9 @@ ${bigBody}
 `,
     );
 
-    expect(() => parseSkillFile({ path, source: "user" })).toThrow(/8192 bytes/);
+    expect(() => parseSkillFile({ path, source: "user" })).toThrow(
+      new RegExp(`${SKILL_BODY_MAX_BYTES} bytes`),
+    );
   });
 
   it("rejects malformed YAML", () => {
@@ -165,9 +167,11 @@ body
   });
 
   it("measures body size in bytes, not characters", () => {
-    // 4-byte UTF-8 char repeated: 2049 chars * 4 bytes = 8196 bytes > 8192
+    // 4-byte UTF-8 char repeated so total bytes exceed SKILL_BODY_MAX_BYTES
+    // by one byte — proves the parser counts utf-8 bytes, not chars.
     const emoji = "𝕏"; // 4 bytes in UTF-8
-    const body = emoji.repeat(2049);
+    const count = Math.ceil((SKILL_BODY_MAX_BYTES + 1) / 4);
+    const body = emoji.repeat(count);
     const path = write(
       "multibyte.md",
       `---

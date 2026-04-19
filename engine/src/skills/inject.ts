@@ -13,7 +13,7 @@ import type { Skill, SkillSource } from "./types.js";
 export interface BuildInjectionOptions {
   skills: Skill[];
   logger?: Logger;
-  /** total byte cap on the rendered block (utf-8). Default: 1536. */
+  /** total byte cap on the rendered block (utf-8). Default: 8192. */
   maxBytes?: number;
 }
 
@@ -26,7 +26,7 @@ export interface InjectionResult {
   dropped: string[];
 }
 
-export const DEFAULT_INJECTION_MAX_BYTES = 1536;
+export const DEFAULT_INJECTION_MAX_BYTES = 8 * 1024;
 
 const HEADER = "# Available skills (invoke by name via the Skill tool):\n";
 

@@ -10,6 +10,7 @@ export type { SubstituteOptions, SubstituteResult } from "./substitution.js";
 export { substitute } from "./substitution.js";
 export type { Skill, SkillFile, SkillSource } from "./types.js";
 export {
+  SKILL_BODY_HARD_CEILING_BYTES,
   SKILL_BODY_MAX_BYTES,
   SkillFrontmatter,
   SkillLoadError,
