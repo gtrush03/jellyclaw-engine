@@ -71,13 +71,23 @@ const HooksRecordSchema = z.record(HookEventKindSchema, z.array(HookConfigSchema
 
 const PermissionModeSchema = z.enum(["default", "acceptEdits", "bypassPermissions", "plan"]);
 
+/**
+ * Accepts Claude Code's legacy `"auto"` value as an alias for `"default"`.
+ * `~/.claude/settings.json` written by older Claude Code builds uses
+ * `"auto"`; jellyclaw normalises it so those files parse without error.
+ */
+const PermissionModeWithAutoAlias = z.preprocess(
+  (v) => (v === "auto" ? "default" : v),
+  PermissionModeSchema,
+);
+
 const PermissionsSchema = z
   .object({
     allow: z.array(z.string()).default([]),
     deny: z.array(z.string()).default([]),
     ask: z.array(z.string()).default([]),
     additionalDirectories: z.array(z.string()).default([]),
-    defaultMode: PermissionModeSchema.optional(),
+    defaultMode: PermissionModeWithAutoAlias.optional(),
   })
   .default({});
 

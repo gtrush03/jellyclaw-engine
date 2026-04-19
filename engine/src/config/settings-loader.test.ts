@@ -203,6 +203,19 @@ describe("loadClaudeSettings", () => {
       expect(result.permissions.mode).toBe("default");
     });
 
+    it("accepts legacy \"auto\" as an alias for defaultMode \"default\"", () => {
+      writeUserSettings({
+        permissions: {
+          // Older Claude Code builds wrote "auto" — jellyclaw must parse it.
+          defaultMode: "auto",
+        },
+      });
+
+      const result = loadClaudeSettings({ home: tmpHome, cwd: tmpCwd });
+      expect(result.warnings).toEqual([]);
+      expect(result.permissions.mode).toBe("default");
+    });
+
     it("local settings override both user and project", () => {
       writeUserSettings({
         permissions: {
