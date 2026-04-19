@@ -1,0 +1,1 @@
+# Reimplemented in engine/src/bootstrap/opencode-server.ts — bind-lock at getsockname() rejects non-loopback addresses. Exits 3 on violation.

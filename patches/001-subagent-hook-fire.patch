@@ -1,0 +1,1 @@
+# Reimplemented in engine/src/agents/agent-context.ts — subagent context plugin fires hooks with agent identity. See Phase 01 pivot notes in COMPLETION-LOG.md.
