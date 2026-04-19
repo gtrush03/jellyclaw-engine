@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import { runEventsUrl } from '@/lib/api';
+import { useEffect, useRef, useState } from "react";
+import { runEventsUrl } from "@/lib/api";
 
 const MAX_LINES = 500;
 
@@ -18,35 +18,30 @@ const MAX_LINES = 500;
  * the decision logic in one pure function means the hook body stays tiny
  * and the regression is covered without mounting React.
  */
-export type RunLogDecision =
-  | { kind: 'ignore' }
-  | { kind: 'append'; line: string };
+export type RunLogDecision = { kind: "ignore" } | { kind: "append"; line: string };
 
-export function decideRunLogFrame(msg: {
-  event?: string;
-  data?: string;
-}): RunLogDecision {
+export function decideRunLogFrame(msg: { event?: string; data?: string }): RunLogDecision {
   // Only the `log` event carries a line; other events (status/heartbeat)
   // are ignored here — the global `useSSE` owns rig-wide invalidations.
-  if (msg.event && msg.event !== 'log' && msg.event !== 'message') {
-    return { kind: 'ignore' };
+  if (msg.event && msg.event !== "log" && msg.event !== "message") {
+    return { kind: "ignore" };
   }
-  if (!msg.data) return { kind: 'ignore' };
+  if (!msg.data) return { kind: "ignore" };
   let text = msg.data;
   // Accept JSON `{line: "..."}` for forward-compat with the server's
   // current envelope (also emits `runId`, `at`, `replay?`).
-  if (text.startsWith('{')) {
+  if (text.startsWith("{")) {
     try {
       const parsed: unknown = JSON.parse(text);
-      if (parsed && typeof parsed === 'object' && 'line' in parsed) {
+      if (parsed && typeof parsed === "object" && "line" in parsed) {
         const v = (parsed as { line: unknown }).line;
-        if (typeof v === 'string') text = v;
+        if (typeof v === "string") text = v;
       }
     } catch {
       // Fall through — treat as raw.
     }
   }
-  return { kind: 'append', line: text };
+  return { kind: "append", line: text };
 }
 
 /**
@@ -88,10 +83,7 @@ export function useRunLog(runId: string | null, enabled: boolean) {
 
     const append = (line: string) => {
       setLines((prev) => {
-        const next =
-          prev.length >= MAX_LINES
-            ? prev.slice(prev.length - MAX_LINES + 1)
-            : prev;
+        const next = prev.length >= MAX_LINES ? prev.slice(prev.length - MAX_LINES + 1) : prev;
         return [...next, line];
       });
     };
@@ -109,16 +101,16 @@ export function useRunLog(runId: string | null, enabled: boolean) {
     // `message` channel for defensive forward-compat.
     const handleFrame = (e: MessageEvent) => {
       const decision = decideRunLogFrame({
-        event: (e.type === 'message' ? 'message' : e.type) as string,
-        data: typeof e.data === 'string' ? e.data : undefined,
+        event: (e.type === "message" ? "message" : e.type) as string,
+        data: typeof e.data === "string" ? e.data : undefined,
       });
-      if (decision.kind === 'append') append(decision.line);
+      if (decision.kind === "append") append(decision.line);
     };
-    es.addEventListener('log', handleFrame as EventListener);
+    es.addEventListener("log", handleFrame as EventListener);
     es.onmessage = handleFrame;
 
     return () => {
-      es.removeEventListener('log', handleFrame as EventListener);
+      es.removeEventListener("log", handleFrame as EventListener);
       es.close();
       setConnected(false);
     };

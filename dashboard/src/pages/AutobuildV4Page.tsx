@@ -1,4 +1,4 @@
-import { AutobuildV4 } from '@/components/autobuild-v4';
+import { AutobuildV4 } from "@/components/autobuild-v4";
 
 /**
  * Top-level route component for `#/autobuild-v4`. Thin passthrough so the

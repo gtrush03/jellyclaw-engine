@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
-import { Play, Square, Trash2 } from 'lucide-react';
-import type { RigProcessStatus } from '@/types';
-import { cn } from '@/lib/cn';
-import { ConfirmModal } from './ConfirmModal';
+import { useEffect, useState } from "react";
+import { Play, Square, Trash2 } from "lucide-react";
+import type { RigProcessStatus } from "@/types";
+import { cn } from "@/lib/cn";
+import { ConfirmModal } from "./ConfirmModal";
 
 export interface StatusHeaderProps {
   rigProcess: RigProcessStatus | null;
@@ -56,23 +56,28 @@ export function StatusHeader({
   const running = rigProcess?.running === true;
   const stale = heartbeatAgeMs > STALE_HEARTBEAT_MS;
 
-  const tone: 'green' | 'amber' | 'red' =
-    halted ? 'red' : paused || stale ? 'amber' : running ? 'green' : 'amber';
+  const tone: "green" | "amber" | "red" = halted
+    ? "red"
+    : paused || stale
+      ? "amber"
+      : running
+        ? "green"
+        : "amber";
 
-  const toneColor =
-    tone === 'green' ? '#5fb75f' : tone === 'amber' ? '#d4a04a' : '#ff5757';
+  const toneColor = tone === "green" ? "#5fb75f" : tone === "amber" ? "#d4a04a" : "#ff5757";
 
   const label = halted
-    ? 'HALTED'
+    ? "HALTED"
     : paused
-      ? 'PAUSED'
+      ? "PAUSED"
       : running
         ? stale
-          ? 'STALE'
-          : 'ONLINE'
-        : 'OFFLINE';
+          ? "STALE"
+          : "ONLINE"
+        : "OFFLINE";
 
-  const uptime = running && rigProcess?.since ? formatUptime(now - Date.parse(rigProcess.since)) : null;
+  const uptime =
+    running && rigProcess?.since ? formatUptime(now - Date.parse(rigProcess.since)) : null;
 
   const doReset = () => {
     setConfirmOpen(false);
@@ -89,8 +94,8 @@ export function StatusHeader({
         <div className="flex items-center gap-2 text-[12px] font-mono text-[color:var(--color-text-muted)] flex-1 min-w-0">
           <span
             className={cn(
-              'inline-block w-2 h-2 rounded-full shrink-0',
-              running && tone === 'green' && 'pulse-glow motion-reduce:animate-none',
+              "inline-block w-2 h-2 rounded-full shrink-0",
+              running && tone === "green" && "pulse-glow motion-reduce:animate-none",
             )}
             style={{ background: toneColor }}
             aria-hidden="true"
@@ -139,15 +144,15 @@ export function StatusHeader({
               onClick={onStart}
               disabled={allComplete}
               className={cn(
-                'flex items-center gap-1.5 rounded-md px-3 py-1.5 font-mono text-[11px] font-semibold uppercase tracking-[0.15em] transition-colors',
+                "flex items-center gap-1.5 rounded-md px-3 py-1.5 font-mono text-[11px] font-semibold uppercase tracking-[0.15em] transition-colors",
                 allComplete
-                  ? 'bg-[color:var(--color-gold-faint)] text-[color:var(--color-text-muted)] cursor-not-allowed'
-                  : 'bg-[color:var(--color-gold)] text-[#0a0a0a] hover:bg-[color:var(--color-gold-bright)] gold-glow',
+                  ? "bg-[color:var(--color-gold-faint)] text-[color:var(--color-text-muted)] cursor-not-allowed"
+                  : "bg-[color:var(--color-gold)] text-[#0a0a0a] hover:bg-[color:var(--color-gold-bright)] gold-glow",
               )}
-              aria-label={allComplete ? 'Rig done' : 'Start rig'}
+              aria-label={allComplete ? "Rig done" : "Start rig"}
             >
               <Play className="w-3 h-3" fill="currentColor" />
-              {allComplete ? 'Rig done' : 'Start'}
+              {allComplete ? "Rig done" : "Start"}
             </button>
           )}
 
@@ -173,9 +178,8 @@ export function StatusHeader({
         onConfirm={doReset}
         body={
           <p>
-            This wipes <code>.autobuild/state.json</code> and all session
-            directories. The queue is preserved. The rig must be stopped
-            first.
+            This wipes <code>.autobuild/state.json</code> and all session directories. The queue is
+            preserved. The rig must be stopped first.
           </p>
         }
       />
@@ -185,13 +189,9 @@ export function StatusHeader({
 
 function BudgetChip({ spent, cap }: { spent: number; cap: number }) {
   const pct = cap > 0 ? Math.min(1, spent / cap) : 0;
-  const tone = pct >= 1 ? 'danger' : pct >= 0.8 ? 'warning' : 'muted';
+  const tone = pct >= 1 ? "danger" : pct >= 0.8 ? "warning" : "muted";
   const color =
-    tone === 'danger'
-      ? '#ff5757'
-      : tone === 'warning'
-        ? '#d4a04a'
-        : 'var(--color-text-muted)';
+    tone === "danger" ? "#ff5757" : tone === "warning" ? "#d4a04a" : "var(--color-text-muted)";
   return (
     <span
       className="tabular-nums shrink-0"
@@ -204,7 +204,7 @@ function BudgetChip({ spent, cap }: { spent: number; cap: number }) {
 }
 
 function formatUptime(ms: number): string {
-  if (!Number.isFinite(ms) || ms < 0) return '—';
+  if (!Number.isFinite(ms) || ms < 0) return "—";
   const s = Math.floor(ms / 1000);
   if (s < 60) return `${s}s`;
   const m = Math.floor(s / 60);

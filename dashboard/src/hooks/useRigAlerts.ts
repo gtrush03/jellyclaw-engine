@@ -1,7 +1,7 @@
-import { useMemo } from 'react';
-import { useRuns } from '@/hooks/useRuns';
-import { useRigProcess } from '@/hooks/useRigProcess';
-import { useDashboardStore } from '@/store/dashboard';
+import { useMemo } from "react";
+import { useRuns } from "@/hooks/useRuns";
+import { useRigProcess } from "@/hooks/useRigProcess";
+import { useDashboardStore } from "@/store/dashboard";
 
 /**
  * Elapsed seconds between an ISO timestamp and now, or null if the input
@@ -22,11 +22,11 @@ function elapsedSinceISO(iso: string | null | undefined): number | null {
  *   sse-dropped > budget-warning
  */
 export type AlertKind =
-  | 'halt'
-  | 'backend-unreachable'
-  | 'stale-heartbeat'
-  | 'sse-dropped'
-  | 'budget-warning';
+  | "halt"
+  | "backend-unreachable"
+  | "stale-heartbeat"
+  | "sse-dropped"
+  | "budget-warning";
 
 export interface RigAlert {
   id: string;
@@ -34,7 +34,7 @@ export interface RigAlert {
   title: string;
   body: string;
   dismissable: boolean;
-  tone: 'danger' | 'warning' | 'muted';
+  tone: "danger" | "warning" | "muted";
 }
 
 /**
@@ -50,7 +50,7 @@ export interface RigAlert {
  *             ghost that exited without cleaning up, or the dispatcher is
  *             genuinely hung. A Stop / Start cycle is the right next move.
  */
-export type StaleTint = 'green' | 'amber' | 'red';
+export type StaleTint = "green" | "amber" | "red";
 
 export interface UseRigAlertsResult {
   alerts: RigAlert[];
@@ -73,24 +73,24 @@ export function useRigAlerts(): UseRigAlertsResult {
     // 1. Halt (highest priority)
     if (rig?.halted) {
       alerts.push({
-        id: 'halt',
-        kind: 'halt',
-        title: 'RIG HALTED',
-        body: 'Dispatcher stopped. In-flight tmux sessions continue until claude-code exits. No new runs will spawn until you Unhalt.',
+        id: "halt",
+        kind: "halt",
+        title: "RIG HALTED",
+        body: "Dispatcher stopped. In-flight tmux sessions continue until claude-code exits. No new runs will spawn until you Unhalt.",
         dismissable: false,
-        tone: 'danger',
+        tone: "danger",
       });
     }
 
     // 2. Backend unreachable — the /api/runs query itself failed
     if (rigError && !rig) {
       alerts.push({
-        id: 'backend-unreachable',
-        kind: 'backend-unreachable',
-        title: 'DASHBOARD BACKEND UNREACHABLE',
-        body: `Lost connection to the dashboard server. The rig may still be running. Will retry automatically. ${rigError instanceof Error ? rigError.message : ''}`,
+        id: "backend-unreachable",
+        kind: "backend-unreachable",
+        title: "DASHBOARD BACKEND UNREACHABLE",
+        body: `Lost connection to the dashboard server. The rig may still be running. Will retry automatically. ${rigError instanceof Error ? rigError.message : ""}`,
         dismissable: false,
-        tone: 'danger',
+        tone: "danger",
       });
     }
 
@@ -98,24 +98,24 @@ export function useRigAlerts(): UseRigAlertsResult {
     //    Threshold bumped from 45s to 180s because claude tool calls legitimately
     //    block for 2-3 minutes on long Bash / Read / Edit calls. Firing at 45s
     //    produced false alarms during every single live run.
-    let staleTint: StaleTint = 'green';
+    let staleTint: StaleTint = "green";
     if (rigProcess?.running && rig?.rig_heartbeat) {
       const age = elapsedSinceISO(rig.rig_heartbeat);
       if (age !== null) {
         if (age > STALE_DEAD_SEC) {
-          staleTint = 'red';
+          staleTint = "red";
         } else if (age > STALE_WARN_SEC) {
-          staleTint = 'amber';
+          staleTint = "amber";
         }
         // Only emit the banner when we're into amber/red; green is silent.
         if (age > STALE_WARN_SEC) {
           alerts.push({
-            id: 'stale-heartbeat',
-            kind: 'stale-heartbeat',
-            title: 'STALE HEARTBEAT',
+            id: "stale-heartbeat",
+            kind: "stale-heartbeat",
+            title: "STALE HEARTBEAT",
             body: `Dispatcher claims running but hasn't ticked in ${age}s. Claude tool calls can legitimately block 2-3min; if this keeps climbing the rig may be wedged.`,
             dismissable: true,
-            tone: age > STALE_DEAD_SEC ? 'danger' : 'warning',
+            tone: age > STALE_DEAD_SEC ? "danger" : "warning",
           });
         }
       }
@@ -133,12 +133,12 @@ export function useRigAlerts(): UseRigAlertsResult {
       const { spent, cap } = rig.daily_budget_usd;
       if (cap > 0 && spent / cap >= 0.95 && !rig.halted) {
         alerts.push({
-          id: 'budget-warning',
-          kind: 'budget-warning',
-          title: 'BUDGET NEAR CAP',
+          id: "budget-warning",
+          kind: "budget-warning",
+          title: "BUDGET NEAR CAP",
           body: `At ${Math.round((spent / cap) * 100)}% of daily cap ($${spent.toFixed(2)} / $${cap.toFixed(2)}). Rig will halt at 100%.`,
           dismissable: true,
-          tone: 'warning',
+          tone: "warning",
         });
       }
     }

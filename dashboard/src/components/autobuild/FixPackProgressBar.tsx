@@ -1,6 +1,6 @@
-import type { Tier } from '@/types';
-import type { TierCounts } from './TierStrip';
-import { cn } from '@/lib/cn';
+import type { Tier } from "@/types";
+import type { TierCounts } from "./TierStrip";
+import { cn } from "@/lib/cn";
 
 interface FixPackProgressBarProps {
   counts: Partial<Record<Tier, TierCounts>>;
@@ -15,7 +15,11 @@ const TIERS: Tier[] = [0, 1, 2, 3, 4];
  * Each segment fills independently by `done/total` and uses the tier
  * intensity ramp from `autobuild.css` when fully complete.
  */
-export function FixPackProgressBar({ counts, className, label = 'Fix pack progress' }: FixPackProgressBarProps) {
+export function FixPackProgressBar({
+  counts,
+  className,
+  label = "Fix pack progress",
+}: FixPackProgressBarProps) {
   const totals = TIERS.map((t) => {
     const c = counts[t];
     const total = c?.total ?? 0;
@@ -30,7 +34,7 @@ export function FixPackProgressBar({ counts, className, label = 'Fix pack progre
 
   return (
     <div
-      className={cn('w-full', className)}
+      className={cn("w-full", className)}
       role="progressbar"
       aria-label={label}
       aria-valuemin={0}

@@ -37,12 +37,7 @@ export function LiveIndicator({
     return () => window.clearInterval(id);
   }, []);
 
-  const date =
-    lastUpdate instanceof Date
-      ? lastUpdate
-      : lastUpdate
-        ? new Date(lastUpdate)
-        : null;
+  const date = lastUpdate instanceof Date ? lastUpdate : lastUpdate ? new Date(lastUpdate) : null;
   const tooltip = date
     ? `Last update: ${formatRelative(date)}`
     : status === "connected"
@@ -59,14 +54,8 @@ export function LiveIndicator({
       role="status"
       className={`live-indicator inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] ${className}`}
       style={{
-        background: isConnected
-          ? "rgba(146,132,102,0.08)"
-          : "rgba(146,132,102,0.03)",
-        border: `1px solid ${
-          isConnected
-            ? "rgba(146,132,102,0.45)"
-            : "rgba(146,132,102,0.18)"
-        }`,
+        background: isConnected ? "rgba(146,132,102,0.08)" : "rgba(146,132,102,0.03)",
+        border: `1px solid ${isConnected ? "rgba(146,132,102,0.45)" : "rgba(146,132,102,0.18)"}`,
         color: isConnected ? "#d4bf8f" : "rgba(232,230,225,0.45)",
         transition: "background 300ms ease, border-color 300ms ease, color 300ms ease",
         fontFamily: "Inter, ui-sans-serif",
@@ -109,13 +98,7 @@ export function LiveIndicator({
           style={{ background: "rgba(146,132,102,0.3)" }}
         />
       )}
-      <span>
-        {isConnected
-          ? "Live"
-          : isReconnecting
-            ? "Reconnecting"
-            : "Offline"}
-      </span>
+      <span>{isConnected ? "Live" : isReconnecting ? "Reconnecting" : "Offline"}</span>
 
       <style>{`
         @keyframes live-indicator-pulse {

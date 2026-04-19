@@ -44,12 +44,7 @@
     },
     {
       "name": "String",
-      "scope": [
-        "string",
-        "string.quoted",
-        "string.template",
-        "punctuation.definition.string"
-      ],
+      "scope": ["string", "string.quoted", "string.template", "punctuation.definition.string"],
       "settings": { "foreground": "#e8c07a" }
     },
     {
@@ -69,40 +64,22 @@
     },
     {
       "name": "Variable",
-      "scope": [
-        "variable",
-        "variable.other",
-        "variable.parameter",
-        "meta.definition.variable"
-      ],
+      "scope": ["variable", "variable.other", "variable.parameter", "meta.definition.variable"],
       "settings": { "foreground": "#e8e6e1" }
     },
     {
       "name": "Class / Type declaration",
-      "scope": [
-        "entity.name.class",
-        "entity.name.type.class",
-        "support.class"
-      ],
+      "scope": ["entity.name.class", "entity.name.type.class", "support.class"],
       "settings": { "foreground": "#d4bf8f" }
     },
     {
       "name": "Type",
-      "scope": [
-        "entity.name.type",
-        "support.type",
-        "meta.type",
-        "storage.type.primitive"
-      ],
+      "scope": ["entity.name.type", "support.type", "meta.type", "storage.type.primitive"],
       "settings": { "foreground": "#b8a27a" }
     },
     {
       "name": "Operator",
-      "scope": [
-        "keyword.operator",
-        "punctuation.separator",
-        "punctuation.accessor"
-      ],
+      "scope": ["keyword.operator", "punctuation.separator", "punctuation.accessor"],
       "settings": { "foreground": "#928466" }
     },
     {
@@ -123,11 +100,7 @@
     },
     {
       "name": "Attribute",
-      "scope": [
-        "entity.other.attribute-name",
-        "meta.attribute",
-        "meta.attribute-selector"
-      ],
+      "scope": ["entity.other.attribute-name", "meta.attribute", "meta.attribute-selector"],
       "settings": { "foreground": "#d4bf8f" }
     },
     {
@@ -167,11 +140,7 @@
     },
     {
       "name": "Punctuation",
-      "scope": [
-        "punctuation",
-        "punctuation.terminator",
-        "punctuation.definition.block"
-      ],
+      "scope": ["punctuation", "punctuation.terminator", "punctuation.definition.block"],
       "settings": { "foreground": "#b8a27a" }
     },
     {

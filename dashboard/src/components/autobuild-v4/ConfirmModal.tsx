@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
-import { AlertTriangle } from 'lucide-react';
-import { cn } from '@/lib/cn';
+import { useEffect, useRef, useState } from "react";
+import { AlertTriangle } from "lucide-react";
+import { cn } from "@/lib/cn";
 
 export interface ConfirmModalProps {
   open: boolean;
@@ -28,25 +28,25 @@ export function ConfirmModal({
   onCancel,
   body,
 }: ConfirmModalProps) {
-  const [value, setValue] = useState('');
+  const [value, setValue] = useState("");
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (!open) {
-      setValue('');
+      setValue("");
       return;
     }
     const id = window.setTimeout(() => inputRef.current?.focus(), 0);
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      if (e.key === "Escape") {
         e.preventDefault();
         onCancel();
       }
     };
-    window.addEventListener('keydown', onKey);
+    window.addEventListener("keydown", onKey);
     return () => {
       window.clearTimeout(id);
-      window.removeEventListener('keydown', onKey);
+      window.removeEventListener("keydown", onKey);
     };
   }, [open, onCancel]);
 
@@ -66,8 +66,8 @@ export function ConfirmModal({
     >
       <div
         className={cn(
-          'glass-solid rounded-lg border shadow-2xl w-full max-w-sm p-4',
-          'border-[color:var(--color-danger)]/40',
+          "glass-solid rounded-lg border shadow-2xl w-full max-w-sm p-4",
+          "border-[color:var(--color-danger)]/40",
         )}
       >
         <div className="flex items-center gap-2 mb-3">
@@ -90,7 +90,7 @@ export function ConfirmModal({
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter' && canConfirm) {
+            if (e.key === "Enter" && canConfirm) {
               e.preventDefault();
               onConfirm();
             }
@@ -112,10 +112,10 @@ export function ConfirmModal({
             onClick={onConfirm}
             disabled={!canConfirm}
             className={cn(
-              'rounded-md px-3 py-1.5 text-[12px] font-mono font-semibold',
+              "rounded-md px-3 py-1.5 text-[12px] font-mono font-semibold",
               canConfirm
-                ? 'bg-[color:var(--color-danger)] text-[#0a0a0a] hover:brightness-110'
-                : 'bg-[color:var(--color-gold-faint)] text-[color:var(--color-text-muted)] cursor-not-allowed',
+                ? "bg-[color:var(--color-danger)] text-[#0a0a0a] hover:brightness-110"
+                : "bg-[color:var(--color-gold-faint)] text-[color:var(--color-text-muted)] cursor-not-allowed",
             )}
           >
             Confirm

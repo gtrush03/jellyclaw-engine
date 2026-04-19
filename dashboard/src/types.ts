@@ -1,5 +1,5 @@
-export type PromptStatus = 'not-started' | 'in-progress' | 'complete';
-export type PhaseStatus = 'not-started' | 'in-progress' | 'complete';
+export type PromptStatus = "not-started" | "in-progress" | "complete";
+export type PhaseStatus = "not-started" | "in-progress" | "complete";
 
 /**
  * Autobuild tier — 0 is the "first things first" batch (typecheck gate, etc.),
@@ -16,7 +16,7 @@ export interface PromptTestSpec {
   name: string;
   kind?: string;
   /** Filled in by the runner for completed runs. */
-  status?: 'passed' | 'failed' | 'pending';
+  status?: "passed" | "failed" | "pending";
 }
 
 /**
@@ -116,11 +116,11 @@ export interface Status {
  * See `dashboard/server/src/routes/events.ts`.
  */
 export type SSEEventName =
-  | 'completion-log-changed'
-  | 'status-changed'
-  | 'prompt-added'
-  | 'prompt-changed'
-  | 'heartbeat';
+  | "completion-log-changed"
+  | "status-changed"
+  | "prompt-added"
+  | "prompt-changed"
+  | "heartbeat";
 
 export interface SSEEventPayload {
   name: SSEEventName;
@@ -148,17 +148,17 @@ export interface SSEEventPayload {
  *   complete            – terminal success
  */
 export type RunStatus =
-  | 'queued'
-  | 'spawning'
-  | 'prompting'
-  | 'working'
-  | 'completion_detected'
-  | 'testing'
-  | 'passed'
-  | 'failed'
-  | 'retrying'
-  | 'escalated'
-  | 'complete';
+  | "queued"
+  | "spawning"
+  | "prompting"
+  | "working"
+  | "completion_detected"
+  | "testing"
+  | "passed"
+  | "failed"
+  | "retrying"
+  | "escalated"
+  | "complete";
 
 export interface RetryHistoryEntry {
   attempt: number;
@@ -185,7 +185,7 @@ export interface RunRecord {
   cost_usd: number;
   self_check: null | {
     ts: string;
-    decision: 'continue' | 'escalate';
+    decision: "continue" | "escalate";
     reason: string;
     cost_at_gate: number;
   };
@@ -207,15 +207,15 @@ export interface RunRecord {
 /** Compact row the runs-list endpoint may return; prefer `RunRecord`. */
 export type RunSummary = Pick<
   RunRecord,
-  | 'status'
-  | 'tier'
-  | 'session_id'
-  | 'branch'
-  | 'attempt'
-  | 'max_retries'
-  | 'cost_usd'
-  | 'needs_review'
-  | 'commit_sha'
+  | "status"
+  | "tier"
+  | "session_id"
+  | "branch"
+  | "attempt"
+  | "max_retries"
+  | "cost_usd"
+  | "needs_review"
+  | "commit_sha"
 > & { updated_at: string };
 
 /**

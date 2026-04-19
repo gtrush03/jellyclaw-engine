@@ -42,13 +42,7 @@ export function PhaseStatusDot({
           ...style,
         }}
       >
-        <svg
-          viewBox="0 0 10 10"
-          width="8"
-          height="8"
-          fill="none"
-          aria-hidden="true"
-        >
+        <svg viewBox="0 0 10 10" width="8" height="8" fill="none" aria-hidden="true">
           <path
             d="M2 5.2 L4.2 7.4 L8 3"
             stroke="#050505"

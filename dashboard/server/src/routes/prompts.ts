@@ -19,13 +19,11 @@ const IdParam = z
   .min(1)
   .max(128)
   .regex(/^phase-[a-z0-9][a-z0-9.\-]*\/[a-z0-9][a-z0-9.\-]*$/i, {
-    message: "id must look like 'phase-01/02-implement', 'phase-10.5/01-implement', or 'phase-99b-unfucking-v2/T0-01-slug'",
+    message:
+      "id must look like 'phase-01/02-implement', 'phase-10.5/01-implement', or 'phase-99b-unfucking-v2/T0-01-slug'",
   });
 
-function deriveStatus(
-  phase: string,
-  phaseStatus: Record<string, PhaseStatus>,
-): PhaseStatus {
+function deriveStatus(phase: string, phaseStatus: Record<string, PhaseStatus>): PhaseStatus {
   return phaseStatus[phase] ?? "not-started";
 }
 
@@ -37,13 +35,8 @@ function idToPath(id: string): string {
 
 promptRoutes.get("/prompts", async (c) => {
   try {
-    const [prompts, clog] = await Promise.all([
-      parseAllPrompts(),
-      parseCompletionLog(),
-    ]);
-    const summaries = prompts.map((p) =>
-      toSummary(p, deriveStatus(p.phase, clog.phaseStatus)),
-    );
+    const [prompts, clog] = await Promise.all([parseAllPrompts(), parseCompletionLog()]);
+    const summaries = prompts.map((p) => toSummary(p, deriveStatus(p.phase, clog.phaseStatus)));
     return c.json({ prompts: summaries, count: summaries.length });
   } catch (err) {
     console.error("[GET /api/prompts] failed:", err);
@@ -72,11 +65,11 @@ promptRoutes.get("/prompts/:phase/:slug", async (c) => {
     const summary = toSummary(p, deriveStatus(p.phase, clog.phaseStatus));
     return c.json({ ...summary, assembled });
   } catch (err) {
-    const msg = (err as NodeJS.ErrnoException).code === "ENOENT"
-      ? "prompt not found"
-      : (err as Error).message;
-    const statusCode: 404 | 500 =
-      (err as NodeJS.ErrnoException).code === "ENOENT" ? 404 : 500;
+    const msg =
+      (err as NodeJS.ErrnoException).code === "ENOENT"
+        ? "prompt not found"
+        : (err as Error).message;
+    const statusCode: 404 | 500 = (err as NodeJS.ErrnoException).code === "ENOENT" ? 404 : 500;
     console.error(`[GET /api/prompts/${id}] failed:`, err);
     return c.json({ error: msg }, statusCode);
   }
@@ -99,13 +92,11 @@ promptRoutes.get("/prompts/:phase/:slug/raw", async (c) => {
     const p = await parsePromptFile(absPath);
     return c.json({ id: p.id, filePath: p.filePath, raw: p.raw });
   } catch (err) {
-    const statusCode: 404 | 500 =
-      (err as NodeJS.ErrnoException).code === "ENOENT" ? 404 : 500;
+    const statusCode: 404 | 500 = (err as NodeJS.ErrnoException).code === "ENOENT" ? 404 : 500;
     console.error(`[GET /api/prompts/${id}/raw] failed:`, err);
     return c.json(
       {
-        error:
-          statusCode === 404 ? "prompt not found" : (err as Error).message,
+        error: statusCode === 404 ? "prompt not found" : (err as Error).message,
       },
       statusCode,
     );

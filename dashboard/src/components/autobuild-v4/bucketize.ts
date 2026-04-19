@@ -22,7 +22,7 @@
  * `bucketize.test.ts`.
  */
 
-import type { Prompt, RigState, RunRecord, RunStatus, Tier } from '@/types';
+import type { Prompt, RigState, RunRecord, RunStatus, Tier } from "@/types";
 
 // ---------------------------------------------------------------------------
 // Bucketize — splits a rig snapshot into the five queue slots the UI renders
@@ -39,13 +39,13 @@ import type { Prompt, RigState, RunRecord, RunStatus, Tier } from '@/types';
  * doesn't regress the bucket.
  */
 export const RUNNING_STATUSES: ReadonlySet<string> = new Set<string>([
-  'spawning',
-  'prompting',
-  'working',
-  'completion_detected',
-  'self_checking',
-  'testing',
-  'retrying',
+  "spawning",
+  "prompting",
+  "working",
+  "completion_detected",
+  "self_checking",
+  "testing",
+  "retrying",
 ]);
 
 /**
@@ -53,10 +53,7 @@ export const RUNNING_STATUSES: ReadonlySet<string> = new Set<string>([
  * terminal success emitted by some transitions; `complete` is the canonical
  * terminal success. We treat both as "done" for the UI.
  */
-export const COMPLETED_STATUSES: ReadonlySet<string> = new Set<string>([
-  'complete',
-  'passed',
-]);
+export const COMPLETED_STATUSES: ReadonlySet<string> = new Set<string>(["complete", "passed"]);
 
 /**
  * An entry in any of the v4 buckets. We pair the id and the record so downstream
@@ -136,7 +133,7 @@ export function bucketize(state: RigState | null | undefined): Buckets {
     //    run's status as `failed` but flags the id after max retries).
     //    If the whole rig is halted and this run is the one mid-flight, also
     //    treat it as escalated so the UI surfaces it as "blocked on human".
-    if (run.status === 'escalated' || escalatedIds.has(id)) {
+    if (run.status === "escalated" || escalatedIds.has(id)) {
       buckets.escalated.push(entry);
       continue;
     }
@@ -152,13 +149,13 @@ export function bucketize(state: RigState | null | undefined): Buckets {
     }
 
     // 4. queued = awaiting dispatch.
-    if (run.status === 'queued') {
+    if (run.status === "queued") {
       buckets.queued.push(entry);
       continue;
     }
 
     // 5. failed = retryable but not yet escalated.
-    if (run.status === 'failed') {
+    if (run.status === "failed") {
       buckets.failed.push(entry);
       continue;
     }
@@ -201,8 +198,8 @@ export function bucketize(state: RigState | null | undefined): Buckets {
 }
 
 function byUpdatedAtDesc(a: BucketEntry, b: BucketEntry): number {
-  const ta = a.run?.updated_at ?? '';
-  const tb = b.run?.updated_at ?? '';
+  const ta = a.run?.updated_at ?? "";
+  const tb = b.run?.updated_at ?? "";
   if (ta === tb) return 0;
   return ta < tb ? 1 : -1;
 }
@@ -268,7 +265,7 @@ export function tierCountsV4(
     // Prompt ids carry the phase prefix (e.g. `phase-99b-.../T0-02-...`) while
     // rig run ids are short (`T0-02-...`). Try both forms so the JOIN lands
     // regardless of which side names them.
-    const shortId = p.id.includes('/') ? (p.id.split('/').pop() ?? p.id) : p.id;
+    const shortId = p.id.includes("/") ? (p.id.split("/").pop() ?? p.id) : p.id;
     const run = runs[p.id] ?? runs[shortId];
     const runDone =
       (run !== undefined && COMPLETED_STATUSES.has(run.status)) ||
@@ -279,11 +276,7 @@ export function tierCountsV4(
       continue;
     }
 
-    if (
-      run !== undefined &&
-      !run.needs_review &&
-      RUNNING_STATUSES.has(run.status)
-    ) {
+    if (run !== undefined && !run.needs_review && RUNNING_STATUSES.has(run.status)) {
       bucket.running += 1;
     }
   }

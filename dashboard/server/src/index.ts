@@ -5,12 +5,7 @@ import { serveStatic } from "@hono/node-server/serve-static";
 import { promptRoutes } from "./routes/prompts.js";
 import { phaseRoutes } from "./routes/phases.js";
 import { statusRoutes } from "./routes/status.js";
-import {
-  eventRoutes,
-  startWatchers,
-  stopWatchers,
-  broadcastServerEvent,
-} from "./routes/events.js";
+import { eventRoutes, startWatchers, stopWatchers, broadcastServerEvent } from "./routes/events.js";
 import { runRoutes } from "./routes/runs.js";
 import {
   createRigControlRoute,
@@ -27,9 +22,7 @@ app.use("*", async (c, next) => {
   await next();
   const ms = Date.now() - start;
   const ts = new Date().toISOString();
-  console.log(
-    `[${ts}] ${c.req.method} ${c.req.path} → ${c.res.status} ${ms}ms`,
-  );
+  console.log(`[${ts}] ${c.req.method} ${c.req.path} → ${c.res.status} ${ms}ms`);
 });
 
 // ---------- rate limit: DISABLED ----------
@@ -123,9 +116,7 @@ const server = serve(
     hostname: HOST,
   },
   (info) => {
-    console.log(
-      `🧞 Jellyclaw Dashboard API listening on http://${info.address}:${info.port}`,
-    );
+    console.log(`🧞 Jellyclaw Dashboard API listening on http://${info.address}:${info.port}`);
   },
 );
 

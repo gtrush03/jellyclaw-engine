@@ -1,7 +1,7 @@
-import { useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
-import { api } from '@/lib/api';
-import type { RigState } from '@/types';
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { api } from "@/lib/api";
+import type { RigState } from "@/types";
 
 /**
  * Fresh-start reset action for the autobuild-v4 status header.
@@ -51,22 +51,21 @@ export function useResetAction(): UseResetAction {
   const reset = async (): Promise<void> => {
     try {
       const result = await api.rigReset();
-      toast.success('Rig reset', {
+      toast.success("Rig reset", {
         description: `Cleared at ${new Date(result.reset_at).toLocaleTimeString()}`,
       });
-      void queryClient.invalidateQueries({ queryKey: ['runs'] });
-      void queryClient.invalidateQueries({ queryKey: ['rig', 'running'] });
+      void queryClient.invalidateQueries({ queryKey: ["runs"] });
+      void queryClient.invalidateQueries({ queryKey: ["rig", "running"] });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       // Distinguish the 409 "rig is running" case — it's operator-actionable
       // (press Stop first), not a backend failure.
-      if (msg.includes('409')) {
-        toast.error('Stop the rig before resetting.', {
-          description:
-            'The dispatcher is still live. Press Stop, wait for it to exit, then reset.',
+      if (msg.includes("409")) {
+        toast.error("Stop the rig before resetting.", {
+          description: "The dispatcher is still live. Press Stop, wait for it to exit, then reset.",
         });
       } else {
-        toast.error('Reset failed', { description: msg });
+        toast.error("Reset failed", { description: msg });
       }
       throw err;
     }

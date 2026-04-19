@@ -1,16 +1,16 @@
-import { useMemo } from 'react';
-import { Inbox, AlertTriangle, Flame, Wrench, ChevronDown, ChevronRight } from 'lucide-react';
-import { usePrompts } from '@/hooks/usePrompts';
-import { usePhases } from '@/hooks/usePhases';
-import { useDashboardStore } from '@/store/dashboard';
-import type { Phase, Prompt, Tier } from '@/types';
-import { PromptCard } from './PromptCard';
-import { Skeleton } from './Skeleton';
-import { EmptyState } from './EmptyState';
-import { FixPackProgressBar } from './autobuild/FixPackProgressBar';
-import type { TierCounts } from './autobuild/TierStrip';
-import { UNFUCKING_V2_PHASE_ID } from './PhaseSidebar';
-import { cn } from '@/lib/cn';
+import { useMemo } from "react";
+import { Inbox, AlertTriangle, Flame, Wrench, ChevronDown, ChevronRight } from "lucide-react";
+import { usePrompts } from "@/hooks/usePrompts";
+import { usePhases } from "@/hooks/usePhases";
+import { useDashboardStore } from "@/store/dashboard";
+import type { Phase, Prompt, Tier } from "@/types";
+import { PromptCard } from "./PromptCard";
+import { Skeleton } from "./Skeleton";
+import { EmptyState } from "./EmptyState";
+import { FixPackProgressBar } from "./autobuild/FixPackProgressBar";
+import type { TierCounts } from "./autobuild/TierStrip";
+import { UNFUCKING_V2_PHASE_ID } from "./PhaseSidebar";
+import { cn } from "@/lib/cn";
 
 const UNFUCKING_PHASE = 99;
 const TIERS: Tier[] = [0, 1, 2, 3, 4];
@@ -82,7 +82,7 @@ export function PromptList() {
       const c = counts[p.tier];
       if (c) {
         c.total += 1;
-        if (p.status === 'complete') c.done += 1;
+        if (p.status === "complete") c.done += 1;
       }
     }
     for (const t of TIERS) {
@@ -171,7 +171,7 @@ export function PromptList() {
               if (items.length === 0) return null;
               const sectionKey = 1000 + t; // stable pseudo-phase id for the collapsed-set
               const collapsed = collapsedPhases.has(sectionKey);
-              const done = items.filter((p) => p.status === 'complete').length;
+              const done = items.filter((p) => p.status === "complete").length;
               return (
                 <section key={t} aria-labelledby={`tier-h-${t}`}>
                   <button
@@ -225,7 +225,7 @@ export function PromptList() {
         const isLegacyUnfucking = phase === UNFUCKING_PHASE;
 
         if (isLegacyUnfucking) {
-          const completed = items.filter((p) => p.status === 'complete').length;
+          const completed = items.filter((p) => p.status === "complete").length;
           return (
             <section
               key={phase}
@@ -248,22 +248,22 @@ export function PromptList() {
                   <h2
                     id={`phase-h-${phase}`}
                     className={cn(
-                      'text-lg font-bold uppercase tracking-wide',
-                      'text-[color:var(--color-warning,#ff8a00)]',
+                      "text-lg font-bold uppercase tracking-wide",
+                      "text-[color:var(--color-warning,#ff8a00)]",
                     )}
                   >
-                    {meta?.name ?? 'Unfucking — Make the Engine Real'}
+                    {meta?.name ?? "Unfucking — Make the Engine Real"}
                   </h2>
                 </div>
                 <div className="font-mono text-[11px] text-[color:var(--color-warning,#ff8a00)]/80">
                   {completed}/{items.length} complete
-                  {meta?.duration ? ` · ${meta.duration}` : ''}
+                  {meta?.duration ? ` · ${meta.duration}` : ""}
                 </div>
               </header>
               <p className="text-[12px] text-[color:var(--color-text-muted)] mb-4 leading-relaxed font-mono">
                 Pre-written, fresh-session-ready prompts to wire the engine end-to-end so it
-                actually powers Genie instead of <code>claude -p</code>. Run sequentially per
-                the dependency graph in <code>prompts/phase-99/README.md</code>. Live API key
+                actually powers Genie instead of <code>claude -p</code>. Run sequentially per the
+                dependency graph in <code>prompts/phase-99/README.md</code>. Live API key
                 pre-validated — paste into each new session.
               </p>
               {!collapsed && (
@@ -287,7 +287,7 @@ export function PromptList() {
             <header className="flex items-baseline justify-between mb-3 pb-2 border-b hairline">
               <div className="flex items-baseline gap-3">
                 <span className="font-mono text-[11px] tracking-widest text-[color:var(--color-text-muted)]">
-                  PHASE {String(phase).padStart(2, '0')}
+                  PHASE {String(phase).padStart(2, "0")}
                 </span>
                 <h2
                   id={`phase-h-${phase}`}
@@ -297,8 +297,8 @@ export function PromptList() {
                 </h2>
               </div>
               <div className="font-mono text-[11px] text-[color:var(--color-text-muted)]">
-                {items.filter((p) => p.status === 'complete').length}/{items.length} complete
-                {meta?.duration ? ` · ${meta.duration}` : ''}
+                {items.filter((p) => p.status === "complete").length}/{items.length} complete
+                {meta?.duration ? ` · ${meta.duration}` : ""}
               </div>
             </header>
             {!collapsed && (

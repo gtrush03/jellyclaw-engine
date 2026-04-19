@@ -32,21 +32,12 @@ export function DashboardSkeleton({
     >
       {/* header */}
       <div className="flex items-center justify-between">
-        <div
-          className="h-6 w-40 rounded-md"
-          style={shimmerStyle()}
-        />
-        <div
-          className="h-6 w-24 rounded-full"
-          style={shimmerStyle()}
-        />
+        <div className="h-6 w-40 rounded-md" style={shimmerStyle()} />
+        <div className="h-6 w-24 rounded-full" style={shimmerStyle()} />
       </div>
 
       {/* progress bar placeholder */}
-      <div
-        className="h-[6px] w-full rounded-full"
-        style={shimmerStyle()}
-      />
+      <div className="h-[6px] w-full rounded-full" style={shimmerStyle()} />
 
       {/* 3-column grid */}
       <div className="grid min-h-0 flex-1 grid-cols-[220px_minmax(0,1fr)_minmax(0,1.6fr)] gap-4">
@@ -58,16 +49,10 @@ export function DashboardSkeleton({
             border: "1px solid rgba(146,132,102,0.08)",
           }}
         >
-          <div
-            className="mb-2 h-3 w-20 rounded"
-            style={shimmerStyle()}
-          />
+          <div className="mb-2 h-3 w-20 rounded" style={shimmerStyle()} />
           {Array.from({ length: phaseCount }).map((_, i) => (
             <div key={i} className="flex items-center gap-2">
-              <div
-                className="h-3 w-3 flex-none rounded-full"
-                style={shimmerStyle()}
-              />
+              <div className="h-3 w-3 flex-none rounded-full" style={shimmerStyle()} />
               <div
                 className="h-3 flex-1 rounded"
                 style={{
@@ -123,10 +108,7 @@ export function DashboardSkeleton({
           }}
         >
           <div className="h-4 w-1/2 rounded" style={shimmerStyle()} />
-          <div
-            className="h-3 w-1/3 rounded"
-            style={{ ...shimmerStyle(), opacity: 0.6 }}
-          />
+          <div className="h-3 w-1/3 rounded" style={{ ...shimmerStyle(), opacity: 0.6 }} />
           <div className="mt-2 flex flex-col gap-2">
             {Array.from({ length: 10 }).map((_, i) => (
               <div

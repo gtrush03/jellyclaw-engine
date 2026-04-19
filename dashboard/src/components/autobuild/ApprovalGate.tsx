@@ -1,6 +1,6 @@
-import type { RunRecord } from '@/types';
-import { useRigAction } from '@/hooks/useRigAction';
-import { CommitShaLink } from './CommitShaLink';
+import type { RunRecord } from "@/types";
+import { useRigAction } from "@/hooks/useRigAction";
+import { CommitShaLink } from "./CommitShaLink";
 
 interface ApprovalGateProps {
   runId: string;
@@ -41,7 +41,7 @@ export function ApprovalGate({ runId, run, diffStat }: ApprovalGateProps) {
           <button
             type="button"
             disabled={pending}
-            onClick={() => action.mutate({ runId, action: 'approve' })}
+            onClick={() => action.mutate({ runId, action: "approve" })}
             className="rounded-md px-3 py-1.5 bg-[color:var(--color-gold)] text-[#0a0a0a] font-semibold hover:bg-[color:var(--color-gold-bright)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             Approve &amp; advance
@@ -49,7 +49,7 @@ export function ApprovalGate({ runId, run, diffStat }: ApprovalGateProps) {
           <button
             type="button"
             disabled={pending}
-            onClick={() => action.mutate({ runId, action: 'skip' })}
+            onClick={() => action.mutate({ runId, action: "skip" })}
             className="rounded-md px-3 py-1.5 border border-[color:var(--color-danger)]/40 text-[color:var(--color-danger)] hover:bg-[color:var(--color-danger)]/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             Reject

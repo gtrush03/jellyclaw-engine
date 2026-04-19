@@ -171,14 +171,12 @@ export interface RunRecord {
   max_retries: number;
   turns_used: number;
   cost_usd: number;
-  self_check:
-    | null
-    | {
-        ts: string;
-        decision: "continue" | "escalate";
-        reason: string;
-        cost_at_gate: number;
-      };
+  self_check: null | {
+    ts: string;
+    decision: "continue" | "escalate";
+    reason: string;
+    cost_at_gate: number;
+  };
   log_path: string;
   events_path: string;
   tests: { total: number; passed: number; failed: number; pending: number };
@@ -207,12 +205,7 @@ export interface RigState {
   [k: string]: unknown;
 }
 
-export type RigActionCmd =
-  | "abort"
-  | "approve"
-  | "retry"
-  | "reject"
-  | "skip";
+export type RigActionCmd = "abort" | "approve" | "retry" | "reject" | "skip";
 
 export interface RigAction {
   cmd: RigActionCmd;

@@ -26,14 +26,7 @@
  */
 import { spawn, type ChildProcess } from "node:child_process";
 import fs from "node:fs/promises";
-import {
-  openSync,
-  closeSync,
-  statSync,
-  renameSync,
-  unlinkSync,
-  writeSync,
-} from "node:fs";
+import { openSync, closeSync, statSync, renameSync, unlinkSync, writeSync } from "node:fs";
 import path from "node:path";
 import { Hono } from "hono";
 import { z } from "zod";
@@ -153,10 +146,7 @@ async function deletePidFile(pidFile: string): Promise<void> {
  * If step 1 fails with EEXIST, another starter is mid-flight — we signal via
  * a typed error and let the caller return 409.
  */
-async function writePidFileExclusive(
-  pidFile: string,
-  contents: PidFileContents,
-): Promise<void> {
+async function writePidFileExclusive(pidFile: string, contents: PidFileContents): Promise<void> {
   const lockPath = `${pidFile}.lock`;
   // Open-excl first. If it throws EEXIST another call is racing us.
   let lockFd: number;
@@ -280,9 +270,7 @@ export interface RigControlRouteOptions {
   broadcastReset?: (data: Record<string, unknown>) => void;
 }
 
-export function createRigControlRoute(
-  opts: RigControlRouteOptions = {},
-): Hono {
+export function createRigControlRoute(opts: RigControlRouteOptions = {}): Hono {
   const app = new Hono();
   const pidFile = opts.pidFile ?? DISPATCHER_PID_FILE;
   const logFile = opts.logFile ?? DISPATCHER_LOG;
@@ -422,9 +410,7 @@ export function createRigControlRoute(
       if (trackedChild === child) {
         trackedChild = null;
       }
-      console.log(
-        `[rig-control] dispatcher exited pid=${child.pid} code=${code} signal=${signal}`,
-      );
+      console.log(`[rig-control] dispatcher exited pid=${child.pid} code=${code} signal=${signal}`);
     });
 
     // 4. Unref so the parent can exit without reaping; the child lives on its
@@ -669,10 +655,7 @@ export function createRigControlRoute(
       if (parsed.concurrency === 1 || parsed.concurrency === 2) {
         concurrency = parsed.concurrency;
       }
-      if (
-        parsed.daily_budget_usd &&
-        typeof parsed.daily_budget_usd.cap === "number"
-      ) {
+      if (parsed.daily_budget_usd && typeof parsed.daily_budget_usd.cap === "number") {
         budgetCap = parsed.daily_budget_usd.cap;
       }
     } catch (err) {
@@ -738,10 +721,7 @@ export function createRigControlRoute(
       const code = (err as NodeJS.ErrnoException).code;
       if (code !== "ENOENT") {
         // Non-fatal — state.json is the source of truth. Log and continue.
-        console.warn(
-          `[rig-control] reset: failed to wipe session dirs under ${sessionsDir}:`,
-          err,
-        );
+        console.warn(`[rig-control] reset: failed to wipe session dirs under ${sessionsDir}:`, err);
       }
     }
 
@@ -771,10 +751,9 @@ export function createRigControlRoute(
  * Snapshot the dispatcher process status from the pid file. Never throws.
  * Callable from any route — used by `/runs` to enrich its response.
  */
-export async function getRigProcessInfo(opts: {
-  pidFile?: string;
-  logFile?: string;
-} = {}): Promise<RigProcessInfo> {
+export async function getRigProcessInfo(
+  opts: { pidFile?: string; logFile?: string } = {},
+): Promise<RigProcessInfo> {
   const pidFile = opts.pidFile ?? DISPATCHER_PID_FILE;
   const logFile = opts.logFile ?? DISPATCHER_LOG;
   const contents = await readPidFile(pidFile);
@@ -803,13 +782,15 @@ export async function getRigProcessInfo(opts: {
  *
  * Returns a stop fn the server shutdown handler calls.
  */
-export function startHeartbeatMonitor(opts: {
-  loadHeartbeatMs: () => Promise<number | null>;
-  pidFile?: string;
-  intervalMs?: number;
-  now?: () => number;
-  log?: (msg: string) => void;
-} = { loadHeartbeatMs: async () => null }): () => void {
+export function startHeartbeatMonitor(
+  opts: {
+    loadHeartbeatMs: () => Promise<number | null>;
+    pidFile?: string;
+    intervalMs?: number;
+    now?: () => number;
+    log?: (msg: string) => void;
+  } = { loadHeartbeatMs: async () => null },
+): () => void {
   const pidFile = opts.pidFile ?? DISPATCHER_PID_FILE;
   const intervalMs = opts.intervalMs ?? 5_000;
   const now = opts.now ?? ((): number => Date.now());
@@ -824,9 +805,7 @@ export function startHeartbeatMonitor(opts: {
       if (!isAlive(contents.pid)) {
         // Self-heal: the daemon died out from under us.
         await deletePidFile(pidFile);
-        log(
-          `[rig-heartbeat] dispatcher pid=${contents.pid} is dead; cleaned up pid file`,
-        );
+        log(`[rig-heartbeat] dispatcher pid=${contents.pid} is dead; cleaned up pid file`);
         warnedAt = null;
         return;
       }

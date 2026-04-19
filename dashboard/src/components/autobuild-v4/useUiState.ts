@@ -19,14 +19,14 @@
  * Pure, React-free, no data-fetching. Unit-tested by `useUiState.test.ts`.
  */
 
-import type { Prompt, RigState, RunRecord } from '@/types';
-import { bucketize } from './bucketize';
+import type { Prompt, RigState, RunRecord } from "@/types";
+import { bucketize } from "./bucketize";
 
 export type UiState =
-  | { kind: 'empty' }
-  | { kind: 'idle'; hasHistory: boolean }
-  | { kind: 'running'; currentRun: RunRecordWithId }
-  | { kind: 'all-complete' };
+  | { kind: "empty" }
+  | { kind: "idle"; hasHistory: boolean }
+  | { kind: "running"; currentRun: RunRecordWithId }
+  | { kind: "all-complete" };
 
 /**
  * A `RunRecord` with its id attached, because callers of `useUiState` always
@@ -50,7 +50,7 @@ export function deriveUiState(
   // Null / loading → treat as empty. The empty state renders a neutral "Press
   // Start" screen, which is the sanest thing to show while we're waiting for
   // the first /api/runs response.
-  if (!state) return { kind: 'empty' };
+  if (!state) return { kind: "empty" };
 
   const rigRunning = state.rig_process?.running ?? false;
   const buckets = bucketize(state);
@@ -69,16 +69,16 @@ export function deriveUiState(
     // Only count prompts that are *autobuild-managed* — anything with a tier.
     // Non-autobuild prompts (legacy phase work) don't belong in this gate.
     const managed = promptIds.filter((id) =>
-      prompts.some((p) => p.id === id && typeof p.tier === 'number'),
+      prompts.some((p) => p.id === id && typeof p.tier === "number"),
     );
     if (managed.length > 0 && managed.every((id) => completedSet.has(id))) {
-      return { kind: 'all-complete' };
+      return { kind: "all-complete" };
     }
   }
 
   // Rig offline + zero history → pristine "press start" screen.
   if (!rigRunning && !hasHistory) {
-    return { kind: 'empty' };
+    return { kind: "empty" };
   }
 
   // Rig online with an in-flight run → hero NOW card.
@@ -87,15 +87,15 @@ export function deriveUiState(
     // updated. The spec says "1 in-flight" is running-state; concurrency 2 is
     // still legitimately running — just pick the newest run to feature.
     const sorted = [...buckets.running].sort((a, b) => {
-      const aT = a.run?.updated_at ?? '';
-      const bT = b.run?.updated_at ?? '';
+      const aT = a.run?.updated_at ?? "";
+      const bT = b.run?.updated_at ?? "";
       if (aT === bT) return 0;
       return aT < bT ? 1 : -1;
     });
     const hero = sorted[0];
     if (hero?.run) {
       return {
-        kind: 'running',
+        kind: "running",
         currentRun: { id: hero.runId, ...hero.run },
       };
     }
@@ -103,10 +103,10 @@ export function deriveUiState(
 
   // Rig online + nothing in-flight → idle (waiting for scheduler).
   if (rigRunning) {
-    return { kind: 'idle', hasHistory };
+    return { kind: "idle", hasHistory };
   }
 
   // Rig offline but history exists → idle-with-history (the user reset or
   // stopped after a run). Render the DONE feed; no NOW card.
-  return { kind: 'idle', hasHistory };
+  return { kind: "idle", hasHistory };
 }

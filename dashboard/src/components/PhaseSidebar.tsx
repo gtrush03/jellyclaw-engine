@@ -1,17 +1,17 @@
-import { useMemo } from 'react';
-import { usePhases } from '@/hooks/usePhases';
-import { usePrompts } from '@/hooks/usePrompts';
-import { useDashboardStore } from '@/store/dashboard';
-import type { Tier } from '@/types';
-import { Skeleton } from './Skeleton';
-import { PhaseItem } from './PhaseItem';
-import { EmptyState } from './EmptyState';
-import { Layers, Wrench } from 'lucide-react';
-import { TierStrip } from './autobuild/TierStrip';
-import type { TierCounts } from './autobuild/TierStrip';
-import { cn } from '@/lib/cn';
+import { useMemo } from "react";
+import { usePhases } from "@/hooks/usePhases";
+import { usePrompts } from "@/hooks/usePrompts";
+import { useDashboardStore } from "@/store/dashboard";
+import type { Tier } from "@/types";
+import { Skeleton } from "./Skeleton";
+import { PhaseItem } from "./PhaseItem";
+import { EmptyState } from "./EmptyState";
+import { Layers, Wrench } from "lucide-react";
+import { TierStrip } from "./autobuild/TierStrip";
+import type { TierCounts } from "./autobuild/TierStrip";
+import { cn } from "@/lib/cn";
 
-export const UNFUCKING_V2_PHASE_ID = 'phase-99b-unfucking-v2';
+export const UNFUCKING_V2_PHASE_ID = "phase-99b-unfucking-v2";
 const TIERS: Tier[] = [0, 1, 2, 3, 4];
 
 export function PhaseSidebar() {
@@ -36,7 +36,7 @@ export function PhaseSidebar() {
       const bucket = out[p.tier];
       if (!bucket) continue;
       bucket.total += 1;
-      if (p.status === 'complete') bucket.done += 1;
+      if (p.status === "complete") bucket.done += 1;
     }
     return out;
   }, [prompts]);
@@ -45,12 +45,12 @@ export function PhaseSidebar() {
 
   const scrollToPhase = (phase: number) => {
     const el = document.getElementById(`phase-section-${phase}`);
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   const scrollToUnfuckingV2 = () => {
     const el = document.getElementById(`phase-section-${UNFUCKING_V2_PHASE_ID}`);
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   if (isLoading) {
@@ -116,11 +116,11 @@ export function PhaseSidebar() {
             onClick={scrollToUnfuckingV2}
             aria-label="Unfucking v2"
             className={cn(
-              'w-full text-left px-3 py-2 border-l-2 transition-colors',
-              'focus:outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--color-gold)]',
+              "w-full text-left px-3 py-2 border-l-2 transition-colors",
+              "focus:outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--color-gold)]",
               unfuckingActive
-                ? 'border-[color:var(--color-gold)] bg-[color:var(--color-gold-faint)]'
-                : 'border-transparent hover:bg-[color:var(--color-gold-faint)]',
+                ? "border-[color:var(--color-gold)] bg-[color:var(--color-gold-faint)]"
+                : "border-transparent hover:bg-[color:var(--color-gold-faint)]",
             )}
           >
             <div className="flex items-center gap-2 mb-1.5">

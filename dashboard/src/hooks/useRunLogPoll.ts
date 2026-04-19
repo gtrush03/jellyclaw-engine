@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from "react";
 
 /**
  * 500ms polling hook for live tmux log streaming.
@@ -25,10 +25,10 @@ export function useRunLogPoll(
   const [lines, setLines] = useState<string[]>([]);
   const [connected, setConnected] = useState(false);
   const [lineCount, setLineCount] = useState(0);
-  const lastSig = useRef<string>('');
+  const lastSig = useRef<string>("");
 
   useEffect(() => {
-    lastSig.current = '';
+    lastSig.current = "";
     setLines([]);
     setConnected(false);
     setLineCount(0);
@@ -42,8 +42,8 @@ export function useRunLogPoll(
       try {
         const res = await fetch(`/api/runs/${encodeURIComponent(runId)}`, {
           signal: ctrl.signal,
-          headers: { Accept: 'application/json' },
-          cache: 'no-store',
+          headers: { Accept: "application/json" },
+          cache: "no-store",
         });
         if (!res.ok) {
           setConnected(false);
@@ -53,9 +53,9 @@ export function useRunLogPoll(
           log?: { lines?: string[]; lineCount?: number };
         };
         const next = Array.isArray(body.log?.lines) ? body.log.lines : [];
-        const count = typeof body.log?.lineCount === 'number' ? body.log.lineCount : next.length;
+        const count = typeof body.log?.lineCount === "number" ? body.log.lineCount : next.length;
         // Cheap dedupe — only re-render if the tail changed.
-        const sig = `${count}:${next.length}:${next.at(-1) ?? ''}`;
+        const sig = `${count}:${next.length}:${next.at(-1) ?? ""}`;
         if (sig !== lastSig.current) {
           lastSig.current = sig;
           setLines(next);
@@ -63,7 +63,7 @@ export function useRunLogPoll(
         }
         if (!connected) setConnected(true);
       } catch (err) {
-        if ((err as { name?: string }).name === 'AbortError') return;
+        if ((err as { name?: string }).name === "AbortError") return;
         setConnected(false);
       }
     };

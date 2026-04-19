@@ -1,4 +1,4 @@
-import { cn } from '@/lib/cn';
+import { cn } from "@/lib/cn";
 
 interface RetryChipProps {
   attempt: number;
@@ -12,7 +12,7 @@ interface RetryChipProps {
  * Codes the backend classifies as *retryable* — amber. Anything else
  * (including unknown codes) is treated as non-retryable / terminal — red.
  */
-const RETRYABLE_PREFIXES = ['stall', 'timeout', 'rate_limit', 'network', 'transient', 'retry'];
+const RETRYABLE_PREFIXES = ["stall", "timeout", "rate_limit", "network", "transient", "retry"];
 
 function isRetryable(code: string | null | undefined): boolean {
   if (!code) return true; // default optimistic — no code yet
@@ -28,20 +28,19 @@ export function RetryChip({
   className,
 }: RetryChipProps) {
   const retryable = isRetryable(reasonCode ?? null);
-  const reason = reasonCode ? reasonCode.replace(/_/g, ' ') : null;
-  const title =
-    reasonDetail ?? (reason ? `last retry reason: ${reason}` : 'retry in flight');
+  const reason = reasonCode ? reasonCode.replace(/_/g, " ") : null;
+  const title = reasonDetail ?? (reason ? `last retry reason: ${reason}` : "retry in flight");
 
   const toneClass = retryable
-    ? 'text-[color:var(--color-warning)] border-[color:var(--color-warning)]/40 bg-[color:var(--color-warning)]/10'
-    : 'text-[color:var(--color-danger)] border-[color:var(--color-danger)]/40 bg-[color:var(--color-danger)]/10';
+    ? "text-[color:var(--color-warning)] border-[color:var(--color-warning)]/40 bg-[color:var(--color-warning)]/10"
+    : "text-[color:var(--color-danger)] border-[color:var(--color-danger)]/40 bg-[color:var(--color-danger)]/10";
 
   return (
     <span
       title={title}
       aria-label={title}
       className={cn(
-        'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-mono tabular-nums',
+        "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-mono tabular-nums",
         toneClass,
         className,
       )}

@@ -2,22 +2,9 @@ import { Hono } from "hono";
 import chokidar, { type FSWatcher } from "chokidar";
 import { createChannel, createSession, type Channel } from "better-sse";
 import type { IncomingMessage, ServerResponse } from "node:http";
-import {
-  COMPLETION_LOG,
-  PROMPTS_DIR,
-  STATUS_FILE,
-} from "../lib/paths.js";
-import {
-  classifyHeartbeat,
-  diffRigState,
-  loadRigState,
-  watchRigState,
-} from "../lib/rig-state.js";
-import type {
-  RigState,
-  ServerEventName,
-  ServerEventPayload,
-} from "../types.js";
+import { COMPLETION_LOG, PROMPTS_DIR, STATUS_FILE } from "../lib/paths.js";
+import { classifyHeartbeat, diffRigState, loadRigState, watchRigState } from "../lib/rig-state.js";
+import type { RigState, ServerEventName, ServerEventPayload } from "../types.js";
 
 export const eventRoutes = new Hono();
 
@@ -54,10 +41,7 @@ function broadcast(
  * the main module graph during construction to avoid a circular import —
  * `index.ts` wires the two together at boot.
  */
-export function broadcastServerEvent(
-  event: ServerEventName,
-  data?: Record<string, unknown>,
-): void {
+export function broadcastServerEvent(event: ServerEventName, data?: Record<string, unknown>): void {
   broadcast(event, undefined, data);
 }
 

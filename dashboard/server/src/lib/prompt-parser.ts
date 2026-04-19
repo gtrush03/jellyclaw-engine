@@ -1,12 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import matter from "gray-matter";
-import {
-  PROMPTS_DIR,
-  STARTUP_TEMPLATE,
-  COMPLETION_TEMPLATE,
-  assertInsideRepo,
-} from "./paths.js";
+import { PROMPTS_DIR, STARTUP_TEMPLATE, COMPLETION_TEMPLATE, assertInsideRepo } from "./paths.js";
 import type { PromptSummary } from "../types.js";
 
 /**
@@ -93,12 +88,7 @@ function extractBody(raw: string): string {
 }
 
 const VALID_TIERS = new Set([0, 1, 2, 3, 4]);
-const VALID_TEST_KINDS = new Set([
-  "jellyclaw-run",
-  "smoke-suite",
-  "http-roundtrip",
-  "shell",
-]);
+const VALID_TEST_KINDS = new Set(["jellyclaw-run", "smoke-suite", "http-roundtrip", "shell"]);
 
 function asOptionalNumber(v: unknown): number | undefined {
   if (typeof v === "number" && Number.isFinite(v)) return v;
@@ -254,10 +244,7 @@ export async function parseAllPrompts(): Promise<ParsedPrompt[]> {
   return results.filter((p): p is ParsedPrompt => p !== null);
 }
 
-export function toSummary(
-  p: ParsedPrompt,
-  status: PromptSummary["status"],
-): PromptSummary {
+export function toSummary(p: ParsedPrompt, status: PromptSummary["status"]): PromptSummary {
   const base: PromptSummary = {
     id: p.id,
     phase: p.phase,
@@ -278,7 +265,8 @@ export function toSummary(
   if (p.max_turns !== undefined) base.max_turns = p.max_turns;
   if (p.max_cost_usd !== undefined) base.max_cost_usd = p.max_cost_usd;
   if (p.max_retries !== undefined) base.max_retries = p.max_retries;
-  if (p.estimated_duration_min !== undefined) base.estimated_duration_min = p.estimated_duration_min;
+  if (p.estimated_duration_min !== undefined)
+    base.estimated_duration_min = p.estimated_duration_min;
   return base;
 }
 
@@ -312,7 +300,10 @@ export function extractPhaseName(title: string): string {
   const m = title.match(/Phase\s+\d+\s+[—-]\s+(.+?)\s+[—-]\s+Prompt/i);
   if (m) return m[1].trim();
   // Fallback: second segment after em-dash
-  const parts = title.split(/[—-]/).map((s) => s.trim()).filter(Boolean);
+  const parts = title
+    .split(/[—-]/)
+    .map((s) => s.trim())
+    .filter(Boolean);
   if (parts.length >= 2) return parts[1];
   return title;
 }

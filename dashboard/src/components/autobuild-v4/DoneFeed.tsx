@@ -1,8 +1,8 @@
-import { useMemo, useState } from 'react';
-import { Check } from 'lucide-react';
-import type { RunRecord } from '@/types';
-import { ApprovalRow } from './ApprovalRow';
-import { DoneRow } from './DoneRow';
+import { useMemo, useState } from "react";
+import { Check } from "lucide-react";
+import type { RunRecord } from "@/types";
+import { ApprovalRow } from "./ApprovalRow";
+import { DoneRow } from "./DoneRow";
 
 export interface DoneFeedRow {
   runId: string;
@@ -32,8 +32,7 @@ export function DoneFeed({
 }: DoneFeedProps) {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
-  const toggle = (runId: string) =>
-    setExpanded((prev) => ({ ...prev, [runId]: !prev[runId] }));
+  const toggle = (runId: string) => setExpanded((prev) => ({ ...prev, [runId]: !prev[runId] }));
 
   // Newest first — sort by ended_at desc, fall back to updated_at.
   const orderedCompleted = useMemo(() => {
@@ -42,11 +41,7 @@ export function DoneFeed({
     return copy;
   }, [completed]);
 
-  if (
-    completed.length === 0 &&
-    awaitingReview.length === 0 &&
-    !allComplete
-  ) {
+  if (completed.length === 0 && awaitingReview.length === 0 && !allComplete) {
     return (
       <section aria-label="Done">
         <h2 className="font-mono text-[11px] uppercase tracking-[0.3em] text-[color:var(--color-gold-bright)] mb-2 px-5">

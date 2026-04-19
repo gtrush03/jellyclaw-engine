@@ -32,9 +32,7 @@ export interface UseKeyboardShortcutsOptions {
  * Ignores events while user is typing in inputs/textareas/contentEditable,
  * except for ⌘-K (focus search) and Esc.
  */
-export function useKeyboardShortcuts(
-  opts: UseKeyboardShortcutsOptions,
-): void {
+export function useKeyboardShortcuts(opts: UseKeyboardShortcutsOptions): void {
   const {
     onCopy,
     onNext,
@@ -107,16 +105,7 @@ export function useKeyboardShortcuts(
 
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [
-    enabled,
-    onCopy,
-    onNext,
-    onPrev,
-    onFocusSearch,
-    onClose,
-    onJumpNextIncomplete,
-    onToggleHelp,
-  ]);
+  }, [enabled, onCopy, onNext, onPrev, onFocusSearch, onClose, onJumpNextIncomplete, onToggleHelp]);
 }
 
 export interface KeyboardHelpProps {
@@ -213,11 +202,7 @@ export function KeyboardHelp({
         <table className="w-full border-collapse text-sm">
           <tbody>
             {shortcuts.map((row, i) => (
-              <tr
-                key={i}
-                className="border-t"
-                style={{ borderColor: "rgba(146,132,102,0.12)" }}
-              >
+              <tr key={i} className="border-t" style={{ borderColor: "rgba(146,132,102,0.12)" }}>
                 <td className="py-2.5 pr-4">
                   <span className="inline-flex gap-1">
                     {row.keys.map((k, j) => (
@@ -236,10 +221,7 @@ export function KeyboardHelp({
                     ))}
                   </span>
                 </td>
-                <td
-                  className="py-2.5 text-left"
-                  style={{ color: "rgba(232,230,225,0.85)" }}
-                >
+                <td className="py-2.5 text-left" style={{ color: "rgba(232,230,225,0.85)" }}>
                   {row.description}
                 </td>
               </tr>
@@ -247,10 +229,7 @@ export function KeyboardHelp({
           </tbody>
         </table>
 
-        <footer
-          className="mt-4 text-[10px]"
-          style={{ color: "rgba(232,230,225,0.45)" }}
-        >
+        <footer className="mt-4 text-[10px]" style={{ color: "rgba(232,230,225,0.45)" }}>
           Press <kbd>?</kbd> anywhere to toggle this panel.
         </footer>
       </div>

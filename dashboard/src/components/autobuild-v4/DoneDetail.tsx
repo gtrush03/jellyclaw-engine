@@ -1,8 +1,8 @@
-import { useMemo, useState } from 'react';
-import { ChevronDown, ChevronUp } from 'lucide-react';
-import type { RunRecord } from '@/types';
-import { useRunDetail, type RunDetail } from '@/hooks/useRunDetail';
-import { cn } from '@/lib/cn';
+import { useMemo, useState } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
+import type { RunRecord } from "@/types";
+import { useRunDetail, type RunDetail } from "@/hooks/useRunDetail";
+import { cn } from "@/lib/cn";
 
 export interface DoneDetailProps {
   run: RunRecord;
@@ -34,7 +34,7 @@ export function DoneDetail({ run, runId }: DoneDetailProps) {
       <div className="flex items-center gap-4 flex-wrap">
         <Label>commit</Label>
         <span className="font-mono text-[12px] tabular-nums text-[color:var(--color-gold-bright)]">
-          {sha ? sha.slice(0, 7) : '—'}
+          {sha ? sha.slice(0, 7) : "—"}
         </span>
         {sha ? (
           <span className="font-mono text-[11px] tabular-nums text-[color:var(--color-text-muted)]">
@@ -94,23 +94,23 @@ function parseDiffStat(diff: string): DiffStatResult {
   const perFile = new Map<string, { plus: number; minus: number }>();
   let currentFile: string | null = null;
   for (const line of lines) {
-    if (line.startsWith('+++ ')) {
+    if (line.startsWith("+++ ")) {
       const raw = line.slice(4).trim();
-      currentFile = raw.startsWith('b/') ? raw.slice(2) : raw;
-      if (currentFile === '/dev/null') currentFile = null;
+      currentFile = raw.startsWith("b/") ? raw.slice(2) : raw;
+      if (currentFile === "/dev/null") currentFile = null;
       else if (currentFile && !perFile.has(currentFile)) {
         perFile.set(currentFile, { plus: 0, minus: 0 });
       }
       continue;
     }
-    if (line.startsWith('---')) continue;
-    if (line.startsWith('@@')) continue;
+    if (line.startsWith("---")) continue;
+    if (line.startsWith("@@")) continue;
     if (!currentFile) continue;
-    if (line.startsWith('+')) {
+    if (line.startsWith("+")) {
       out.insertions += 1;
       const fc = perFile.get(currentFile);
       if (fc) fc.plus += 1;
-    } else if (line.startsWith('-')) {
+    } else if (line.startsWith("-")) {
       out.deletions += 1;
       const fc = perFile.get(currentFile);
       if (fc) fc.minus += 1;
@@ -124,7 +124,7 @@ function parseDiffStat(diff: string): DiffStatResult {
 }
 
 function DiffStat({ diff }: { diff: string | undefined }) {
-  const stat = useMemo(() => parseDiffStat(diff ?? ''), [diff]);
+  const stat = useMemo(() => parseDiffStat(diff ?? ""), [diff]);
 
   if (!diff) {
     return (
@@ -153,26 +153,21 @@ function DiffStat({ diff }: { diff: string | undefined }) {
       <div className="flex items-baseline gap-3 flex-wrap">
         <Label>diff</Label>
         <span className="font-mono text-[11px] tabular-nums text-[color:var(--color-text-muted)]">
-          {stat.files} file{stat.files === 1 ? '' : 's'} changed
+          {stat.files} file{stat.files === 1 ? "" : "s"} changed
         </span>
-        <span className="font-mono text-[11px] tabular-nums" style={{ color: '#5fb75f' }}>
+        <span className="font-mono text-[11px] tabular-nums" style={{ color: "#5fb75f" }}>
           +{stat.insertions}
         </span>
-        <span className="font-mono text-[11px] tabular-nums" style={{ color: '#ff5757' }}>
+        <span className="font-mono text-[11px] tabular-nums" style={{ color: "#ff5757" }}>
           -{stat.deletions}
         </span>
       </div>
       <ul className="flex flex-col gap-0.5 max-h-48 overflow-y-auto pr-2">
         {stat.fileList.slice(0, 30).map((f) => (
-          <li
-            key={f.path}
-            className="flex items-center gap-2 font-mono text-[11px] tabular-nums"
-          >
-            <span className="flex-1 min-w-0 truncate text-[color:var(--color-text)]">
-              {f.path}
-            </span>
-            <span style={{ color: '#5fb75f' }}>+{f.plus}</span>
-            <span style={{ color: '#ff5757' }}>-{f.minus}</span>
+          <li key={f.path} className="flex items-center gap-2 font-mono text-[11px] tabular-nums">
+            <span className="flex-1 min-w-0 truncate text-[color:var(--color-text)]">{f.path}</span>
+            <span style={{ color: "#5fb75f" }}>+{f.plus}</span>
+            <span style={{ color: "#ff5757" }}>-{f.minus}</span>
           </li>
         ))}
         {stat.fileList.length > 30 ? (
@@ -185,24 +180,18 @@ function DiffStat({ diff }: { diff: string | undefined }) {
   );
 }
 
-function TestGrid({
-  run,
-  testResults,
-}: {
-  run: RunRecord;
-  testResults: RunDetail['testResults'];
-}) {
+function TestGrid({ run, testResults }: { run: RunRecord; testResults: RunDetail["testResults"] }) {
   const counts = run.tests;
   const items = testResults ?? [];
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-baseline gap-3 flex-wrap">
         <Label>tests</Label>
-        <span className="font-mono text-[11px] tabular-nums" style={{ color: '#5fb75f' }}>
+        <span className="font-mono text-[11px] tabular-nums" style={{ color: "#5fb75f" }}>
           {counts.passed} passed
         </span>
         {counts.failed > 0 ? (
-          <span className="font-mono text-[11px] tabular-nums" style={{ color: '#ff5757' }}>
+          <span className="font-mono text-[11px] tabular-nums" style={{ color: "#ff5757" }}>
             {counts.failed} failed
           </span>
         ) : null}
@@ -226,14 +215,10 @@ function TestGrid({
   );
 }
 
-function TestChip({
-  result,
-}: {
-  result: NonNullable<RunDetail['testResults']>[number];
-}) {
-  const passed = result.status === 'passed';
-  const failed = result.status === 'failed';
-  const color = passed ? '#5fb75f' : failed ? '#ff5757' : 'var(--color-text-muted)';
+function TestChip({ result }: { result: NonNullable<RunDetail["testResults"]>[number] }) {
+  const passed = result.status === "passed";
+  const failed = result.status === "failed";
+  const color = passed ? "#5fb75f" : failed ? "#ff5757" : "var(--color-text-muted)";
   return (
     <span
       className="rounded-md px-2 py-0.5 font-mono text-[10px] tabular-nums border"
@@ -245,13 +230,7 @@ function TestChip({
   );
 }
 
-function Journal({
-  events,
-  run,
-}: {
-  events: RunDetail['events'];
-  run: RunRecord;
-}) {
+function Journal({ events, run }: { events: RunDetail["events"]; run: RunRecord }) {
   const list = events ?? [];
   if (list.length === 0) {
     // Synthesize a minimal journal from retry_history + final status.
@@ -325,8 +304,8 @@ function LogToggle({
       </button>
       <div
         className={cn(
-          'rounded-md border hairline bg-[color:var(--color-bg)] px-3 py-2 font-mono text-[10px] leading-[1.5] text-[color:var(--color-text-muted)] overflow-auto transition-[max-height,opacity] duration-200 ease-out motion-reduce:transition-opacity',
-          open ? 'max-h-[420px] opacity-100' : 'max-h-0 opacity-0 pointer-events-none',
+          "rounded-md border hairline bg-[color:var(--color-bg)] px-3 py-2 font-mono text-[10px] leading-[1.5] text-[color:var(--color-text-muted)] overflow-auto transition-[max-height,opacity] duration-200 ease-out motion-reduce:transition-opacity",
+          open ? "max-h-[420px] opacity-100" : "max-h-0 opacity-0 pointer-events-none",
         )}
       >
         {tail.map((line, i) => (
@@ -334,9 +313,7 @@ function LogToggle({
             {line}
           </div>
         ))}
-        {tail.length === 0 ? (
-          <span className="italic">No log output.</span>
-        ) : null}
+        {tail.length === 0 ? <span className="italic">No log output.</span> : null}
       </div>
     </div>
   );

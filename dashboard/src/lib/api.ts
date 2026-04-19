@@ -6,20 +6,20 @@ import type {
   RigState,
   SessionLogEntry,
   Status,
-} from '@/types';
+} from "@/types";
 
-const BASE = '/api';
+const BASE = "/api";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     ...init,
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       ...(init?.headers ?? {}),
     },
   });
   if (!res.ok) {
-    let detail = '';
+    let detail = "";
     try {
       detail = await res.text();
     } catch {
@@ -45,7 +45,7 @@ interface RawPrompt {
   newSession: string | null;
   model: string | null;
   filePath: string;
-  status: 'not-started' | 'in-progress' | 'complete';
+  status: "not-started" | "in-progress" | "complete";
   // --- Optional autobuild-frontmatter passthrough (only present on
   //     phase-99b-unfucking-v2 prompts). Must flow through the normalizer. ---
   tier?: 0 | 1 | 2 | 3 | 4;
@@ -71,7 +71,7 @@ interface RawPhase {
   blocks: number[];
   promptCount: number;
   promptsCompleted: number;
-  status: 'not-started' | 'in-progress' | 'complete';
+  status: "not-started" | "in-progress" | "complete";
 }
 
 interface RawSessionLogRow {
@@ -90,7 +90,7 @@ interface RawStatus {
   testsFailing: number;
   burnRateTotal: string | null;
   blockers: string[];
-  phaseStatus: Record<string, 'not-started' | 'in-progress' | 'complete'>;
+  phaseStatus: Record<string, "not-started" | "in-progress" | "complete">;
   sessionLog: RawSessionLogRow[];
 }
 
@@ -118,11 +118,11 @@ function normalizePrompt(p: RawPrompt): Prompt {
     phaseId: p.phase,
     subPrompt: p.subPrompt,
     title: p.title,
-    whenToRun: p.whenToRun ?? '',
-    duration: p.duration ?? '',
+    whenToRun: p.whenToRun ?? "",
+    duration: p.duration ?? "",
     // Backend `newSession` is a nullable string like "yes"/"no" — coerce to bool.
     newSession: p.newSession != null && /^(y|yes|true|1)$/i.test(p.newSession.trim()),
-    model: p.model ?? '',
+    model: p.model ?? "",
     filePath: p.filePath,
     status: p.status,
     // Pass-through the autobuild rig fields — previously dropped here, which
@@ -130,7 +130,7 @@ function normalizePrompt(p: RawPrompt): Prompt {
     // showed tier badges on phase-99b prompts.
     tier: p.tier,
     scope: p.scope,
-    tests: p.tests as Prompt['tests'],
+    tests: p.tests as Prompt["tests"],
     depends_on_fix: p.depends_on_fix,
     human_gate: p.human_gate,
     max_turns: p.max_turns,
@@ -176,20 +176,19 @@ function normalizeSessionLog(r: RawSessionLogRow): SessionLogEntry {
 }
 
 function normalizeStatus(s: RawStatus): Status {
-  const currentPhase =
-    s.currentPhase != null ? Number.parseInt(s.currentPhase, 10) : 0;
+  const currentPhase = s.currentPhase != null ? Number.parseInt(s.currentPhase, 10) : 0;
   // Convert "$42.10" (or plain "42.10") to a number.
   const burnRate = s.burnRateTotal
-    ? Number.parseFloat(s.burnRateTotal.replace(/[^0-9.\-]/g, '')) || 0
+    ? Number.parseFloat(s.burnRateTotal.replace(/[^0-9.\-]/g, "")) || 0
     : 0;
   // Keep the 3-state enum record — PhaseItem/Header use it.
-  const phaseStatus: Record<number, 'not-started' | 'in-progress' | 'complete'> = {};
+  const phaseStatus: Record<number, "not-started" | "in-progress" | "complete"> = {};
   for (const [key, val] of Object.entries(s.phaseStatus)) {
     const k = Number.parseInt(key, 10);
     if (Number.isFinite(k)) phaseStatus[k] = val;
   }
   return {
-    lastUpdated: s.lastUpdated ?? '',
+    lastUpdated: s.lastUpdated ?? "",
     currentPhase: Number.isFinite(currentPhase) ? currentPhase : 0,
     progressPercent: s.progressPercent,
     testsPassing: s.testsPassing,
@@ -207,14 +206,14 @@ function normalizeStatus(s: RawStatus): Status {
 
 export const api = {
   async prompts(): Promise<Prompt[]> {
-    const env = await request<PromptsEnvelope>('/prompts');
+    const env = await request<PromptsEnvelope>("/prompts");
     return env.prompts.map(normalizePrompt);
   },
   async prompt(id: string): Promise<PromptDetail> {
     // Backend route is /api/prompts/:phase/:slug (two path segments).
     // Splitting here — NOT encodeURIComponent on the composite id, which would
     // turn the slash into %2F and 404.
-    const [phase, slug] = id.split('/');
+    const [phase, slug] = id.split("/");
     if (!phase || !slug) throw new Error(`Invalid prompt id: ${id}`);
     const raw = await request<RawPromptDetail>(
       `/prompts/${encodeURIComponent(phase)}/${encodeURIComponent(slug)}`,
@@ -222,11 +221,11 @@ export const api = {
     return normalizePromptDetail(raw);
   },
   async phases(): Promise<Phase[]> {
-    const env = await request<PhasesEnvelope>('/phases');
+    const env = await request<PhasesEnvelope>("/phases");
     return env.phases.map(normalizePhase);
   },
   async status(): Promise<Status> {
-    const raw = await request<RawStatus>('/status');
+    const raw = await request<RawStatus>("/status");
     return normalizeStatus(raw);
   },
   /**
@@ -235,7 +234,7 @@ export const api = {
    * native — we round-trip it as-is.
    */
   async runs(): Promise<RigState> {
-    return request<RigState>('/runs');
+    return request<RigState>("/runs");
   },
   /**
    * Dispatch an operator action on a run (abort / approve / retry / skip).
@@ -243,13 +242,13 @@ export const api = {
    */
   async runAction(
     runId: string,
-    action: 'abort' | 'approve' | 'retry' | 'skip' | 'approve-anyway',
+    action: "abort" | "approve" | "retry" | "skip" | "approve-anyway",
     body?: Record<string, unknown>,
   ): Promise<{ ok: true } | Record<string, unknown>> {
-    const [phase, slug] = runId.split('/');
+    const [phase, slug] = runId.split("/");
     if (!phase || !slug) throw new Error(`Invalid run id: ${runId}`);
     return request(`/runs/${encodeURIComponent(phase)}/${encodeURIComponent(slug)}/action`, {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify({ action, ...(body ?? {}) }),
     });
   },
@@ -261,7 +260,7 @@ export const api = {
    * the main /runs snapshot.
    */
   async rigRunning(): Promise<RigProcessStatus> {
-    return request<RigProcessStatus>('/rig/running');
+    return request<RigProcessStatus>("/rig/running");
   },
   /**
    * Start the autobuild rig daemon.
@@ -269,14 +268,14 @@ export const api = {
    *   - 409 → already running (we surface this as a toast in the mutation hook)
    */
   async rigStart(): Promise<RigProcessStatus> {
-    return request<RigProcessStatus>('/rig/start', { method: 'POST' });
+    return request<RigProcessStatus>("/rig/start", { method: "POST" });
   },
   async rigStop(): Promise<RigProcessStatus & { stopped_at?: string }> {
-    return request('/rig/stop', { method: 'POST' });
+    return request("/rig/stop", { method: "POST" });
   },
   /** One-shot tick — runs a single scheduler pass regardless of daemon state. */
   async rigTick(): Promise<Record<string, unknown>> {
-    return request('/rig/tick', { method: 'POST' });
+    return request("/rig/tick", { method: "POST" });
   },
   /**
    * Wipe `.autobuild/state.json` back to an empty skeleton and remove every
@@ -289,7 +288,7 @@ export const api = {
     // Must send an explicit `{}` body. The server treats a JSON content-type
     // with an empty body as malformed and 400s (bad_request). A curl without
     // Content-Type works; a browser fetch always sets one through `request()`.
-    return request('/rig/reset', { method: 'POST', body: JSON.stringify({}) });
+    return request("/rig/reset", { method: "POST", body: JSON.stringify({}) });
   },
 };
 

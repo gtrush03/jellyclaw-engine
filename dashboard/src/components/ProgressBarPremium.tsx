@@ -62,9 +62,7 @@ export function ProgressBarPremium({
               style={{
                 left: `${i * sectionPct}%`,
                 width: `calc(${sectionPct}% - 2px)`,
-                background: filled
-                  ? "rgba(146, 132, 102, 0.18)"
-                  : "transparent",
+                background: filled ? "rgba(146, 132, 102, 0.18)" : "transparent",
               }}
             />
           );
@@ -76,8 +74,7 @@ export function ProgressBarPremium({
           className="progressbar-premium-fill absolute top-0 left-0 h-full origin-left rounded-full"
           style={{
             width: `${clamped}%`,
-            background:
-              "linear-gradient(90deg, #6b6146 0%, #928466 50%, #d4bf8f 100%)",
+            background: "linear-gradient(90deg, #6b6146 0%, #928466 50%, #d4bf8f 100%)",
             boxShadow: "0 0 12px rgba(146, 132, 102, 0.35)",
           }}
         >
@@ -104,14 +101,8 @@ export function ProgressBarPremium({
             <span
               className="block h-[4px] w-[4px] rounded-full"
               style={{
-                background:
-                  clamped >= m
-                    ? "#d4bf8f"
-                    : "rgba(146, 132, 102, 0.35)",
-                boxShadow:
-                  clamped >= m
-                    ? "0 0 6px rgba(212, 191, 143, 0.7)"
-                    : "none",
+                background: clamped >= m ? "#d4bf8f" : "rgba(146, 132, 102, 0.35)",
+                boxShadow: clamped >= m ? "0 0 6px rgba(212, 191, 143, 0.7)" : "none",
                 transition: "background 300ms ease, box-shadow 300ms ease",
               }}
             />

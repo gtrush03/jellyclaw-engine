@@ -1,5 +1,5 @@
-import { Component, type ReactNode } from 'react';
-import { AlertTriangle } from 'lucide-react';
+import { Component, type ReactNode } from "react";
+import { AlertTriangle } from "lucide-react";
 
 interface Props {
   children: ReactNode;
@@ -16,7 +16,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: unknown): void {
-    console.error('ErrorBoundary caught:', error, info);
+    console.error("ErrorBoundary caught:", error, info);
   }
 
   reset = (): void => {
@@ -41,7 +41,7 @@ export class ErrorBoundary extends Component<Props, State> {
             </div>
             <pre className="font-mono text-xs p-3 bg-[color:var(--color-gold-faint)] border hairline rounded overflow-auto max-h-60 text-[color:var(--color-text-muted)]">
               {this.state.error.message}
-              {this.state.error.stack ? `\n\n${this.state.error.stack}` : ''}
+              {this.state.error.stack ? `\n\n${this.state.error.stack}` : ""}
             </pre>
             <button
               type="button"

@@ -1,5 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
-import type { RunRecord } from '@/types';
+import { useQuery } from "@tanstack/react-query";
+import type { RunRecord } from "@/types";
 
 /**
  * Raw envelope for `GET /api/runs/:id`. The backend returns a `RunRecord`
@@ -24,7 +24,7 @@ export interface RunDetail extends RunRecord {
   /** Parsed test-results.json, when the backend exposes it. */
   testResults?: Array<{
     name: string;
-    status: 'passed' | 'failed' | 'pending' | 'skipped';
+    status: "passed" | "failed" | "pending" | "skipped";
     duration_ms?: number;
     message?: string;
   }>;
@@ -38,10 +38,10 @@ export interface RunDetail extends RunRecord {
 }
 
 async function fetchRunDetail(runId: string): Promise<RunDetail> {
-  if (!runId) throw new Error('runId is required');
+  if (!runId) throw new Error("runId is required");
   const res = await fetch(`/api/runs/${encodeURIComponent(runId)}`);
   if (!res.ok) {
-    let detail = '';
+    let detail = "";
     try {
       detail = await res.text();
     } catch {
@@ -59,9 +59,9 @@ async function fetchRunDetail(runId: string): Promise<RunDetail> {
  */
 export function useRunDetail(runId: string | null, enabled = true) {
   return useQuery<RunDetail>({
-    queryKey: ['run-detail', runId],
+    queryKey: ["run-detail", runId],
     queryFn: () => {
-      if (!runId) throw new Error('runId is required');
+      if (!runId) throw new Error("runId is required");
       return fetchRunDetail(runId);
     },
     enabled: enabled && !!runId,

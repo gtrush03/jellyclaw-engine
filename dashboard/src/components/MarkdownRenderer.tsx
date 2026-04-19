@@ -1,10 +1,10 @@
-import { useEffect, useState, type ReactNode } from 'react';
-import ReactMarkdown, { type Components } from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import rehypeRaw from 'rehype-raw';
-import { highlight } from '@/lib/shiki';
-import { cn } from '@/lib/cn';
-import { CopyButton } from './CopyButton';
+import { useEffect, useState, type ReactNode } from "react";
+import ReactMarkdown, { type Components } from "react-markdown";
+import remarkGfm from "remark-gfm";
+import rehypeRaw from "rehype-raw";
+import { highlight } from "@/lib/shiki";
+import { cn } from "@/lib/cn";
+import { CopyButton } from "./CopyButton";
 
 interface MarkdownRendererProps {
   content: string;
@@ -13,15 +13,9 @@ interface MarkdownRendererProps {
 
 export function MarkdownRenderer({ content, className }: MarkdownRendererProps) {
   const components: Components = {
-    h1: ({ children, ...p }) => (
-      <h1 {...p}>{children}</h1>
-    ),
-    h2: ({ children, ...p }) => (
-      <h2 {...p}>{children}</h2>
-    ),
-    h3: ({ children, ...p }) => (
-      <h3 {...p}>{children}</h3>
-    ),
+    h1: ({ children, ...p }) => <h1 {...p}>{children}</h1>,
+    h2: ({ children, ...p }) => <h2 {...p}>{children}</h2>,
+    h3: ({ children, ...p }) => <h3 {...p}>{children}</h3>,
     a: ({ href, children, ...p }) => (
       <a href={href} target="_blank" rel="noreferrer" {...p}>
         {children}
@@ -29,9 +23,9 @@ export function MarkdownRenderer({ content, className }: MarkdownRendererProps) 
     ),
     pre: ({ children }) => <>{children}</>,
     code: ({ className: cls, children, ...rest }) => {
-      const codeStr = String(children ?? '').replace(/\n$/, '');
-      const match = /language-([\w-]+)/.exec(cls ?? '');
-      const isBlock = !!match || codeStr.includes('\n');
+      const codeStr = String(children ?? "").replace(/\n$/, "");
+      const match = /language-([\w-]+)/.exec(cls ?? "");
+      const isBlock = !!match || codeStr.includes("\n");
       if (!isBlock) {
         return (
           <code className={cls} {...rest}>
@@ -39,7 +33,7 @@ export function MarkdownRenderer({ content, className }: MarkdownRendererProps) 
           </code>
         );
       }
-      const lang = match?.[1] ?? 'markdown';
+      const lang = match?.[1] ?? "markdown";
       return <ShikiCode code={codeStr} lang={lang} />;
     },
   };
@@ -48,12 +42,16 @@ export function MarkdownRenderer({ content, className }: MarkdownRendererProps) 
   // We wrap them as raw HTML spans rehype-raw will keep them intact.
   const prepared = content.replace(
     /<!--\s*([\s\S]*?)\s*-->/g,
-    (_m, inner) => `<div class="html-comment">${String(inner).replace(/</g, '&lt;')}</div>`,
+    (_m, inner) => `<div class="html-comment">${String(inner).replace(/</g, "&lt;")}</div>`,
   );
 
   return (
-    <div className={cn('prose-gold text-sm', className)}>
-      <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} components={components}>
+    <div className={cn("prose-gold text-sm", className)}>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        rehypePlugins={[rehypeRaw]}
+        components={components}
+      >
         {prepared}
       </ReactMarkdown>
     </div>

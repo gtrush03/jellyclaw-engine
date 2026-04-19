@@ -1,8 +1,8 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
-import { api } from '@/lib/api';
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { api } from "@/lib/api";
 
-export type RigAction = 'abort' | 'approve' | 'retry' | 'skip' | 'approve-anyway';
+export type RigAction = "abort" | "approve" | "retry" | "skip" | "approve-anyway";
 
 interface RigActionArgs {
   runId: string;
@@ -23,7 +23,7 @@ export function useRigAction() {
       toast.success(`${actionLabel(vars.action)} sent`, {
         description: vars.runId,
       });
-      void queryClient.invalidateQueries({ queryKey: ['runs'] });
+      void queryClient.invalidateQueries({ queryKey: ["runs"] });
     },
     onError: (err, vars) => {
       toast.error(`${actionLabel(vars.action)} failed`, {
@@ -35,15 +35,15 @@ export function useRigAction() {
 
 function actionLabel(a: RigAction): string {
   switch (a) {
-    case 'abort':
-      return 'Abort';
-    case 'approve':
-      return 'Approve';
-    case 'retry':
-      return 'Retry';
-    case 'skip':
-      return 'Skip';
-    case 'approve-anyway':
-      return 'Approve anyway';
+    case "abort":
+      return "Abort";
+    case "approve":
+      return "Approve";
+    case "retry":
+      return "Retry";
+    case "skip":
+      return "Skip";
+    case "approve-anyway":
+      return "Approve anyway";
   }
 }

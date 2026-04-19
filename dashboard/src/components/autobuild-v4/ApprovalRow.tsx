@@ -1,5 +1,5 @@
-import { CheckCheck } from 'lucide-react';
-import type { RunRecord } from '@/types';
+import { CheckCheck } from "lucide-react";
+import type { RunRecord } from "@/types";
 
 export interface ApprovalRowProps {
   run: RunRecord;
@@ -14,17 +14,12 @@ export interface ApprovalRowProps {
  * awaiting human review. Two buttons: Approve (gold solid) / Reject
  * (hairline ghost).
  */
-export function ApprovalRow({
-  run,
-  runId,
-  onApprove,
-  onReject,
-}: ApprovalRowProps) {
+export function ApprovalRow({ run, runId, onApprove, onReject }: ApprovalRowProps) {
   const sha = run.commit_sha ? run.commit_sha.slice(0, 7) : null;
   return (
     <div
       className="rounded-md px-4 py-3 border flex items-center gap-3 bg-[color:var(--color-gold-faint)]"
-      style={{ borderColor: 'rgba(146,132,102,0.45)' }}
+      style={{ borderColor: "rgba(146,132,102,0.45)" }}
       role="region"
       aria-label={`Awaiting review ${runId}`}
     >

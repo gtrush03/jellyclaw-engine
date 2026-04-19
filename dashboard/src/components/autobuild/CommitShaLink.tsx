@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import { Check, Copy } from 'lucide-react';
-import { cn } from '@/lib/cn';
+import { useState } from "react";
+import { Check, Copy } from "lucide-react";
+import { cn } from "@/lib/cn";
 
 interface CommitShaLinkProps {
   sha: string | null;
@@ -18,7 +18,7 @@ export function CommitShaLink({ sha, className }: CommitShaLinkProps) {
     return (
       <span
         className={cn(
-          'inline-flex items-center font-mono text-[11px] text-[color:var(--color-text-muted)]',
+          "inline-flex items-center font-mono text-[11px] text-[color:var(--color-text-muted)]",
           className,
         )}
         aria-label="no commit yet"
@@ -31,7 +31,7 @@ export function CommitShaLink({ sha, className }: CommitShaLinkProps) {
   const short = sha.slice(0, 7);
 
   const onClick = () => {
-    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
       void navigator.clipboard.writeText(sha).then(() => {
         setCopied(true);
         window.setTimeout(() => setCopied(false), 1500);
@@ -46,9 +46,9 @@ export function CommitShaLink({ sha, className }: CommitShaLinkProps) {
       title={`${sha} · click to copy`}
       aria-label={`copy commit sha ${sha}`}
       className={cn(
-        'inline-flex items-center gap-1 font-mono text-[11px] tabular-nums rounded px-1 py-0.5',
-        'text-[color:var(--color-gold-bright)] hover:bg-[color:var(--color-gold-faint)] transition-colors',
-        'focus:outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--color-gold)]',
+        "inline-flex items-center gap-1 font-mono text-[11px] tabular-nums rounded px-1 py-0.5",
+        "text-[color:var(--color-gold-bright)] hover:bg-[color:var(--color-gold-faint)] transition-colors",
+        "focus:outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--color-gold)]",
         className,
       )}
     >

@@ -1,7 +1,7 @@
-import { Check, ChevronDown, ChevronRight } from 'lucide-react';
-import type { RunRecord } from '@/types';
-import { cn } from '@/lib/cn';
-import { DoneDetail } from './DoneDetail';
+import { Check, ChevronDown, ChevronRight } from "lucide-react";
+import type { RunRecord } from "@/types";
+import { cn } from "@/lib/cn";
+import { DoneDetail } from "./DoneDetail";
 
 export interface DoneRowProps {
   run: RunRecord;
@@ -18,18 +18,18 @@ export interface DoneRowProps {
  * slide-down transition (honors `prefers-reduced-motion` via CSS).
  */
 export function DoneRow({ run, runId, expanded, onToggle }: DoneRowProps) {
-  const sha = run.commit_sha ? run.commit_sha.slice(0, 7) : '—';
+  const sha = run.commit_sha ? run.commit_sha.slice(0, 7) : "—";
   const elapsed =
     run.started_at && run.ended_at
       ? formatElapsed(Date.parse(run.ended_at) - Date.parse(run.started_at))
-      : '—';
-  const cost = typeof run.cost_usd === 'number' ? `$${run.cost_usd.toFixed(2)}` : '—';
+      : "—";
+  const cost = typeof run.cost_usd === "number" ? `$${run.cost_usd.toFixed(2)}` : "—";
 
   return (
     <div
       className={cn(
-        'rounded-md border hairline overflow-hidden transition-colors',
-        expanded && 'bg-[color:var(--color-gold-faint)]/30',
+        "rounded-md border hairline overflow-hidden transition-colors",
+        expanded && "bg-[color:var(--color-gold-faint)]/30",
       )}
     >
       <button
@@ -49,7 +49,7 @@ export function DoneRow({ run, runId, expanded, onToggle }: DoneRowProps) {
             <ChevronRight className="w-3.5 h-3.5" />
           )}
         </span>
-        <Check className="w-3.5 h-3.5 shrink-0" style={{ color: '#5fb75f' }} aria-hidden="true" />
+        <Check className="w-3.5 h-3.5 shrink-0" style={{ color: "#5fb75f" }} aria-hidden="true" />
         <span className="font-mono text-[12px] text-[color:var(--color-gold-bright)] tabular-nums shrink-0">
           {runId}
         </span>
@@ -67,10 +67,8 @@ export function DoneRow({ run, runId, expanded, onToggle }: DoneRowProps) {
       <div
         id={`done-detail-${runId}`}
         className={cn(
-          'transition-[max-height,opacity] duration-300 ease-out overflow-hidden motion-reduce:transition-opacity',
-          expanded
-            ? 'max-h-[1200px] opacity-100'
-            : 'max-h-0 opacity-0 pointer-events-none',
+          "transition-[max-height,opacity] duration-300 ease-out overflow-hidden motion-reduce:transition-opacity",
+          expanded ? "max-h-[1200px] opacity-100" : "max-h-0 opacity-0 pointer-events-none",
         )}
       >
         {expanded ? <DoneDetail run={run} runId={runId} /> : null}
@@ -80,7 +78,7 @@ export function DoneRow({ run, runId, expanded, onToggle }: DoneRowProps) {
 }
 
 function formatElapsed(ms: number): string {
-  if (!Number.isFinite(ms) || ms < 0) return '—';
+  if (!Number.isFinite(ms) || ms < 0) return "—";
   const s = Math.floor(ms / 1000);
   if (s < 60) return `${s}s`;
   const m = Math.floor(s / 60);

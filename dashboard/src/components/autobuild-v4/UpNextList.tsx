@@ -1,7 +1,7 @@
-import { useState } from 'react';
-import { ChevronDown, ChevronUp } from 'lucide-react';
-import type { RunRecord } from '@/types';
-import { EscalationRow } from './EscalationRow';
+import { useState } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
+import type { RunRecord } from "@/types";
+import { EscalationRow } from "./EscalationRow";
 
 export interface QueuedRow {
   id: string;
@@ -116,7 +116,7 @@ function QueuedRowView({ row }: { row: QueuedRow }) {
       <span className="font-sans text-[12px] text-[color:var(--color-text)] flex-1 truncate">
         {row.title}
       </span>
-      {typeof row.estMin === 'number' && row.estMin > 0 ? (
+      {typeof row.estMin === "number" && row.estMin > 0 ? (
         <span className="font-mono text-[11px] tabular-nums text-[color:var(--color-text-muted)] shrink-0">
           est {row.estMin} min
         </span>

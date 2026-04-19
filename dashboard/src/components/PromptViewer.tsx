@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef } from "react";
 import {
   ArrowRight,
   Clipboard,
@@ -8,16 +8,16 @@ import {
   RefreshCw,
   Sparkles,
   X,
-} from 'lucide-react';
-import { usePrompt } from '@/hooks/usePrompt';
-import { usePrompts } from '@/hooks/usePrompts';
-import { useDashboardStore } from '@/store/dashboard';
-import { useCopy } from '@/hooks/useCopy';
-import { MarkdownRenderer } from './MarkdownRenderer';
-import { Skeleton } from './Skeleton';
-import { EmptyState } from './EmptyState';
-import { StatusBadge } from './StatusBadge';
-import { cn } from '@/lib/cn';
+} from "lucide-react";
+import { usePrompt } from "@/hooks/usePrompt";
+import { usePrompts } from "@/hooks/usePrompts";
+import { useDashboardStore } from "@/store/dashboard";
+import { useCopy } from "@/hooks/useCopy";
+import { MarkdownRenderer } from "./MarkdownRenderer";
+import { Skeleton } from "./Skeleton";
+import { EmptyState } from "./EmptyState";
+import { StatusBadge } from "./StatusBadge";
+import { cn } from "@/lib/cn";
 
 export function PromptViewer() {
   const selectedPromptId = useDashboardStore((s) => s.selectedPromptId);
@@ -41,17 +41,17 @@ export function PromptViewer() {
     const el = containerRef.current;
     if (!el) return;
     const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'c') {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "c") {
         const selection = window.getSelection()?.toString();
         if (selection && selection.length > 0) return; // allow native copy of highlighted text
         if (data?.body) {
           e.preventDefault();
-          void copy.copy(data.body, 'Full prompt copied');
+          void copy.copy(data.body, "Full prompt copied");
         }
       }
     };
-    el.addEventListener('keydown', onKey);
-    return () => el.removeEventListener('keydown', onKey);
+    el.addEventListener("keydown", onKey);
+    return () => el.removeEventListener("keydown", onKey);
   }, [data, copy]);
 
   if (!selectedPromptId) {
@@ -84,7 +84,7 @@ export function PromptViewer() {
           ) : (
             <>
               <div className="font-mono text-[10px] tracking-widest text-[color:var(--color-text-muted)] mb-1">
-                PHASE {String(data.phase).padStart(2, '0')} · {data.subPrompt}
+                PHASE {String(data.phase).padStart(2, "0")} · {data.subPrompt}
               </div>
               <h1 className="text-lg font-semibold text-[color:var(--color-gold-bright)] leading-tight">
                 {data.title}
@@ -98,8 +98,8 @@ export function PromptViewer() {
             onClick={() => void refetch()}
             aria-label="refresh"
             className={cn(
-              'p-1.5 rounded text-[color:var(--color-text-muted)] hover:text-[color:var(--color-gold-bright)] hover:bg-[color:var(--color-gold-faint)] transition-colors',
-              isFetching && 'animate-spin',
+              "p-1.5 rounded text-[color:var(--color-text-muted)] hover:text-[color:var(--color-gold-bright)] hover:bg-[color:var(--color-gold-faint)] transition-colors",
+              isFetching && "animate-spin",
             )}
           >
             <RefreshCw className="w-4 h-4" />
@@ -134,8 +134,8 @@ export function PromptViewer() {
                     when: {data.whenToRun}
                   </StatusBadge>
                   <StatusBadge tone="gold">duration: {data.duration}</StatusBadge>
-                  <StatusBadge tone={data.newSession ? 'warning' : 'neutral'}>
-                    {data.newSession ? 'new session' : 'same session'}
+                  <StatusBadge tone={data.newSession ? "warning" : "neutral"}>
+                    {data.newSession ? "new session" : "same session"}
                   </StatusBadge>
                   <StatusBadge tone="neutral">model: {data.model}</StatusBadge>
                 </>
@@ -150,20 +150,20 @@ export function PromptViewer() {
             <button
               type="button"
               onClick={() => {
-                if (data?.body) void copy.copy(data.body, 'Full prompt copied');
+                if (data?.body) void copy.copy(data.body, "Full prompt copied");
               }}
               disabled={!data?.body}
               className={cn(
-                'w-full h-12 flex items-center justify-center gap-2 rounded-md font-medium tracking-wide text-sm',
-                'bg-[color:var(--color-gold)] text-[#0a0a0a] hover:bg-[color:var(--color-gold-bright)] transition-colors',
-                'disabled:opacity-50 disabled:cursor-not-allowed',
-                'focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-gold)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--color-bg)]',
-                copy.state === 'copied' && 'gold-glow',
+                "w-full h-12 flex items-center justify-center gap-2 rounded-md font-medium tracking-wide text-sm",
+                "bg-[color:var(--color-gold)] text-[#0a0a0a] hover:bg-[color:var(--color-gold-bright)] transition-colors",
+                "disabled:opacity-50 disabled:cursor-not-allowed",
+                "focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-gold)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--color-bg)]",
+                copy.state === "copied" && "gold-glow",
               )}
               title="Copy full prompt (⌘C)"
             >
               <Clipboard className="w-4 h-4" />
-              {copy.state === 'copied' ? 'Copied!' : 'Copy Full Prompt'}
+              {copy.state === "copied" ? "Copied!" : "Copy Full Prompt"}
               <span className="ml-2 font-mono text-[10px] opacity-70">⌘C</span>
             </button>
 

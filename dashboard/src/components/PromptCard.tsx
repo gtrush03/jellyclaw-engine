@@ -1,15 +1,15 @@
-import { Check, CircleDashed, Loader2, Terminal } from 'lucide-react';
-import type { Prompt } from '@/types';
-import { cn } from '@/lib/cn';
-import { StatusBadge } from './StatusBadge';
-import { useEnrichedPrompt } from '@/hooks/useEnrichedPrompt';
-import { useRigAction } from '@/hooks/useRigAction';
-import { RetryChip } from './autobuild/RetryChip';
-import { TestResultBadge } from './autobuild/TestResultBadge';
-import { SelfCheckBadge } from './autobuild/SelfCheckBadge';
-import { SessionPreview } from './autobuild/SessionPreview';
-import { ApprovalGate } from './autobuild/ApprovalGate';
-import { CommitShaLink } from './autobuild/CommitShaLink';
+import { Check, CircleDashed, Loader2, Terminal } from "lucide-react";
+import type { Prompt } from "@/types";
+import { cn } from "@/lib/cn";
+import { StatusBadge } from "./StatusBadge";
+import { useEnrichedPrompt } from "@/hooks/useEnrichedPrompt";
+import { useRigAction } from "@/hooks/useRigAction";
+import { RetryChip } from "./autobuild/RetryChip";
+import { TestResultBadge } from "./autobuild/TestResultBadge";
+import { SelfCheckBadge } from "./autobuild/SelfCheckBadge";
+import { SessionPreview } from "./autobuild/SessionPreview";
+import { ApprovalGate } from "./autobuild/ApprovalGate";
+import { CommitShaLink } from "./autobuild/CommitShaLink";
 
 interface PromptCardProps {
   prompt: Prompt;
@@ -31,18 +31,18 @@ interface PromptCardProps {
  */
 export function PromptCard({ prompt, active, onClick }: PromptCardProps) {
   const enriched = useEnrichedPrompt(prompt.id);
-  const state = enriched?.state ?? 'PENDING';
+  const state = enriched?.state ?? "PENDING";
   const run = enriched?.run ?? null;
   const action = useRigAction();
 
-  const isRunning = state === 'RUNNING' || state === 'FINALIZING';
-  const isFailed = state === 'FAILED';
-  const isEscalated = state === 'ESCALATED';
-  const isReview = state === 'REVIEW';
-  const isDone = state === 'DONE';
+  const isRunning = state === "RUNNING" || state === "FINALIZING";
+  const isFailed = state === "FAILED";
+  const isEscalated = state === "ESCALATED";
+  const isReview = state === "REVIEW";
+  const isDone = state === "DONE";
 
   const statusIcon =
-    state === 'DONE' ? (
+    state === "DONE" ? (
       <Check className="w-3.5 h-3.5 text-[color:var(--color-success)]" />
     ) : isRunning ? (
       <Loader2 className="w-3.5 h-3.5 animate-spin text-[color:var(--color-warning)]" />
@@ -55,8 +55,8 @@ export function PromptCard({ prompt, active, onClick }: PromptCardProps) {
     if (isReview) return <StatusBadge tone="gold">REVIEW</StatusBadge>;
     if (isEscalated) return <StatusBadge tone="danger">ESCALATED</StatusBadge>;
     if (isFailed) return <StatusBadge tone="danger">FAILED</StatusBadge>;
-    if (state === 'RUNNING') return <StatusBadge tone="gold">RUNNING</StatusBadge>;
-    if (state === 'FINALIZING') return <StatusBadge tone="gold">FINALIZING</StatusBadge>;
+    if (state === "RUNNING") return <StatusBadge tone="gold">RUNNING</StatusBadge>;
+    if (state === "FINALIZING") return <StatusBadge tone="gold">FINALIZING</StatusBadge>;
     return null;
   })();
 
@@ -65,15 +65,15 @@ export function PromptCard({ prompt, active, onClick }: PromptCardProps) {
   return (
     <div
       className={cn(
-        'w-full rounded-lg border transition-all duration-150',
-        'focus-within:outline-none focus-within:ring-2 focus-within:ring-[color:var(--color-gold)]',
+        "w-full rounded-lg border transition-all duration-150",
+        "focus-within:outline-none focus-within:ring-2 focus-within:ring-[color:var(--color-gold)]",
         active
-          ? 'glass gold-glow border-[color:var(--color-gold)]/60'
-          : 'glass hairline hover:border-[color:var(--color-gold-subtle)]',
-        isRunning && 'autobuild-ring-pulse',
-        (isFailed || isEscalated) && 'autobuild-gutter-red border-[color:var(--color-danger)]/40',
-        isReview && 'autobuild-review-glow',
-        isDone && 'opacity-[0.55] hover:opacity-100 transition-opacity',
+          ? "glass gold-glow border-[color:var(--color-gold)]/60"
+          : "glass hairline hover:border-[color:var(--color-gold-subtle)]",
+        isRunning && "autobuild-ring-pulse",
+        (isFailed || isEscalated) && "autobuild-gutter-red border-[color:var(--color-danger)]/40",
+        isReview && "autobuild-review-glow",
+        isDone && "opacity-[0.55] hover:opacity-100 transition-opacity",
       )}
       aria-busy={isRunning}
     >
@@ -85,7 +85,7 @@ export function PromptCard({ prompt, active, onClick }: PromptCardProps) {
       >
         <div className="flex items-center gap-2 mb-2 flex-wrap">
           <StatusBadge tone="gold">
-            P{String(prompt.phase).padStart(2, '0')} · {prompt.subPrompt}
+            P{String(prompt.phase).padStart(2, "0")} · {prompt.subPrompt}
           </StatusBadge>
           {prompt.tier !== undefined && (
             <span
@@ -145,7 +145,7 @@ export function PromptCard({ prompt, active, onClick }: PromptCardProps) {
           <div className="flex items-center gap-3 text-[11px] text-[color:var(--color-text-muted)] font-mono">
             <span className="inline-flex items-center gap-1">
               <Terminal className="w-3 h-3" />
-              {prompt.model || 'unknown model'}
+              {prompt.model || "unknown model"}
             </span>
             {prompt.duration && (
               <>
@@ -179,7 +179,7 @@ export function PromptCard({ prompt, active, onClick }: PromptCardProps) {
           <button
             type="button"
             disabled={action.isPending}
-            onClick={() => action.mutate({ runId: prompt.id, action: 'retry' })}
+            onClick={() => action.mutate({ runId: prompt.id, action: "retry" })}
             className="rounded-md px-2.5 py-1 text-[11px] border border-[color:var(--color-warning)]/40 text-[color:var(--color-warning)] hover:bg-[color:var(--color-warning)]/10 disabled:opacity-50"
           >
             Retry
@@ -187,7 +187,7 @@ export function PromptCard({ prompt, active, onClick }: PromptCardProps) {
           <button
             type="button"
             disabled={action.isPending}
-            onClick={() => action.mutate({ runId: prompt.id, action: 'skip' })}
+            onClick={() => action.mutate({ runId: prompt.id, action: "skip" })}
             className="rounded-md px-2.5 py-1 text-[11px] border border-[color:var(--color-gold-subtle)] text-[color:var(--color-text-muted)] hover:text-[color:var(--color-gold-bright)] disabled:opacity-50"
           >
             Skip
@@ -209,7 +209,7 @@ export function PromptCard({ prompt, active, onClick }: PromptCardProps) {
             <button
               type="button"
               disabled={action.isPending}
-              onClick={() => action.mutate({ runId: prompt.id, action: 'retry' })}
+              onClick={() => action.mutate({ runId: prompt.id, action: "retry" })}
               className="rounded-md px-2.5 py-1 text-[11px] border border-[color:var(--color-warning)]/40 text-[color:var(--color-warning)] hover:bg-[color:var(--color-warning)]/10 disabled:opacity-50"
             >
               Retry
@@ -217,7 +217,7 @@ export function PromptCard({ prompt, active, onClick }: PromptCardProps) {
             <button
               type="button"
               disabled={action.isPending}
-              onClick={() => action.mutate({ runId: prompt.id, action: 'skip' })}
+              onClick={() => action.mutate({ runId: prompt.id, action: "skip" })}
               className="rounded-md px-2.5 py-1 text-[11px] border border-[color:var(--color-gold-subtle)] text-[color:var(--color-text-muted)] hover:text-[color:var(--color-gold-bright)] disabled:opacity-50"
             >
               Skip
@@ -225,7 +225,7 @@ export function PromptCard({ prompt, active, onClick }: PromptCardProps) {
             <button
               type="button"
               disabled={action.isPending}
-              onClick={() => action.mutate({ runId: prompt.id, action: 'approve-anyway' })}
+              onClick={() => action.mutate({ runId: prompt.id, action: "approve-anyway" })}
               className="rounded-md px-2.5 py-1 text-[11px] border border-[color:var(--color-danger)]/40 text-[color:var(--color-danger)] hover:bg-[color:var(--color-danger)]/10 disabled:opacity-50"
             >
               Approve anyway
@@ -260,12 +260,12 @@ export function PromptCard({ prompt, active, onClick }: PromptCardProps) {
 function formatDuration(startIso: string, endIso: string): string {
   const start = Date.parse(startIso);
   const end = Date.parse(endIso);
-  if (!Number.isFinite(start) || !Number.isFinite(end)) return '';
+  if (!Number.isFinite(start) || !Number.isFinite(end)) return "";
   const deltaSec = Math.max(0, Math.round((end - start) / 1000));
   if (deltaSec < 60) return `${deltaSec}s`;
   const m = Math.floor(deltaSec / 60);
   const s = deltaSec % 60;
-  if (m < 60) return `${m}m${s > 0 ? ` ${s}s` : ''}`;
+  if (m < 60) return `${m}m${s > 0 ? ` ${s}s` : ""}`;
   const h = Math.floor(m / 60);
   const mm = m % 60;
   return `${h}h ${mm}m`;

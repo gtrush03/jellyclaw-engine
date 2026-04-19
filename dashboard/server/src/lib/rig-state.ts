@@ -1,11 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import chokidar, { type FSWatcher } from "chokidar";
-import {
-  RIG_STATE_FILE,
-  RIG_SESSIONS_DIR,
-  assertInsideRepo,
-} from "./paths.js";
+import { RIG_STATE_FILE, RIG_SESSIONS_DIR, assertInsideRepo } from "./paths.js";
 import type { RigState, RunRecord } from "../types.js";
 
 /**
@@ -57,8 +53,7 @@ function coerceState(raw: unknown): RigState {
     }
   }
 
-  const heartbeat =
-    typeof r.rig_heartbeat === "string" ? r.rig_heartbeat : null;
+  const heartbeat = typeof r.rig_heartbeat === "string" ? r.rig_heartbeat : null;
   // The rig's README (`.autobuild/README.md`) writes `paused`, but the
   // dashboard brief asked us to surface it as `rig_paused`. Accept either —
   // prefer `rig_paused` if the rig ever adopts that name, fall back to `paused`.
@@ -73,13 +68,7 @@ function coerceState(raw: unknown): RigState {
   // with whatever the rig author bolts on.
   const extra: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(r)) {
-    if (
-      k === "runs" ||
-      k === "rig_heartbeat" ||
-      k === "rig_paused" ||
-      k === "paused"
-    )
-      continue;
+    if (k === "runs" || k === "rig_heartbeat" || k === "rig_paused" || k === "paused") continue;
     extra[k] = v;
   }
 
@@ -152,13 +141,9 @@ export function lastLoadedAt(): number {
  *
  * Returns an async close function.
  */
-export type RigWatchKind =
-  | { kind: "state" }
-  | { kind: "log"; runId: string; path: string };
+export type RigWatchKind = { kind: "state" } | { kind: "log"; runId: string; path: string };
 
-export function watchRigState(
-  onUpdate: (ev: RigWatchKind) => void,
-): () => Promise<void> {
+export function watchRigState(onUpdate: (ev: RigWatchKind) => void): () => Promise<void> {
   const watchers: FSWatcher[] = [];
 
   // --- state.json ---
@@ -256,10 +241,7 @@ export function diffRigState(
   const newStatuses: Record<string, string> = {};
   const prevRuns = prev.runs ?? {};
   const nextRuns = next.runs ?? {};
-  const allIds = new Set([
-    ...Object.keys(prevRuns),
-    ...Object.keys(nextRuns),
-  ]);
+  const allIds = new Set([...Object.keys(prevRuns), ...Object.keys(nextRuns)]);
   for (const id of allIds) {
     const p = prevRuns[id];
     const n = nextRuns[id];

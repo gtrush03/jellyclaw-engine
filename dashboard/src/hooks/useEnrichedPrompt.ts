@@ -1,7 +1,7 @@
-import { useMemo } from 'react';
-import { usePrompts } from '@/hooks/usePrompts';
-import { useRuns } from '@/hooks/useRuns';
-import { enrichPrompt, type EnrichedPrompt } from '@/lib/enrich-prompt';
+import { useMemo } from "react";
+import { usePrompts } from "@/hooks/usePrompts";
+import { useRuns } from "@/hooks/useRuns";
+import { enrichPrompt, type EnrichedPrompt } from "@/lib/enrich-prompt";
 
 /**
  * Merge a prompt (from `GET /api/prompts`) with its run record (from

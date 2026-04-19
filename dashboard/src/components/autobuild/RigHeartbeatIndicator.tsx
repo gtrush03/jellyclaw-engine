@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
-import { useRuns } from '@/hooks/useRuns';
-import { cn } from '@/lib/cn';
+import { useEffect, useState } from "react";
+import { useRuns } from "@/hooks/useRuns";
+import { cn } from "@/lib/cn";
 
 const STALE_THRESHOLD_SEC = 45; // amber once the heartbeat is older than this
 const DOWN_THRESHOLD_SEC = 180; // red once it's older than this
@@ -26,40 +26,40 @@ export function RigHeartbeatIndicator({ className }: { className?: string }) {
   const now = Date.now();
   const ageSec = hb ? Math.max(0, Math.round((now - Date.parse(hb)) / 1000)) : null;
 
-  let state: 'online' | 'stale' | 'down' = 'down';
-  let label = 'rig down';
-  let title = 'No heartbeat from the autobuild rig yet';
+  let state: "online" | "stale" | "down" = "down";
+  let label = "rig down";
+  let title = "No heartbeat from the autobuild rig yet";
 
   if (hb !== null && ageSec !== null && Number.isFinite(ageSec)) {
     if (ageSec < STALE_THRESHOLD_SEC) {
-      state = 'online';
-      label = 'rig online';
+      state = "online";
+      label = "rig online";
       title = `Heartbeat ${ageSec}s ago`;
     } else if (ageSec < DOWN_THRESHOLD_SEC) {
-      state = 'stale';
+      state = "stale";
       label = `rig stale ${ageSec}s`;
       title = `Heartbeat ${ageSec}s ago — expected <${STALE_THRESHOLD_SEC}s`;
     } else {
-      state = 'down';
+      state = "down";
       const mins = Math.round(ageSec / 60);
       label = `rig down ${mins}min`;
-      title = `Last heartbeat ${mins} minute${mins === 1 ? '' : 's'} ago`;
+      title = `Last heartbeat ${mins} minute${mins === 1 ? "" : "s"} ago`;
     }
   }
 
   const toneClass =
-    state === 'online'
-      ? 'text-[color:var(--color-success)] border-[color:var(--color-success)]/40 bg-[color:var(--color-success)]/10'
-      : state === 'stale'
-        ? 'text-[color:var(--color-warning)] border-[color:var(--color-warning)]/40 bg-[color:var(--color-warning)]/10'
-        : 'text-[color:var(--color-danger)] border-[color:var(--color-danger)]/40 bg-[color:var(--color-danger)]/10';
+    state === "online"
+      ? "text-[color:var(--color-success)] border-[color:var(--color-success)]/40 bg-[color:var(--color-success)]/10"
+      : state === "stale"
+        ? "text-[color:var(--color-warning)] border-[color:var(--color-warning)]/40 bg-[color:var(--color-warning)]/10"
+        : "text-[color:var(--color-danger)] border-[color:var(--color-danger)]/40 bg-[color:var(--color-danger)]/10";
 
   const dotClass =
-    state === 'online'
-      ? 'bg-[color:var(--color-success)]'
-      : state === 'stale'
-        ? 'bg-[color:var(--color-warning)]'
-        : 'bg-[color:var(--color-danger)]';
+    state === "online"
+      ? "bg-[color:var(--color-success)]"
+      : state === "stale"
+        ? "bg-[color:var(--color-warning)]"
+        : "bg-[color:var(--color-danger)]";
 
   return (
     <span
@@ -67,12 +67,12 @@ export function RigHeartbeatIndicator({ className }: { className?: string }) {
       title={title}
       aria-label={title}
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-mono uppercase tracking-[0.2em]',
+        "inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-mono uppercase tracking-[0.2em]",
         toneClass,
         className,
       )}
     >
-      <span aria-hidden className={cn('h-1.5 w-1.5 rounded-full', dotClass)} />
+      <span aria-hidden className={cn("h-1.5 w-1.5 rounded-full", dotClass)} />
       <span>{label}</span>
     </span>
   );

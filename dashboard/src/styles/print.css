@@ -59,16 +59,31 @@
   }
 
   /* Typography */
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     color: #000000 !important;
     page-break-after: avoid;
     break-after: avoid;
   }
-  h1 { font-size: 20pt; margin: 0 0 8pt; }
-  h2 { font-size: 15pt; margin: 16pt 0 6pt; }
-  h3 { font-size: 12.5pt; margin: 12pt 0 4pt; }
+  h1 {
+    font-size: 20pt;
+    margin: 0 0 8pt;
+  }
+  h2 {
+    font-size: 15pt;
+    margin: 16pt 0 6pt;
+  }
+  h3 {
+    font-size: 12.5pt;
+    margin: 12pt 0 4pt;
+  }
 
-  p, li {
+  p,
+  li {
     orphans: 3;
     widows: 3;
   }

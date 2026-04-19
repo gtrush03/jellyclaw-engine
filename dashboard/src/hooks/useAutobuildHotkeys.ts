@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import type { RigState, RunRecord } from '@/types';
+import { useEffect } from "react";
+import type { RigState, RunRecord } from "@/types";
 
 interface Handlers {
   onToggleStart: () => void;
@@ -36,72 +36,71 @@ export function useAutobuildHotkeys({ enabled, rig, selectedRunId, handlers }: O
       const target = e.target as HTMLElement | null;
       if (
         target &&
-        (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)
+        (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)
       ) {
         return;
       }
       if (e.metaKey || e.ctrlKey || e.altKey) return;
 
-      const selectedRun: RunRecord | null = selectedRunId && rig?.runs
-        ? rig.runs[selectedRunId] ?? null
-        : null;
+      const selectedRun: RunRecord | null =
+        selectedRunId && rig?.runs ? (rig.runs[selectedRunId] ?? null) : null;
 
       switch (e.key) {
-        case 's':
-        case 'S':
+        case "s":
+        case "S":
           e.preventDefault();
           handlers.onToggleStart();
           return;
-        case 'p':
-        case 'P':
+        case "p":
+        case "P":
           e.preventDefault();
           handlers.onTogglePause();
           return;
-        case 't':
-        case 'T':
+        case "t":
+        case "T":
           e.preventDefault();
           handlers.onTick();
           return;
-        case 'a':
-        case 'A':
+        case "a":
+        case "A":
           if (selectedRun?.needs_review && selectedRunId) {
             e.preventDefault();
             handlers.onApprove(selectedRunId);
           }
           return;
-        case 'r':
-        case 'R':
-          if (selectedRun?.status === 'escalated' && selectedRunId) {
+        case "r":
+        case "R":
+          if (selectedRun?.status === "escalated" && selectedRunId) {
             e.preventDefault();
             handlers.onRetry(selectedRunId);
           }
           return;
-        case 'x':
-        case 'X':
+        case "x":
+        case "X":
           if (selectedRun && selectedRunId && isAbortable(selectedRun)) {
             e.preventDefault();
             handlers.onAbort(selectedRunId);
           }
           return;
-        case 'k':
+        case "k":
           if (selectedRun && selectedRunId) {
             e.preventDefault();
             handlers.onSkip(selectedRunId);
           }
           return;
-        case 'j':
+        case "j":
           e.preventDefault();
           handlers.onMove(1);
           return;
-        case 'J':
+        case "J":
           e.preventDefault();
           handlers.onMove(-1);
           return;
-        case '?':
+        case "?":
           e.preventDefault();
           handlers.onShowHelp();
           return;
-        case 'Escape':
+        case "Escape":
           e.preventDefault();
           handlers.onEscape();
           return;
@@ -109,18 +108,18 @@ export function useAutobuildHotkeys({ enabled, rig, selectedRunId, handlers }: O
           return;
       }
     };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
   }, [enabled, rig, selectedRunId, handlers]);
 }
 
 function isAbortable(run: RunRecord): boolean {
   return (
-    run.status === 'working' ||
-    run.status === 'prompting' ||
-    run.status === 'spawning' ||
-    run.status === 'testing' ||
-    run.status === 'retrying' ||
-    run.status === 'completion_detected'
+    run.status === "working" ||
+    run.status === "prompting" ||
+    run.status === "spawning" ||
+    run.status === "testing" ||
+    run.status === "retrying" ||
+    run.status === "completion_detected"
   );
 }

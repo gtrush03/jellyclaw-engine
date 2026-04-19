@@ -1,11 +1,4 @@
-import {
-  forwardRef,
-  useCallback,
-  useImperativeHandle,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { forwardRef, useCallback, useImperativeHandle, useMemo, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
 
 export type PromptStatus = "not-started" | "in-progress" | "complete";
@@ -84,130 +77,124 @@ const STATUS_FILTERS: ReadonlyArray<{ id: PromptStatus | "all"; label: string }>
   { id: "complete", label: "Complete" },
 ];
 
-export const PromptSearch = forwardRef<PromptSearchHandle, PromptSearchProps>(
-  function PromptSearch(
-    { prompts, onResults, className = "", placeholder = "Search prompts…" },
+export const PromptSearch = forwardRef<PromptSearchHandle, PromptSearchProps>(function PromptSearch(
+  { prompts, onResults, className = "", placeholder = "Search prompts…" },
+  ref,
+) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [query, setQuery] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<PromptStatus | "all">("all");
+
+  useImperativeHandle(
     ref,
-  ) {
-    const inputRef = useRef<HTMLInputElement>(null);
-    const [query, setQuery] = useState<string>("");
-    const [statusFilter, setStatusFilter] = useState<PromptStatus | "all">("all");
+    () => ({
+      focus: () => inputRef.current?.focus(),
+      clear: () => {
+        setQuery("");
+        setStatusFilter("all");
+      },
+    }),
+    [],
+  );
 
-    useImperativeHandle(
-      ref,
-      () => ({
-        focus: () => inputRef.current?.focus(),
-        clear: () => {
-          setQuery("");
-          setStatusFilter("all");
-        },
-      }),
-      [],
-    );
+  const filtered = useMemo(() => {
+    const byStatus =
+      statusFilter === "all" ? prompts : prompts.filter((p) => p.status === statusFilter);
+    if (!query.trim()) return byStatus;
+    return byStatus
+      .map((p) => ({ p, score: scorePrompt(query.trim(), p) }))
+      .filter((x) => x.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .map((x) => x.p);
+  }, [prompts, query, statusFilter]);
 
-    const filtered = useMemo(() => {
-      const byStatus =
-        statusFilter === "all"
-          ? prompts
-          : prompts.filter((p) => p.status === statusFilter);
-      if (!query.trim()) return byStatus;
-      return byStatus
-        .map((p) => ({ p, score: scorePrompt(query.trim(), p) }))
-        .filter((x) => x.score > 0)
-        .sort((a, b) => b.score - a.score)
-        .map((x) => x.p);
-    }, [prompts, query, statusFilter]);
+  // Propagate results upward
+  const lastResultsRef = useRef<ReadonlyArray<SearchablePrompt> | null>(null);
+  if (lastResultsRef.current !== filtered) {
+    lastResultsRef.current = filtered;
+    queueMicrotask(() => onResults(filtered));
+  }
 
-    // Propagate results upward
-    const lastResultsRef = useRef<ReadonlyArray<SearchablePrompt> | null>(null);
-    if (lastResultsRef.current !== filtered) {
-      lastResultsRef.current = filtered;
-      queueMicrotask(() => onResults(filtered));
-    }
+  const handleChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
+    setQuery(e.target.value);
+  }, []);
 
-    const handleChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
-      setQuery(e.target.value);
-    }, []);
+  return (
+    <div
+      className={`sticky top-0 z-10 flex flex-col gap-2 px-3 py-2 ${className}`}
+      style={{
+        background: "rgba(5, 5, 5, 0.8)",
+        backdropFilter: "blur(12px)",
+        borderBottom: "1px solid rgba(146,132,102,0.15)",
+      }}
+    >
+      <label className="relative block">
+        <span className="sr-only">Search prompts</span>
+        <svg
+          viewBox="0 0 16 16"
+          width="14"
+          height="14"
+          aria-hidden="true"
+          className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2"
+        >
+          <circle cx="7" cy="7" r="5" fill="none" stroke="#928466" strokeWidth="1.4" />
+          <path d="M11 11 L14 14" stroke="#928466" strokeWidth="1.4" strokeLinecap="round" />
+        </svg>
+        <input
+          ref={inputRef}
+          type="text"
+          inputMode="search"
+          autoComplete="off"
+          spellCheck={false}
+          value={query}
+          onChange={handleChange}
+          placeholder={placeholder}
+          className="w-full rounded-lg py-1.5 pl-8 pr-16 text-sm outline-none transition-colors"
+          style={{
+            background: "rgba(146,132,102,0.05)",
+            border: "1px solid rgba(146,132,102,0.25)",
+            color: "#e8e6e1",
+            fontFamily: "Inter, ui-sans-serif",
+          }}
+        />
+        <kbd
+          className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 rounded-md px-1.5 py-0.5 text-[10px]"
+          style={{
+            color: "rgba(232,230,225,0.5)",
+            background: "rgba(146,132,102,0.08)",
+            border: "1px solid rgba(146,132,102,0.2)",
+            fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+          }}
+        >
+          ⌘K
+        </kbd>
+      </label>
 
-    return (
-      <div
-        className={`sticky top-0 z-10 flex flex-col gap-2 px-3 py-2 ${className}`}
-        style={{
-          background: "rgba(5, 5, 5, 0.8)",
-          backdropFilter: "blur(12px)",
-          borderBottom: "1px solid rgba(146,132,102,0.15)",
-        }}
-      >
-        <label className="relative block">
-          <span className="sr-only">Search prompts</span>
-          <svg
-            viewBox="0 0 16 16"
-            width="14"
-            height="14"
-            aria-hidden="true"
-            className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2"
-          >
-            <circle cx="7" cy="7" r="5" fill="none" stroke="#928466" strokeWidth="1.4" />
-            <path d="M11 11 L14 14" stroke="#928466" strokeWidth="1.4" strokeLinecap="round" />
-          </svg>
-          <input
-            ref={inputRef}
-            type="text"
-            inputMode="search"
-            autoComplete="off"
-            spellCheck={false}
-            value={query}
-            onChange={handleChange}
-            placeholder={placeholder}
-            className="w-full rounded-lg py-1.5 pl-8 pr-16 text-sm outline-none transition-colors"
-            style={{
-              background: "rgba(146,132,102,0.05)",
-              border: "1px solid rgba(146,132,102,0.25)",
-              color: "#e8e6e1",
-              fontFamily: "Inter, ui-sans-serif",
-            }}
-          />
-          <kbd
-            className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 rounded-md px-1.5 py-0.5 text-[10px]"
-            style={{
-              color: "rgba(232,230,225,0.5)",
-              background: "rgba(146,132,102,0.08)",
-              border: "1px solid rgba(146,132,102,0.2)",
-              fontFamily: "'JetBrains Mono', ui-monospace, monospace",
-            }}
-          >
-            ⌘K
-          </kbd>
-        </label>
-
-        <div className="flex flex-wrap gap-1.5">
-          {STATUS_FILTERS.map((f) => {
-            const active = statusFilter === f.id;
-            return (
-              <button
-                key={f.id}
-                type="button"
-                onClick={() => setStatusFilter(f.id)}
-                className="rounded-full px-2.5 py-0.5 text-[10px] uppercase tracking-wider transition-all"
-                style={{
-                  background: active
-                    ? "rgba(146,132,102,0.2)"
-                    : "rgba(146,132,102,0.04)",
-                  color: active ? "#d4bf8f" : "rgba(232,230,225,0.55)",
-                  border: active
-                    ? "1px solid rgba(146,132,102,0.6)"
-                    : "1px solid rgba(146,132,102,0.15)",
-                }}
-                aria-pressed={active}
-              >
-                {f.label}
-              </button>
-            );
-          })}
-        </div>
+      <div className="flex flex-wrap gap-1.5">
+        {STATUS_FILTERS.map((f) => {
+          const active = statusFilter === f.id;
+          return (
+            <button
+              key={f.id}
+              type="button"
+              onClick={() => setStatusFilter(f.id)}
+              className="rounded-full px-2.5 py-0.5 text-[10px] uppercase tracking-wider transition-all"
+              style={{
+                background: active ? "rgba(146,132,102,0.2)" : "rgba(146,132,102,0.04)",
+                color: active ? "#d4bf8f" : "rgba(232,230,225,0.55)",
+                border: active
+                  ? "1px solid rgba(146,132,102,0.6)"
+                  : "1px solid rgba(146,132,102,0.15)",
+              }}
+              aria-pressed={active}
+            >
+              {f.label}
+            </button>
+          );
+        })}
       </div>
-    );
-  },
-);
+    </div>
+  );
+});
 
 export default PromptSearch;

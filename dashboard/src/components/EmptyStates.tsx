@@ -17,21 +17,9 @@ const FG = "#e8e6e1";
 function Frame({ children }: { children: ReactNode }): ReactElement {
   // ASCII-style gold frame, rendered as SVG so it scales crisply.
   return (
-    <svg
-      viewBox="0 0 220 140"
-      width="220"
-      height="140"
-      role="img"
-      aria-hidden="true"
-    >
+    <svg viewBox="0 0 220 140" width="220" height="140" role="img" aria-hidden="true">
       {/* corners */}
-      <g
-        stroke={GOLD}
-        strokeWidth="1.2"
-        fill="none"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
+      <g stroke={GOLD} strokeWidth="1.2" fill="none" strokeLinecap="round" strokeLinejoin="round">
         <path d="M10 22 V10 H22" />
         <path d="M198 10 H210 V22" />
         <path d="M210 118 V130 H198" />
@@ -51,13 +39,7 @@ function NoPromptSvg(): ReactElement {
   return (
     <Frame>
       {/* stacked "cards" hinting at a list */}
-      <g
-        stroke={GOLD}
-        strokeWidth="1"
-        fill="none"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
+      <g stroke={GOLD} strokeWidth="1" fill="none" strokeLinecap="round" strokeLinejoin="round">
         <rect x="40" y="40" width="60" height="14" rx="2" opacity="0.9" />
         <rect x="40" y="60" width="60" height="14" rx="2" opacity="0.6" />
         <rect x="40" y="80" width="60" height="14" rx="2" opacity="0.35" />
@@ -95,13 +77,7 @@ function NoPromptSvg(): ReactElement {
 function NoPhasesSvg(): ReactElement {
   return (
     <Frame>
-      <g
-        stroke={GOLD}
-        strokeWidth="1"
-        fill="none"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
+      <g stroke={GOLD} strokeWidth="1" fill="none" strokeLinecap="round" strokeLinejoin="round">
         {/* empty grid */}
         <line x1="40" y1="50" x2="180" y2="50" strokeDasharray="2 4" />
         <line x1="40" y1="72" x2="180" y2="72" strokeDasharray="2 4" />
@@ -130,12 +106,7 @@ function ErrorSvg(): ReactElement {
         <path d="M110 58 V74" />
         <circle cx="110" cy="82" r="1.4" fill="#d66a5b" />
       </g>
-      <g
-        stroke={GOLD}
-        strokeWidth="0.8"
-        fill="none"
-        opacity="0.5"
-      >
+      <g stroke={GOLD} strokeWidth="0.8" fill="none" opacity="0.5">
         <path d="M68 120 L152 120" strokeDasharray="2 3" />
       </g>
     </Frame>

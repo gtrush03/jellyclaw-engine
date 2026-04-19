@@ -1,19 +1,19 @@
-import { useCallback, useMemo } from 'react';
-import { useRuns } from '@/hooks/useRuns';
-import { useRigProcess } from '@/hooks/useRigProcess';
-import { useRigControl } from '@/hooks/useRigControl';
-import { useRigAction } from '@/hooks/useRigAction';
-import { usePrompts } from '@/hooks/usePrompts';
-import type { Prompt, RunRecord } from '@/types';
-import type { RigAction } from '@/hooks/useRigAction';
-import { bucketize, tierCountsV4 } from './bucketize';
-import { useResetAction } from './useResetAction';
-import { StatusHeader } from './StatusHeader';
-import { TierTrack } from './TierTrack';
-import { NowCard } from './NowCard';
-import { UpNextList } from './UpNextList';
-import { DoneFeed } from './DoneFeed';
-import { EmptyState } from './EmptyState';
+import { useCallback, useMemo } from "react";
+import { useRuns } from "@/hooks/useRuns";
+import { useRigProcess } from "@/hooks/useRigProcess";
+import { useRigControl } from "@/hooks/useRigControl";
+import { useRigAction } from "@/hooks/useRigAction";
+import { usePrompts } from "@/hooks/usePrompts";
+import type { Prompt, RunRecord } from "@/types";
+import type { RigAction } from "@/hooks/useRigAction";
+import { bucketize, tierCountsV4 } from "./bucketize";
+import { useResetAction } from "./useResetAction";
+import { StatusHeader } from "./StatusHeader";
+import { TierTrack } from "./TierTrack";
+import { NowCard } from "./NowCard";
+import { UpNextList } from "./UpNextList";
+import { DoneFeed } from "./DoneFeed";
+import { EmptyState } from "./EmptyState";
 
 /**
  * Root of the autobuild-v4 surface. Pure layout + data binding — no real
@@ -40,10 +40,7 @@ export function AutobuildV4() {
   );
 
   const buckets = useMemo(() => bucketize(rig ?? null), [rig]);
-  const tierCounts = useMemo(
-    () => tierCountsV4(rig ?? null, prompts ?? null),
-    [rig, prompts],
-  );
+  const tierCounts = useMemo(() => tierCountsV4(rig ?? null, prompts ?? null), [rig, prompts]);
 
   const rigOnline = rigProcess?.running === true;
   const totalRuns = rig ? Object.keys(rig.runs).length : 0;
@@ -96,7 +93,7 @@ export function AutobuildV4() {
     if (prompts) {
       for (const p of prompts) {
         m.set(p.id, p);
-        const short = p.id.includes('/') ? (p.id.split('/').pop() ?? p.id) : p.id;
+        const short = p.id.includes("/") ? (p.id.split("/").pop() ?? p.id) : p.id;
         if (short !== p.id) m.set(short, p);
       }
     }
@@ -109,19 +106,19 @@ export function AutobuildV4() {
   // as separate handlers rather than a single `onAction(cmd)` dispatcher.
   const onAbortRun = useCallback(
     (runId: string) => {
-      void onAction('abort', runId);
+      void onAction("abort", runId);
     },
     [onAction],
   );
   const onSkipRun = useCallback(
     (runId: string) => {
-      void onAction('skip', runId);
+      void onAction("skip", runId);
     },
     [onAction],
   );
   const onTellRun = useCallback(
     (runId: string, message: string) => {
-      void onAction('approve', runId, { message });
+      void onAction("approve", runId, { message });
     },
     [onAction],
   );
@@ -129,19 +126,19 @@ export function AutobuildV4() {
   // Escalation actions for UpNextList (retry / skip / approve-anyway).
   const onRetryEsc = useCallback(
     (runId: string) => {
-      void onAction('retry', runId);
+      void onAction("retry", runId);
     },
     [onAction],
   );
   const onSkipEsc = useCallback(
     (runId: string) => {
-      void onAction('skip', runId);
+      void onAction("skip", runId);
     },
     [onAction],
   );
   const onApproveAnywayEsc = useCallback(
     (runId: string) => {
-      void onAction('approve-anyway', runId);
+      void onAction("approve-anyway", runId);
     },
     [onAction],
   );
@@ -167,8 +164,7 @@ export function AutobuildV4() {
   // escalated in UpNextList's red section so the user can Retry / Skip /
   // Approve-Anyway. The rig will otherwise keep auto-retrying silently.
   const escalatedRows = useMemo(
-    () =>
-      [...buckets.escalated, ...buckets.failed].filter(hasRun).map(toRunIdPair),
+    () => [...buckets.escalated, ...buckets.failed].filter(hasRun).map(toRunIdPair),
     [buckets.escalated, buckets.failed],
   );
   const completedRows = useMemo(
@@ -185,23 +181,19 @@ export function AutobuildV4() {
   // a UI-level reject to `skip` — same "move past this run" semantics.
   const onApproveDone = useCallback(
     (runId: string) => {
-      void onAction('approve', runId);
+      void onAction("approve", runId);
     },
     [onAction],
   );
   const onRejectDone = useCallback(
     (runId: string) => {
-      void onAction('skip', runId);
+      void onAction("skip", runId);
     },
     [onAction],
   );
 
   return (
-    <main
-      className="flex-1 overflow-y-auto overflow-x-hidden"
-      data-v4-root
-      aria-label="Autobuild"
-    >
+    <main className="flex-1 overflow-y-auto overflow-x-hidden" data-v4-root aria-label="Autobuild">
       <div className="mx-auto max-w-[880px] px-6 py-8 space-y-8">
         <StatusHeader
           rigProcess={rigProcess ?? null}
@@ -220,11 +212,7 @@ export function AutobuildV4() {
           <EmptyState onStart={onStart} />
         ) : (
           <>
-            <TierTrack
-              tierCounts={tierCounts}
-              totalDone={totalDone}
-              totalAll={totalAll}
-            />
+            <TierTrack tierCounts={tierCounts} totalDone={totalDone} totalAll={totalAll} />
 
             <NowCard
               run={nowRun}

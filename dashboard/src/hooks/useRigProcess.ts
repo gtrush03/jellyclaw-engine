@@ -1,7 +1,7 @@
-import { useQuery } from '@tanstack/react-query';
-import { api } from '@/lib/api';
-import { useRuns } from '@/hooks/useRuns';
-import type { RigProcessStatus } from '@/types';
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/api";
+import { useRuns } from "@/hooks/useRuns";
+import type { RigProcessStatus } from "@/types";
 
 /**
  * Tracks the autobuild daemon's process supervision status. Pulls from
@@ -23,13 +23,13 @@ export function useRigProcess() {
       : null;
 
   return useQuery<RigProcessStatus>({
-    queryKey: ['rig', 'running'],
+    queryKey: ["rig", "running"],
     queryFn: async () => {
       try {
         return await api.rigRunning();
       } catch {
         if (fallback) return fallback;
-        throw new Error('rig-process endpoint unavailable and no snapshot fallback');
+        throw new Error("rig-process endpoint unavailable and no snapshot fallback");
       }
     },
     staleTime: 5_000,

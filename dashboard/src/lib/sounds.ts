@@ -17,8 +17,7 @@ function getCtx(): AudioContext | null {
   // Safari: webkitAudioContext fallback
   const Ctor =
     window.AudioContext ??
-    (window as unknown as { webkitAudioContext?: typeof AudioContext })
-      .webkitAudioContext;
+    (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
   if (!Ctor) return null;
   try {
     ctx = new Ctor();
@@ -62,13 +61,7 @@ interface ChirpOptions {
   volume?: number; // 0..1
 }
 
-function chirp({
-  freq,
-  endFreq,
-  duration,
-  type = "sine",
-  volume = 0.08,
-}: ChirpOptions): void {
+function chirp({ freq, endFreq, duration, type = "sine", volume = 0.08 }: ChirpOptions): void {
   if (!readEnabled()) return;
   const audio = getCtx();
   if (!audio) return;
@@ -85,10 +78,7 @@ function chirp({
   osc.type = type;
   osc.frequency.setValueAtTime(freq, now);
   if (endFreq !== undefined) {
-    osc.frequency.exponentialRampToValueAtTime(
-      Math.max(40, endFreq),
-      now + duration,
-    );
+    osc.frequency.exponentialRampToValueAtTime(Math.max(40, endFreq), now + duration);
   }
 
   gain.gain.setValueAtTime(0, now);

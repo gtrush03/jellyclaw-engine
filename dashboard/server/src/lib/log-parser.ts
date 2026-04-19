@@ -13,7 +13,7 @@ export interface CompletionLogParsed {
 const PHASE_CHECK_RE = /^- \[( |x|X)\]\s*(?:🟡\s*|✅\s*)?Phase\s+(\d+(?:\.\d+)?)\b/;
 // "[██░░...] 3/21 phases complete (15%)"
 const PROGRESS_RE = /(\d+)\s*\/\s*(\d+)\s+phases\s+complete/i;
-const CURRENT_PHASE_RE = /\*\*Current phase:\*\*\s*(.+?)\s*$/mi;
+const CURRENT_PHASE_RE = /\*\*Current phase:\*\*\s*(.+?)\s*$/im;
 
 /**
  * Parse COMPLETION-LOG.md into structured state. Resilient to missing sections.
@@ -59,13 +59,9 @@ export async function parseCompletionLog(): Promise<CompletionLogParsed> {
   }
   for (let i = 0; i < sectionStarts.length; i++) {
     const { phase: num, start } = sectionStarts[i];
-    const end =
-      i + 1 < sectionStarts.length ? sectionStarts[i + 1].start : raw.length;
+    const end = i + 1 < sectionStarts.length ? sectionStarts[i + 1].start : raw.length;
     const section = raw.slice(start, end);
-    if (
-      /\*\*Status:\*\*\s*🔄\s*In progress/i.test(section) &&
-      phaseStatus[num] !== "complete"
-    ) {
+    if (/\*\*Status:\*\*\s*🔄\s*In progress/i.test(section) && phaseStatus[num] !== "complete") {
       phaseStatus[num] = "in-progress";
     }
   }
@@ -93,7 +89,7 @@ export async function parseCompletionLog(): Promise<CompletionLogParsed> {
 }
 
 function parseSessionLog(raw: string): SessionLogRow[] {
-  const idx = raw.search(/^##\s+Session\s+log/mi);
+  const idx = raw.search(/^##\s+Session\s+log/im);
   if (idx < 0) return [];
   const tail = raw.slice(idx);
   const lines = tail.split("\n");
@@ -175,8 +171,8 @@ export async function parseStatus(): Promise<StatusParsed> {
     };
   }
 
-  const lastUpdatedMatch = raw.match(/\*\*Last updated:\*\*\s*(.+?)\s*$/mi);
-  const currentPhaseMatch = raw.match(/\*\*Current phase:\*\*\s*(.+?)\s*$/mi);
+  const lastUpdatedMatch = raw.match(/\*\*Last updated:\*\*\s*(.+?)\s*$/im);
+  const currentPhaseMatch = raw.match(/\*\*Current phase:\*\*\s*(.+?)\s*$/im);
 
   // Tests table: rows like "| Unit tests passing | 6 |"
   const testsPassing = parseTableInt(raw, /unit tests passing/i);
@@ -218,9 +214,7 @@ function parseTableInt(raw: string, labelRe: RegExp): number {
  */
 export async function buildStatusSnapshot(): Promise<StatusSnapshot> {
   const [clog, stat] = await Promise.all([parseCompletionLog(), parseStatus()]);
-  const blockers = Array.from(
-    new Set([...(clog.blockers ?? []), ...(stat.blockers ?? [])]),
-  );
+  const blockers = Array.from(new Set([...(clog.blockers ?? []), ...(stat.blockers ?? [])]));
   return {
     lastUpdated: stat.lastUpdated,
     currentPhase: stat.currentPhase ?? clog.currentPhase,

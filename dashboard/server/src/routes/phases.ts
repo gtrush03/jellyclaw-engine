@@ -6,12 +6,7 @@ import { z } from "zod";
 import { PHASES_DIR, assertInsideRepo } from "../lib/paths.js";
 import { parseAllPrompts, toSummary } from "../lib/prompt-parser.js";
 import { parseCompletionLog } from "../lib/log-parser.js";
-import type {
-  PhaseDetail,
-  PhaseStatus,
-  PhaseSummary,
-  PromptSummary,
-} from "../types.js";
+import type { PhaseDetail, PhaseStatus, PhaseSummary, PromptSummary } from "../types.js";
 
 export const phaseRoutes = new Hono();
 
@@ -107,10 +102,7 @@ phaseRoutes.get("/phases", async (c) => {
     ]);
     const byPhase = new Map<string, PromptSummary[]>();
     for (const p of prompts) {
-      const summary = toSummary(
-        p,
-        clog.phaseStatus[p.phase] ?? "not-started",
-      );
+      const summary = toSummary(p, clog.phaseStatus[p.phase] ?? "not-started");
       const list = byPhase.get(p.phase) ?? [];
       list.push(summary);
       byPhase.set(p.phase, list);

@@ -14,9 +14,9 @@
  *
  * If the backend ever changes shape, these schemas are the single place to update.
  */
-import { z } from 'zod';
+import { z } from "zod";
 
-export const PhaseStatusSchema = z.enum(['not-started', 'in-progress', 'complete']);
+export const PhaseStatusSchema = z.enum(["not-started", "in-progress", "complete"]);
 export type PhaseStatus = z.infer<typeof PhaseStatusSchema>;
 
 // ---------------------------------------------------------------------------
@@ -121,11 +121,11 @@ export type Status = z.infer<typeof StatusSchema>;
 // ---------------------------------------------------------------------------
 
 export const ServerEventNameSchema = z.enum([
-  'completion-log-changed',
-  'status-changed',
-  'prompt-added',
-  'prompt-changed',
-  'heartbeat',
+  "completion-log-changed",
+  "status-changed",
+  "prompt-added",
+  "prompt-changed",
+  "heartbeat",
 ]);
 export type ServerEventName = z.infer<typeof ServerEventNameSchema>;
 
@@ -147,10 +147,10 @@ export class ApiSchemaError extends Error {
   constructor(endpoint: string, issues: z.ZodIssue[]) {
     super(
       `API schema mismatch at ${endpoint}: ${issues
-        .map((i) => `${i.path.join('.') || '<root>'}: ${i.message}`)
-        .join('; ')}`,
+        .map((i) => `${i.path.join(".") || "<root>"}: ${i.message}`)
+        .join("; ")}`,
     );
-    this.name = 'ApiSchemaError';
+    this.name = "ApiSchemaError";
     this.endpoint = endpoint;
     this.issues = issues;
   }
@@ -160,11 +160,7 @@ export class ApiSchemaError extends Error {
  * Parses `data` with `schema`, throwing `ApiSchemaError` with a useful message on failure.
  * Keeps Zod errors from leaking into UI components.
  */
-export function parseApi<T>(
-  schema: z.ZodType<T>,
-  endpoint: string,
-  data: unknown,
-): T {
+export function parseApi<T>(schema: z.ZodType<T>, endpoint: string, data: unknown): T {
   const parsed = schema.safeParse(data);
   if (!parsed.success) {
     throw new ApiSchemaError(endpoint, parsed.error.issues);

@@ -1,4 +1,4 @@
-import { cn } from '@/lib/cn';
+import { cn } from "@/lib/cn";
 
 export interface TierTrackProps {
   /**
@@ -41,21 +41,11 @@ export function TierTrack({ tierCounts, totalDone, totalAll }: TierTrackProps) {
   );
 }
 
-function TierSegment({
-  tier,
-  done,
-  total,
-}: {
-  tier: number;
-  done: number;
-  total: number;
-}) {
+function TierSegment({ tier, done, total }: { tier: number; done: number; total: number }) {
   const empty = total === 0;
   const filled = total > 0 && done === total;
   const pct = total === 0 ? 0 : Math.round((done / total) * 100);
-  const tooltip = empty
-    ? `T${tier} · no prompts`
-    : `T${tier} · ${done}/${total} (${pct}%)`;
+  const tooltip = empty ? `T${tier} · no prompts` : `T${tier} · ${done}/${total} (${pct}%)`;
 
   return (
     <div
@@ -70,10 +60,10 @@ function TierSegment({
       <div className="flex items-center justify-between font-mono text-[10px] tabular-nums">
         <span
           className={cn(
-            'uppercase tracking-wider',
+            "uppercase tracking-wider",
             filled
-              ? 'text-[color:var(--color-gold-bright)]'
-              : 'text-[color:var(--color-text-muted)]',
+              ? "text-[color:var(--color-gold-bright)]"
+              : "text-[color:var(--color-text-muted)]",
           )}
         >
           T{tier}
@@ -81,8 +71,8 @@ function TierSegment({
         <span
           className={cn(
             filled
-              ? 'text-[color:var(--color-gold-bright)]'
-              : 'text-[color:var(--color-text-muted)]',
+              ? "text-[color:var(--color-gold-bright)]"
+              : "text-[color:var(--color-text-muted)]",
           )}
         >
           {done}/{total}
@@ -90,18 +80,16 @@ function TierSegment({
       </div>
       <div
         className={cn(
-          'relative rounded-full overflow-hidden h-[5px]',
+          "relative rounded-full overflow-hidden h-[5px]",
           empty
-            ? 'bg-transparent border border-dashed border-[color:var(--color-gold-subtle)]'
-            : 'bg-[color:var(--color-gold-faint)]',
+            ? "bg-transparent border border-dashed border-[color:var(--color-gold-subtle)]"
+            : "bg-[color:var(--color-gold-faint)]",
         )}
       >
         <div
           className={cn(
-            'absolute inset-y-0 left-0 transition-[width] duration-500 ease-out motion-reduce:transition-none',
-            filled
-              ? 'bg-[color:var(--color-gold-bright)]'
-              : 'bg-[color:var(--color-gold)]',
+            "absolute inset-y-0 left-0 transition-[width] duration-500 ease-out motion-reduce:transition-none",
+            filled ? "bg-[color:var(--color-gold-bright)]" : "bg-[color:var(--color-gold)]",
           )}
           style={{ width: `${pct}%` }}
         />

@@ -5,14 +5,8 @@ import { z } from "zod";
 import { createSession } from "better-sse";
 import chokidar, { type FSWatcher } from "chokidar";
 import type { IncomingMessage, ServerResponse } from "node:http";
-import {
-  ORCHESTRATOR_INBOX,
-  RIG_SESSIONS_DIR,
-} from "../lib/paths.js";
-import {
-  loadRigState,
-  classifyHeartbeat,
-} from "../lib/rig-state.js";
+import { ORCHESTRATOR_INBOX, RIG_SESSIONS_DIR } from "../lib/paths.js";
+import { loadRigState, classifyHeartbeat } from "../lib/rig-state.js";
 import { getRigProcessInfo } from "./rig-control.js";
 import type {
   RigAction,
@@ -58,8 +52,7 @@ const RunIdParam = z
   // Session ids are the rig's choice; keep the filter permissive but block
   // anything that could traverse the sessions dir.
   .regex(/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/, {
-    message:
-      "run id must be alphanumeric with dots / dashes / underscores",
+    message: "run id must be alphanumeric with dots / dashes / underscores",
   });
 
 function toRunSummary(id: string, r: RunRecord): RunSummary {
@@ -79,10 +72,7 @@ function sortRuns(runs: Record<string, RunRecord>): RunSummary[] {
     });
 }
 
-async function readLastLines(
-  absPath: string,
-  maxLines: number,
-): Promise<string[]> {
+async function readLastLines(absPath: string, maxLines: number): Promise<string[]> {
   // Caller guarantees the path came from either:
   //   (a) the rig's state.json `log_path` (trusted source), or
   //   (b) `path.join(sessionsDir, <regex-validated session_id>, 'tmux.log')`.
@@ -108,10 +98,7 @@ function isoTsSafe(): string {
   return new Date().toISOString().replace(/[:.]/g, "-");
 }
 
-async function writeActionToInbox(
-  inboxDir: string,
-  action: RigAction,
-): Promise<string> {
+async function writeActionToInbox(inboxDir: string, action: RigAction): Promise<string> {
   await fs.mkdir(inboxDir, { recursive: true });
   const filename = `${isoTsSafe()}-${action.cmd}.json`;
   const full = path.join(inboxDir, filename);
@@ -162,7 +149,11 @@ export function createRunsRoute(opts: RunsRouteOptions = {}): Hono {
         paused: state.rig_paused ?? false,
         rig_paused: state.rig_paused ?? false,
         halted: state.halted ?? false,
-        daily_budget_usd: state.daily_budget_usd ?? { spent: 0, cap: 25, day: new Date().toISOString().slice(0, 10) },
+        daily_budget_usd: state.daily_budget_usd ?? {
+          spent: 0,
+          cap: 25,
+          day: new Date().toISOString().slice(0, 10),
+        },
         runs: runsRecord,
         queue: state.queue ?? [],
         completed: state.completed ?? [],
@@ -184,10 +175,7 @@ export function createRunsRoute(opts: RunsRouteOptions = {}): Hono {
   app.get("/runs/:id", async (c) => {
     const idParse = RunIdParam.safeParse(c.req.param("id"));
     if (!idParse.success) {
-      return c.json(
-        { error: "invalid run id", issues: idParse.error.issues },
-        400,
-      );
+      return c.json({ error: "invalid run id", issues: idParse.error.issues }, 400);
     }
     const runId = idParse.data;
 
@@ -235,10 +223,7 @@ export function createRunsRoute(opts: RunsRouteOptions = {}): Hono {
   app.get("/runs/:id/events", async (c) => {
     const idParse = RunIdParam.safeParse(c.req.param("id"));
     if (!idParse.success) {
-      return c.json(
-        { error: "invalid run id", issues: idParse.error.issues },
-        400,
-      );
+      return c.json({ error: "invalid run id", issues: idParse.error.issues }, 400);
     }
     const runId = idParse.data;
     const env = c.env as {
@@ -365,9 +350,7 @@ export function createRunsRoute(opts: RunsRouteOptions = {}): Hono {
             console.error(`[run-events ${runId}] tail read failed:`, err);
           }
         });
-        watcher.on("error", (err) =>
-          console.error(`[run-events ${runId}] watcher error:`, err),
-        );
+        watcher.on("error", (err) => console.error(`[run-events ${runId}] watcher error:`, err));
       } catch (err) {
         console.error(`[run-events ${runId}] watch setup failed:`, err);
       }
@@ -398,10 +381,7 @@ export function createRunsRoute(opts: RunsRouteOptions = {}): Hono {
   app.post("/runs/:id/action", async (c) => {
     const idParse = RunIdParam.safeParse(c.req.param("id"));
     if (!idParse.success) {
-      return c.json(
-        { error: "invalid run id", issues: idParse.error.issues },
-        400,
-      );
+      return c.json({ error: "invalid run id", issues: idParse.error.issues }, 400);
     }
     const runId = idParse.data;
 
@@ -413,10 +393,7 @@ export function createRunsRoute(opts: RunsRouteOptions = {}): Hono {
     }
     const parsed = ActionBodySchema.safeParse(body);
     if (!parsed.success) {
-      return c.json(
-        { error: "invalid action body", issues: parsed.error.issues },
-        400,
-      );
+      return c.json({ error: "invalid action body", issues: parsed.error.issues }, 400);
     }
 
     const cmd: RigActionCmd = parsed.data.action;
@@ -451,8 +428,7 @@ export function createRunsRoute(opts: RunsRouteOptions = {}): Hono {
         // Pass through any extra rig-level fields the rig decided to write.
         ...Object.fromEntries(
           Object.entries(state).filter(
-            ([k]) =>
-              k !== "runs" && k !== "rig_heartbeat" && k !== "rig_paused",
+            ([k]) => k !== "runs" && k !== "rig_heartbeat" && k !== "rig_paused",
           ),
         ),
       });

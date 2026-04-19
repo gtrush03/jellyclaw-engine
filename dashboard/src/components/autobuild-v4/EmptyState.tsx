@@ -1,4 +1,4 @@
-import { Play } from 'lucide-react';
+import { Play } from "lucide-react";
 
 export interface EmptyStateProps {
   onStart: () => void;
@@ -19,8 +19,8 @@ export function EmptyState({ onStart }: EmptyStateProps) {
           Press Start
         </h2>
         <p className="mt-2 text-[12px] text-[color:var(--color-text-muted)] max-w-xs mx-auto leading-relaxed">
-          The rig is offline. Starting will spawn the dispatcher daemon and
-          begin working the queued fix prompts.
+          The rig is offline. Starting will spawn the dispatcher daemon and begin working the queued
+          fix prompts.
         </p>
       </div>
       <button

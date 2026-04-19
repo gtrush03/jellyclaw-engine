@@ -1,16 +1,16 @@
-import { useEffect } from 'react';
-import { Header } from '@/components/Header';
-import { PhaseSidebar } from '@/components/PhaseSidebar';
-import { PromptList } from '@/components/PromptList';
-import { PromptViewer } from '@/components/PromptViewer';
-import AutobuildV4Page from '@/pages/AutobuildV4Page';
-import { useSSE } from '@/hooks/useSSE';
-import { useRuns } from '@/hooks/useRuns';
-import { useHashRoute } from '@/hooks/useHashRoute';
-import { useDashboardStore } from '@/store/dashboard';
-import { usePrompts } from '@/hooks/usePrompts';
-import { cn } from '@/lib/cn';
-import '@/styles/autobuild-v3.css';
+import { useEffect } from "react";
+import { Header } from "@/components/Header";
+import { PhaseSidebar } from "@/components/PhaseSidebar";
+import { PromptList } from "@/components/PromptList";
+import { PromptViewer } from "@/components/PromptViewer";
+import AutobuildV4Page from "@/pages/AutobuildV4Page";
+import { useSSE } from "@/hooks/useSSE";
+import { useRuns } from "@/hooks/useRuns";
+import { useHashRoute } from "@/hooks/useHashRoute";
+import { useDashboardStore } from "@/store/dashboard";
+import { usePrompts } from "@/hooks/usePrompts";
+import { cn } from "@/lib/cn";
+import "@/styles/autobuild-v3.css";
 
 export default function App() {
   useSSE();
@@ -31,8 +31,7 @@ export default function App() {
   // (or any other non-empty non-autobuild route) falls back to the legacy
   // phases browser.
   const { route } = useHashRoute();
-  const onAutobuildV4 =
-    route === 'autobuild-v4' || route === 'autobuild' || route === '';
+  const onAutobuildV4 = route === "autobuild-v4" || route === "autobuild" || route === "";
 
   const { data: prompts } = usePrompts();
 
@@ -42,10 +41,13 @@ export default function App() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
-      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+      if (
+        target &&
+        (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)
+      ) {
         return;
       }
-      if (e.key === 'Escape') {
+      if (e.key === "Escape") {
         if (selectedRunId) {
           setSelectedRunId(null);
           return;
@@ -54,18 +56,18 @@ export default function App() {
         return;
       }
       if (!prompts || prompts.length === 0) return;
-      if (e.key === 'j' || e.key === 'k') {
+      if (e.key === "j" || e.key === "k") {
         e.preventDefault();
         const idx = selectedPromptId ? prompts.findIndex((p) => p.id === selectedPromptId) : -1;
         let next = idx;
-        if (e.key === 'j') next = idx < 0 ? 0 : Math.min(prompts.length - 1, idx + 1);
-        if (e.key === 'k') next = idx < 0 ? 0 : Math.max(0, idx - 1);
+        if (e.key === "j") next = idx < 0 ? 0 : Math.min(prompts.length - 1, idx + 1);
+        if (e.key === "k") next = idx < 0 ? 0 : Math.max(0, idx - 1);
         const target = prompts[next];
         if (target) setSelectedPromptId(target.id);
       }
     };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
   }, [
     prompts,
     selectedPromptId,
@@ -92,8 +94,8 @@ export default function App() {
           </main>
           <aside
             className={cn(
-              'shrink-0 border-l hairline overflow-hidden transition-[width] duration-200 ease-out',
-              viewerOpen ? 'w-[520px]' : 'w-0',
+              "shrink-0 border-l hairline overflow-hidden transition-[width] duration-200 ease-out",
+              viewerOpen ? "w-[520px]" : "w-0",
             )}
             aria-hidden={!viewerOpen}
           >

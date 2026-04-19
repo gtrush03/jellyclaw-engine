@@ -1,9 +1,9 @@
-import { Check, X } from 'lucide-react';
-import type { RunRecord } from '@/types';
-import { cn } from '@/lib/cn';
+import { Check, X } from "lucide-react";
+import type { RunRecord } from "@/types";
+import { cn } from "@/lib/cn";
 
 interface SelfCheckBadgeProps {
-  selfCheck: RunRecord['self_check'];
+  selfCheck: RunRecord["self_check"];
   className?: string;
 }
 
@@ -17,7 +17,7 @@ interface SelfCheckBadgeProps {
 export function SelfCheckBadge({ selfCheck, className }: SelfCheckBadgeProps) {
   if (!selfCheck) return null;
 
-  const isContinue = selfCheck.decision === 'continue';
+  const isContinue = selfCheck.decision === "continue";
   const title = `self-check: ${selfCheck.decision} — ${selfCheck.reason} · $${selfCheck.cost_at_gate.toFixed(2)} at gate`;
 
   return (
@@ -25,10 +25,10 @@ export function SelfCheckBadge({ selfCheck, className }: SelfCheckBadgeProps) {
       title={title}
       aria-label={title}
       className={cn(
-        'inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-mono',
+        "inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-mono",
         isContinue
-          ? 'text-[color:var(--color-gold-bright)] border-[color:var(--color-gold-subtle)] bg-[color:var(--color-gold-faint)]'
-          : 'text-[color:var(--color-danger)] border-[color:var(--color-danger)]/40 bg-[color:var(--color-danger)]/10',
+          ? "text-[color:var(--color-gold-bright)] border-[color:var(--color-gold-subtle)] bg-[color:var(--color-gold-faint)]"
+          : "text-[color:var(--color-danger)] border-[color:var(--color-danger)]/40 bg-[color:var(--color-danger)]/10",
         className,
       )}
     >

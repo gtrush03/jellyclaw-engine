@@ -1,18 +1,18 @@
-import { useMemo } from 'react';
-import { Activity, Beaker, DollarSign, Wifi, WifiOff, Layers, Radio } from 'lucide-react';
-import { useStatus } from '@/hooks/useStatus';
-import { usePrompts } from '@/hooks/usePrompts';
-import { useRuns } from '@/hooks/useRuns';
-import { useDashboardStore } from '@/store/dashboard';
-import { useHashRoute } from '@/hooks/useHashRoute';
-import type { Tier } from '@/types';
-import { StatusBadge } from './StatusBadge';
-import { ProgressBar } from './ProgressBar';
-import { RigHeartbeatIndicator } from './autobuild/RigHeartbeatIndicator';
-import { TierStrip } from './autobuild/TierStrip';
-import type { TierCounts } from './autobuild/TierStrip';
-import { UNFUCKING_V2_PHASE_ID } from './PhaseSidebar';
-import { cn } from '@/lib/cn';
+import { useMemo } from "react";
+import { Activity, Beaker, DollarSign, Wifi, WifiOff, Layers, Radio } from "lucide-react";
+import { useStatus } from "@/hooks/useStatus";
+import { usePrompts } from "@/hooks/usePrompts";
+import { useRuns } from "@/hooks/useRuns";
+import { useDashboardStore } from "@/store/dashboard";
+import { useHashRoute } from "@/hooks/useHashRoute";
+import type { Tier } from "@/types";
+import { StatusBadge } from "./StatusBadge";
+import { ProgressBar } from "./ProgressBar";
+import { RigHeartbeatIndicator } from "./autobuild/RigHeartbeatIndicator";
+import { TierStrip } from "./autobuild/TierStrip";
+import type { TierCounts } from "./autobuild/TierStrip";
+import { UNFUCKING_V2_PHASE_ID } from "./PhaseSidebar";
+import { cn } from "@/lib/cn";
 
 const TIERS: Tier[] = [0, 1, 2, 3, 4];
 
@@ -25,12 +25,11 @@ export function Header() {
   // v4 is the canonical autobuild surface. `#/autobuild-v4`, `#/autobuild`,
   // and the empty default route all resolve here. `#/phases` (or any other
   // non-empty non-autobuild route) falls back to the phases browser.
-  const onAutobuild =
-    route === 'autobuild-v4' || route === 'autobuild' || route === '';
+  const onAutobuild = route === "autobuild-v4" || route === "autobuild" || route === "";
   const onPhases = !onAutobuild;
 
   const total = prompts?.length ?? 0;
-  const completed = prompts?.filter((p) => p.status === 'complete').length ?? 0;
+  const completed = prompts?.filter((p) => p.status === "complete").length ?? 0;
   const currentPhase = status?.currentPhase ?? 0;
   const progress = status?.progressPercent ?? 0;
   const burnRate = status?.burnRateTotal ?? 0;
@@ -48,7 +47,7 @@ export function Header() {
       const bucket = out[p.tier];
       if (!bucket) continue;
       bucket.total += 1;
-      if (p.status === 'complete') bucket.done += 1;
+      if (p.status === "complete") bucket.done += 1;
     }
     return out;
   }, [prompts]);
@@ -59,7 +58,9 @@ export function Header() {
   const runningCount = useMemo(() => {
     if (!rig) return 0;
     return Object.values(rig.runs).filter((r) =>
-      ['working', 'prompting', 'spawning', 'testing', 'retrying', 'completion_detected'].includes(r.status),
+      ["working", "prompting", "spawning", "testing", "retrying", "completion_detected"].includes(
+        r.status,
+      ),
     ).length;
   }, [rig]);
 
@@ -96,13 +97,13 @@ export function Header() {
           >
             <HeaderTab
               active={onPhases}
-              onClick={() => setRoute('phases')}
+              onClick={() => setRoute("phases")}
               icon={<Layers className="w-3 h-3" />}
               label="Phases"
             />
             <HeaderTab
               active={onAutobuild}
-              onClick={() => setRoute('autobuild-v4')}
+              onClick={() => setRoute("autobuild-v4")}
               icon={<Radio className="w-3 h-3" />}
               label="Autobuild"
               accent={runningCount > 0}
@@ -119,17 +120,18 @@ export function Header() {
           {onPhases && (
             <>
               <StatusBadge tone="gold" icon={<Activity className="w-3 h-3" />}>
-                Phase {String(currentPhase).padStart(2, '0')} · {completed}/{total} · {Math.round(progress)}%
+                Phase {String(currentPhase).padStart(2, "0")} · {completed}/{total} ·{" "}
+                {Math.round(progress)}%
               </StatusBadge>
               <StatusBadge tone="neutral" icon={<DollarSign className="w-3 h-3" />}>
                 ${burnRate.toFixed(2)}
               </StatusBadge>
               <StatusBadge
-                tone={testsFailing > 0 ? 'danger' : testsPassing > 0 ? 'success' : 'neutral'}
+                tone={testsFailing > 0 ? "danger" : testsPassing > 0 ? "success" : "neutral"}
                 icon={<Beaker className="w-3 h-3" />}
               >
                 {testsTotal === 0
-                  ? '0 tests'
+                  ? "0 tests"
                   : testsFailing === 0
                     ? `✓${testsPassing}`
                     : `✓${testsPassing} ✗${testsFailing}`}
@@ -138,16 +140,10 @@ export function Header() {
             </>
           )}
           <StatusBadge
-            tone={sseConnected ? 'success' : 'danger'}
-            icon={
-              sseConnected ? (
-                <Wifi className="w-3 h-3" />
-              ) : (
-                <WifiOff className="w-3 h-3" />
-              )
-            }
+            tone={sseConnected ? "success" : "danger"}
+            icon={sseConnected ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
           >
-            {sseConnected ? 'live' : 'offline'}
+            {sseConnected ? "live" : "offline"}
           </StatusBadge>
         </div>
       </div>
@@ -181,12 +177,12 @@ function HeaderTab({
       aria-selected={active}
       onClick={onClick}
       className={cn(
-        'inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-mono',
-        'focus:outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--color-gold)]',
-        'transition-colors',
+        "inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-mono",
+        "focus:outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--color-gold)]",
+        "transition-colors",
         active
-          ? 'bg-[color:var(--color-gold)] text-[#0a0a0a]'
-          : 'text-[color:var(--color-text-muted)] hover:text-[color:var(--color-gold-bright)]',
+          ? "bg-[color:var(--color-gold)] text-[#0a0a0a]"
+          : "text-[color:var(--color-text-muted)] hover:text-[color:var(--color-gold-bright)]",
       )}
     >
       {icon}

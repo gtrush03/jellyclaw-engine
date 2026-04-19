@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { useRunLogPoll } from '@/hooks/useRunLogPoll';
-import type { RunRecord, RunStatus } from '@/types';
-import { cn } from '@/lib/cn';
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useRunLogPoll } from "@/hooks/useRunLogPoll";
+import type { RunRecord, RunStatus } from "@/types";
+import { cn } from "@/lib/cn";
 
 export interface NowCardProps {
   run: RunRecord | null;
@@ -29,15 +29,7 @@ export interface NowCardProps {
  * placeholder. When `run` is null and rig is offline, returns null — the
  * upstream <EmptyState /> handles the empty-page case.
  */
-export function NowCard({
-  run,
-  rigOnline,
-  onAbort,
-  onSkip,
-  onTell,
-  runId,
-  title,
-}: NowCardProps) {
+export function NowCard({ run, rigOnline, onAbort, onSkip, onTell, runId, title }: NowCardProps) {
   if (!run) {
     if (!rigOnline) return null;
     return (
@@ -78,19 +70,16 @@ export function NowCard({
             {boundId ?? run.session_id}
           </span>
           <span className="text-[color:var(--color-text-muted)]/60 shrink-0">·</span>
-          <span className="text-[12px] text-[color:var(--color-text)] truncate">{displayTitle}</span>
+          <span className="text-[12px] text-[color:var(--color-text)] truncate">
+            {displayTitle}
+          </span>
         </div>
 
         <PhaseDots status={run.status} />
 
         <LiveLogTail runId={boundId} status={run.status} />
 
-        <RunActions
-          runId={boundId}
-          onAbort={onAbort}
-          onSkip={onSkip}
-          onTell={onTell}
-        />
+        <RunActions runId={boundId} onAbort={onAbort} onSkip={onSkip} onTell={onTell} />
       </div>
     </section>
   );
@@ -98,38 +87,34 @@ export function NowCard({
 
 function formatTitle(run: RunRecord): string {
   // Best-effort: derive a human title from session_id if nothing richer.
-  const sid = run.session_id ?? '';
-  const slug = sid.split('/').pop() ?? sid;
-  return slug.replace(/^\d+-/, '').replace(/-/g, ' ');
+  const sid = run.session_id ?? "";
+  const slug = sid.split("/").pop() ?? sid;
+  return slug.replace(/^\d+-/, "").replace(/-/g, " ");
 }
 
 const PHASE_DEFS: Array<{ key: string; label: string }> = [
-  { key: 'spawn', label: 'spawn' },
-  { key: 'work', label: 'work' },
-  { key: 'self', label: 'self' },
-  { key: 'test', label: 'test' },
-  { key: 'commit', label: 'commit' },
+  { key: "spawn", label: "spawn" },
+  { key: "work", label: "work" },
+  { key: "self", label: "self" },
+  { key: "test", label: "test" },
+  { key: "commit", label: "commit" },
 ];
 
 function PhaseDots({ status }: { status: RunStatus }) {
   const activeIdx = resolveActiveIdx(status);
-  const failed = status === 'failed' || status === 'escalated';
+  const failed = status === "failed" || status === "escalated";
 
   return (
-    <div
-      className="flex items-center gap-4"
-      role="group"
-      aria-label={`phase timeline ${status}`}
-    >
+    <div className="flex items-center gap-4" role="group" aria-label={`phase timeline ${status}`}>
       {PHASE_DEFS.map((p, idx) => {
-        const state: 'done' | 'active' | 'pending' | 'failed' =
+        const state: "done" | "active" | "pending" | "failed" =
           failed && idx === activeIdx
-            ? 'failed'
+            ? "failed"
             : idx < activeIdx
-              ? 'done'
+              ? "done"
               : idx === activeIdx
-                ? 'active'
-                : 'pending';
+                ? "active"
+                : "pending";
         return <PhaseDot key={p.key} label={p.label} state={state} />;
       })}
     </div>
@@ -141,22 +126,22 @@ function PhaseDot({
   state,
 }: {
   label: string;
-  state: 'done' | 'active' | 'pending' | 'failed';
+  state: "done" | "active" | "pending" | "failed";
 }) {
-  const symbol = state === 'done' ? '✓' : state === 'active' ? '●' : state === 'failed' ? '✕' : '○';
+  const symbol = state === "done" ? "✓" : state === "active" ? "●" : state === "failed" ? "✕" : "○";
   const color =
-    state === 'done'
-      ? 'var(--color-gold)'
-      : state === 'active'
-        ? 'var(--color-gold-bright)'
-        : state === 'failed'
-          ? '#ff5757'
-          : 'var(--color-text-muted)';
+    state === "done"
+      ? "var(--color-gold)"
+      : state === "active"
+        ? "var(--color-gold-bright)"
+        : state === "failed"
+          ? "#ff5757"
+          : "var(--color-text-muted)";
   return (
     <span
       className={cn(
-        'flex items-center gap-1 font-mono text-[11px]',
-        state === 'active' && 'pulse-glow motion-reduce:animate-none',
+        "flex items-center gap-1 font-mono text-[11px]",
+        state === "active" && "pulse-glow motion-reduce:animate-none",
       )}
       style={{ color }}
     >
@@ -168,36 +153,30 @@ function PhaseDot({
 
 function resolveActiveIdx(status: RunStatus): number {
   switch (status) {
-    case 'queued':
+    case "queued":
       return -1;
-    case 'spawning':
+    case "spawning":
       return 0;
-    case 'prompting':
-    case 'working':
-    case 'completion_detected':
+    case "prompting":
+    case "working":
+    case "completion_detected":
       return 1;
-    case 'testing':
+    case "testing":
       return 3;
-    case 'passed':
-    case 'complete':
+    case "passed":
+    case "complete":
       return 4;
-    case 'retrying':
+    case "retrying":
       return 0;
-    case 'failed':
-    case 'escalated':
+    case "failed":
+    case "escalated":
       return 1;
     default:
       return -1;
   }
 }
 
-function LiveLogTail({
-  runId,
-  status,
-}: {
-  runId: string | null;
-  status: RunStatus;
-}) {
+function LiveLogTail({ runId, status }: { runId: string | null; status: RunStatus }) {
   const enabled = runId !== null && isActiveStatus(status);
   // 500ms poll of /api/runs/:id — isolates the live terminal from the rest
   // of the page so only the log re-renders, not the whole card.
@@ -223,11 +202,11 @@ function LiveLogTail({
     const el = scrollRef.current;
     if (!el) return;
     // Respect prefers-reduced-motion — jump instantly, no smooth tween.
-    const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
     if (reduced) {
       el.scrollTop = el.scrollHeight;
     } else {
-      el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+      el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
     }
   }, [tail]);
 
@@ -236,10 +215,10 @@ function LiveLogTail({
       <div className="flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.2em] text-[color:var(--color-text-muted)]">
         <span>Live · tmux log</span>
         <span className="tabular-nums">
-          {connected ? '● LIVE · polls 500ms' : enabled ? '○ connecting…' : '— idle'}
-          {' · '}
-          {tail.length} event{tail.length === 1 ? '' : 's'}
-          {lineCount > 1 ? ` · ${lineCount} log lines` : ''}
+          {connected ? "● LIVE · polls 500ms" : enabled ? "○ connecting…" : "— idle"}
+          {" · "}
+          {tail.length} event{tail.length === 1 ? "" : "s"}
+          {lineCount > 1 ? ` · ${lineCount} log lines` : ""}
         </span>
       </div>
       <div
@@ -252,17 +231,14 @@ function LiveLogTail({
           <span className="italic text-[color:var(--color-text-muted)]">
             {enabled
               ? connected
-                ? 'Connected — waiting for output…'
-                : 'Connecting to log stream…'
-              : 'Log stream not active.'}
+                ? "Connected — waiting for output…"
+                : "Connecting to log stream…"
+              : "Log stream not active."}
           </span>
         ) : (
           tail.map((line, i) => (
-            <div
-              key={`${i}-${line.slice(0, 16)}`}
-              className="whitespace-pre-wrap break-all"
-            >
-              {line || '\u00a0'}
+            <div key={`${i}-${line.slice(0, 16)}`} className="whitespace-pre-wrap break-all">
+              {line || "\u00a0"}
             </div>
           ))
         )}
@@ -298,13 +274,13 @@ function prettifyLogRow(frag: string): string | null {
   if (warp && warp[1]) {
     try {
       const obj = JSON.parse(warp[1]) as Record<string, unknown>;
-      const event = typeof obj.event === 'string' ? obj.event : '?';
-      const tool = typeof obj.tool_name === 'string' ? obj.tool_name : undefined;
-      if (event === 'tool_complete' && tool) return `✓ ${tool}`;
-      if (event === 'tool_start' && tool) return `▶ ${tool}`;
-      if (event === 'session_start') return '● session_start';
-      if (event === 'session_end') return '○ session_end';
-      if (event === 'prompt_submit') return '→ prompt_submit';
+      const event = typeof obj.event === "string" ? obj.event : "?";
+      const tool = typeof obj.tool_name === "string" ? obj.tool_name : undefined;
+      if (event === "tool_complete" && tool) return `✓ ${tool}`;
+      if (event === "tool_start" && tool) return `▶ ${tool}`;
+      if (event === "session_start") return "● session_start";
+      if (event === "session_end") return "○ session_end";
+      if (event === "prompt_submit") return "→ prompt_submit";
       return `· ${event}`;
     } catch {
       // fall through — render as raw (post-ANSI-strip)
@@ -312,20 +288,20 @@ function prettifyLogRow(frag: string): string | null {
   }
   // Plain text path: strip the OSC wrapper + SGR color codes, then display.
   const cleaned = frag
-    .replace(/\u001b\][^\u0007]*\u0007?/g, '') // OSC sequences (any content)
-    .replace(CSI_SGR_RE, '')
+    .replace(/\u001b\][^\u0007]*\u0007?/g, "") // OSC sequences (any content)
+    .replace(CSI_SGR_RE, "")
     .trim();
   return cleaned || null;
 }
 
 function isActiveStatus(s: RunStatus): boolean {
   return (
-    s === 'spawning' ||
-    s === 'prompting' ||
-    s === 'working' ||
-    s === 'completion_detected' ||
-    s === 'testing' ||
-    s === 'retrying'
+    s === "spawning" ||
+    s === "prompting" ||
+    s === "working" ||
+    s === "completion_detected" ||
+    s === "testing" ||
+    s === "retrying"
   );
 }
 
@@ -341,7 +317,7 @@ function RunActions({
   onTell: (runId: string, message: string) => void;
 }) {
   const [tellOpen, setTellOpen] = useState(false);
-  const [tellValue, setTellValue] = useState('');
+  const [tellValue, setTellValue] = useState("");
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -354,7 +330,7 @@ function RunActions({
     const msg = tellValue.trim();
     if (!msg) return;
     onTell(runId, msg);
-    setTellValue('');
+    setTellValue("");
     setTellOpen(false);
   };
 
@@ -377,13 +353,13 @@ function RunActions({
             value={tellValue}
             onChange={(e) => setTellValue(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') {
+              if (e.key === "Enter") {
                 e.preventDefault();
                 submitTell();
-              } else if (e.key === 'Escape') {
+              } else if (e.key === "Escape") {
                 e.preventDefault();
                 setTellOpen(false);
-                setTellValue('');
+                setTellValue("");
               }
             }}
             placeholder="message for worker…"
@@ -394,7 +370,7 @@ function RunActions({
           <GhostButton
             onClick={() => {
               setTellOpen(false);
-              setTellValue('');
+              setTellValue("");
             }}
           >
             cancel
@@ -423,7 +399,7 @@ function GhostButton({
 }
 
 function formatElapsed(ms: number): string {
-  if (!Number.isFinite(ms) || ms < 0) return '—';
+  if (!Number.isFinite(ms) || ms < 0) return "—";
   const s = Math.floor(ms / 1000);
   if (s < 60) return `${s}s`;
   const m = Math.floor(s / 60);

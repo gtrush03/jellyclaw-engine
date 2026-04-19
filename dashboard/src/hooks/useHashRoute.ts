@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from "react";
 
 /**
  * Minimal hash router. We pick a single string like `'autobuild'` out of
@@ -19,22 +19,22 @@ export function useHashRoute(): { route: string; setRoute: (next: string) => voi
 
   useEffect(() => {
     const onChange = () => setRouteState(parseHash(window.location.hash));
-    window.addEventListener('hashchange', onChange);
+    window.addEventListener("hashchange", onChange);
     // Also listen to popstate for the (rare) case where code calls history.back().
-    window.addEventListener('popstate', onChange);
+    window.addEventListener("popstate", onChange);
     return () => {
-      window.removeEventListener('hashchange', onChange);
-      window.removeEventListener('popstate', onChange);
+      window.removeEventListener("hashchange", onChange);
+      window.removeEventListener("popstate", onChange);
     };
   }, []);
 
   const setRoute = useCallback((next: string) => {
-    const normalized = next ? `#/${next.replace(/^#?\/?/, '')}` : '';
+    const normalized = next ? `#/${next.replace(/^#?\/?/, "")}` : "";
     if (window.location.hash === normalized) return;
     // Use pushState when we have one already so back-button returns to the
     // previous view (phases ↔ autobuild feels bookmarkable).
     if (window.location.hash) {
-      window.location.hash = normalized || '#/';
+      window.location.hash = normalized || "#/";
     } else {
       window.location.hash = normalized;
     }
@@ -46,9 +46,9 @@ export function useHashRoute(): { route: string; setRoute: (next: string) => voi
 
 /** Parse a hash fragment → first path segment. `#/autobuild` → `autobuild`. */
 export function parseHash(hash: string): string {
-  if (!hash) return '';
-  const h = hash.replace(/^#\/?/, '');
-  if (!h) return '';
+  if (!hash) return "";
+  const h = hash.replace(/^#\/?/, "");
+  if (!h) return "";
   const first = h.split(/[/?#]/, 1)[0];
-  return first ?? '';
+  return first ?? "";
 }

@@ -1,22 +1,22 @@
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
-import tailwindcss from '@tailwindcss/vite';
-import path from 'node:path';
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
+import path from "node:path";
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
+      "@": path.resolve(__dirname, "./src"),
     },
   },
   server: {
-    host: '127.0.0.1',
+    host: "127.0.0.1",
     port: 5173,
     strictPort: true,
     proxy: {
-      '/api': {
-        target: 'http://127.0.0.1:5174',
+      "/api": {
+        target: "http://127.0.0.1:5174",
         changeOrigin: true,
         ws: true,
         // SSE needs an infinite proxy timeout and disabled response buffering.
@@ -27,12 +27,12 @@ export default defineConfig({
         timeout: 0,
         proxyTimeout: 0,
         configure: (proxy) => {
-          proxy.on('proxyRes', (proxyRes) => {
-            const ct = proxyRes.headers['content-type'] ?? '';
-            if (typeof ct === 'string' && ct.includes('text/event-stream')) {
-              proxyRes.headers['x-accel-buffering'] = 'no';
-              proxyRes.headers['cache-control'] = 'no-cache, no-transform';
-              proxyRes.headers['connection'] = 'keep-alive';
+          proxy.on("proxyRes", (proxyRes) => {
+            const ct = proxyRes.headers["content-type"] ?? "";
+            if (typeof ct === "string" && ct.includes("text/event-stream")) {
+              proxyRes.headers["x-accel-buffering"] = "no";
+              proxyRes.headers["cache-control"] = "no-cache, no-transform";
+              proxyRes.headers["connection"] = "keep-alive";
             }
           });
         },

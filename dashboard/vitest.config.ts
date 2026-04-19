@@ -1,5 +1,5 @@
-import { defineConfig } from 'vitest/config';
-import path from 'node:path';
+import { defineConfig } from "vitest/config";
+import path from "node:path";
 
 /**
  * Shared vitest config for both the React frontend (`src/`) and the Hono backend
@@ -17,39 +17,39 @@ import path from 'node:path';
 export default defineConfig({
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
+      "@": path.resolve(__dirname, "./src"),
     },
   },
   test: {
     globals: false,
-    environment: 'node',
+    environment: "node",
     include: [
-      'tests/unit/**/*.{test,spec}.ts',
-      'tests/integration/**/*.{test,spec}.ts',
-      'tests/*.{test,spec}.{ts,tsx}',
-      'src/**/*.{test,spec}.{ts,tsx}',
-      'server/src/**/*.{test,spec}.ts',
-      'server/tests/**/*.{test,spec}.ts',
+      "tests/unit/**/*.{test,spec}.ts",
+      "tests/integration/**/*.{test,spec}.ts",
+      "tests/*.{test,spec}.{ts,tsx}",
+      "src/**/*.{test,spec}.{ts,tsx}",
+      "server/src/**/*.{test,spec}.ts",
+      "server/tests/**/*.{test,spec}.ts",
     ],
     exclude: [
-      'node_modules/**',
-      'server/node_modules/**',
-      'dist/**',
-      'server/dist/**',
-      'tests/e2e/**', // Playwright owns these
+      "node_modules/**",
+      "server/node_modules/**",
+      "dist/**",
+      "server/dist/**",
+      "tests/e2e/**", // Playwright owns these
     ],
     testTimeout: 15_000,
     coverage: {
-      provider: 'v8',
-      reporter: ['text', 'html', 'lcov'],
-      reportsDirectory: './coverage',
-      include: ['src/**', 'server/src/**'],
+      provider: "v8",
+      reporter: ["text", "html", "lcov"],
+      reportsDirectory: "./coverage",
+      include: ["src/**", "server/src/**"],
       exclude: [
-        'src/main.tsx',
-        'src/**/*.d.ts',
-        'server/src/index.ts',
-        '**/*.config.*',
-        'tests/**',
+        "src/main.tsx",
+        "src/**/*.d.ts",
+        "server/src/index.ts",
+        "**/*.config.*",
+        "tests/**",
       ],
     },
   },
