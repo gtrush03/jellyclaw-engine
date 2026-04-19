@@ -15,15 +15,18 @@ M3 (desktop ships).
 **What ships.**
 - Engine library and CLI on npm: `jellyclaw`, `@jellyclaw/core`.
 - Homebrew tap: `brew install jellyclaw`.
-- Tauri 2 desktop app: signed, notarized, auto-updating.
+- Tauri 2 desktop app: signed, notarized, auto-updating. _Unconfirmed
+  for v1 — `T6-04-PLAN.md` marks Tauri killed-for-v1 but this roadmap
+  still lists it; decide with George before cutting 1.0._
 - Genie runs on jellyclaw by default. `GENIE_ENGINE=claurst` remains as
   a fallback flag for one more quarter, then is removed in 1.1.
 - Anthropic direct provider is the documented default. OpenRouter works
   but prints a WARN on startup referencing the cache-miss bug.
 - Stream-json byte-parity with Claude Code on the 5 golden prompts.
-- 14 built-in tools at schema parity. Skills and subagents at behavior
-  parity.
-- MCP client with Playwright MCP `0.0.41` as the blessed example.
+- 11 built-in tools at schema parity (WebSearch now delegated to the
+  Exa MCP server per phase-08 T5-02, not a first-party tool). Skills
+  and subagents at behavior parity.
+- MCP client with Playwright MCP `0.0.70` as the blessed example.
 
 **What is intentionally not in 1.0.**
 - Public GitHub release (held for Q4).

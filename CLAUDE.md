@@ -14,11 +14,20 @@ It is **pre-alpha**. Do not tell the user "this is production-ready" — it isn'
 
 ## Where we are
 
-| Phase | File                                                       | Status      |
-| ----- | ---------------------------------------------------------- | ----------- |
-| 0     | [`phases/PHASE-00-scaffolding.md`](phases/PHASE-00-scaffolding.md)     | IN PROGRESS |
-| 1     | [`phases/PHASE-01-opencode-pinning.md`](phases/PHASE-01-opencode-pinning.md) | NEXT        |
-| 2     | [`phases/PHASE-02-config-providers.md`](phases/PHASE-02-config-providers.md) | queued      |
+**Updated Apr 19, 2026.** For the single source of truth, read
+[`STATUS.md`](STATUS.md) and [`COMPLETION-LOG.md`](COMPLETION-LOG.md) —
+those are regenerated from live autobuild state. The table below is a
+snapshot at commit time; expect drift.
+
+| Phase        | File                                                                             | Status                             |
+| ------------ | -------------------------------------------------------------------------------- | ---------------------------------- |
+| 00 – 07      | `ARCHIVE/phases/PHASE-0{0..7}-*.md`                                              | COMPLETE (see COMPLETION-LOG)      |
+| 07.5         | `ARCHIVE/phases/PHASE-07.5-chrome-mcp.md`                                        | COMPLETE                           |
+| 08           | `ARCHIVE/phases/PHASE-08-*.md`                                                   | COMPLETE (v1 tool surface)         |
+| 08-hosting   | `phases/PHASE-08-hosting.md` + `prompts/phase-08-hosting/`                       | IN FLIGHT · T3-T6 done, T7 queued  |
+| 09 – 10.5    | `ARCHIVE/phases/PHASE-{09,10,10.5}-*.md`                                         | COMPLETE                           |
+| 11           | `phases/PHASE-11-*.md`                                                           | IN FLIGHT                          |
+| 99           | `phases/PHASE-99-unfucking.md`                                                   | IN FLIGHT · 5/8 prompts landed     |
 
 If you are asked to implement something, find the phase it belongs to before writing code. If the
 request crosses phases, flag it — don't secretly pull Phase 4 work into Phase 1.

@@ -1,5 +1,7 @@
 # Jellyclaw Engine — Master Plan
 
+> Frozen Apr 14, 2026. Reality diverged after Apr 15. For live state, see STATUS.md + COMPLETION-LOG.md + README.md.
+
 > The load-bearing document. If you read one file in this repo, read this one.
 > Everything else is referenced from here.
 

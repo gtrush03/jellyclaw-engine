@@ -7,6 +7,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (Apr 15–19, 2026)
+- feat(prompts): phase 07.5 + phase 08 hosting prompt trees (T3–T7 —
+  HTTP/SSE MCP, Exa default web search, multi-tenant auth seam, SQLite
+  swap, animation freeze screenshot, Fly.io deploy, Browserbase,
+  GitHub Actions, landing page + T6-04 TUI redesign, vision + image-gen +
+  frontend-design + design-iterator skills).
+- feat(tui): T6-04 brand theme module — new `engine/src/tui/theme/`
+  (brand, borders, density, typography, snapshots) with contrast tests;
+  `use-history` + `use-slash-completion` hooks. Partial — input-box +
+  status-bar still mid-wire from the crashed session.
+- feat(deploy): full Fly.io stack — `Dockerfile`, `fly.toml`, `Caddyfile`,
+  `web-tui/` (ttyd sidecar for browser-accessible TUI),
+  `scripts/container-entrypoint.sh`, `scripts/deploy-fly.sh`,
+  `.github/workflows/fly-deploy.yml` + `fly-staging.yml`,
+  `docs/hosting/` (01-fly, 02-public-api, 03-tui-distribution,
+  04-browser-in-cloud, 05-productization), `docs/deploy-secrets.md`,
+  `docs/browserbase-setup.md`, `docs/chrome-setup.md`.
+- feat(site): T6-04 landing page — `site/index.html`, css, js, assets
+  (demo-frame.png, demo.cast, favicon.svg, hero.jpg, og-image.png,
+  wordmark.svg), asciinema-player vendor drop, robots.txt, sitemap.xml,
+  lighthouse-report.json, `engine/templates/mcp.default.json`.
+- feat(engine): phase 99 unfucking + T6-04 wiring — new CLI modules
+  (`chrome-autolaunch`, `mcp-config-loader`, `session-screenshot`,
+  `templates`), `engine/src/db/` (sqlite better + bun drivers),
+  `engine/src/server/auth/` (bearer, composite, multi-tenant providers,
+  principal), `engine/src/server/routes/tui-handoff`, MCP registry
+  HTTP/SSE tests, retires `engine/src/tools/websearch.ts` (delegated to
+  Exa MCP per phase-08 T5-02).
+- feat(dashboard): autobuild-v4 UI polish (ApprovalRow, NowCard,
+  DoneFeed, UpNextList, StatusHeader, TierTrack, EscalationRow,
+  bucketize, useUiState, useResetAction, ConfirmModal, AutobuildV4
+  shell) + rig-control/runs API updates.
+- feat(desktop): sidecar + Tauri capabilities refresh —
+  `desktop/src-tauri/capabilities/default.json`, regenerated gen/schemas.
+- feat(autobuild): dispatcher + jellyclaw-driver + prompt-parser
+  updates; simple tmux orchestrator landed 42 prompts (T0–T4) under
+  `scripts/autobuild-simple/run.sh`.
+- test: phase 99 + T6-04 coverage — Playwright e2e for web-tui +
+  landing, new chrome-demo-e2e + chrome-mcp integration tests, smoke
+  harness updates, dashboard test refresh.
+- chore(gitignore): ignore `.playwright-mcp/`, `engine/test-results/`,
+  `test-results/`.
+- docs: phase 07.5 chrome-mcp plan, phase 08 web-search + browser MCP
+  plan, refreshed `docs/mcp.md`, `docs/playwright-setup.md` (0.0.70
+  pin), `docs/tools.md` (11 tools).
+
 ### Added
 - feat(tui): **JellyJelly brand redesign** — cyan-first deep-sea palette
   replaces generic purple (`#3BA7FF` Jelly Cyan primary, `#9E7BFF`
