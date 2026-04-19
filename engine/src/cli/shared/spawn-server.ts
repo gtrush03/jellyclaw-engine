@@ -131,6 +131,8 @@ export async function spawnEmbeddedServer(
   // so we can shuttle logs through pino without leaking the bearer token onto
   // the parent's stdout.
   const child = execaNode(cliEntry, args, {
+    // force node even when parent is bun · bun has SSE+chunked-encoding bug
+    nodePath: "node",
     cwd: opts.cwd ?? process.cwd(),
     env: {
       ...process.env,
