@@ -15,6 +15,7 @@ import type { Server as HttpServer } from "node:http";
 
 import type { Hono } from "hono";
 
+import { AgentRegistry } from "../agents/registry.js";
 import { HookRegistry } from "../hooks/registry.js";
 import type { Logger } from "../logger.js";
 import { createLogger } from "../logger.js";
@@ -312,6 +313,7 @@ async function productionDeps(): Promise<ServeActionDeps> {
       defaultModel?: string;
       defaultCwd?: string;
       mcp?: McpRegistry;
+      agentRegistry?: AgentRegistry;
     }) => RunManager;
   };
   const appMod = (await import("../server/app.js")) as {
@@ -357,6 +359,16 @@ async function productionDeps(): Promise<ServeActionDeps> {
     }
   }
 
+  // Load the subagent registry so the Task tool works against the HTTP path
+  // (error 7 fix). Discovery failures are non-fatal; missing agents simply
+  // mean `Task` calls return `unknown_agent` error results.
+  const agentRegistry = new AgentRegistry();
+  try {
+    await agentRegistry.loadAll({ logger: bootLogger });
+  } catch (err) {
+    bootLogger.warn({ err }, "agents: loadAll failed; Task tool will see an empty registry");
+  }
+
   return {
     env: process.env,
     stdout: process.stdout,
@@ -383,6 +395,7 @@ async function productionDeps(): Promise<ServeActionDeps> {
         defaultModel: DEFAULT_SERVE_MODEL,
         defaultCwd: process.cwd(),
         ...(mcp !== undefined ? { mcp } : {}),
+        agentRegistry,
       });
     },
     buildApp: ({ config, runManager, sessionPaths, logger, version }) => {

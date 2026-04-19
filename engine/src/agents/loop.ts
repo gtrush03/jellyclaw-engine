@@ -37,9 +37,9 @@ import type { McpCallToolResult } from "../mcp/types.js";
 import { decide } from "../permissions/engine.js";
 import type { AskHandler, CompiledPermissions, ToolCall } from "../permissions/types.js";
 import { adaptChunk, adaptDone, createAdapterState } from "../providers/adapter.js";
+import type { Provider, ProviderRequest, SystemBlock } from "../providers/types.js";
 import { BROWSER_BUCKET, isBrowserRateLimited } from "../ratelimit/policies.js";
 import { TokenBucket } from "../ratelimit/token-bucket.js";
-import type { Provider, ProviderRequest, SystemBlock } from "../providers/types.js";
 import type { SkillRegistry } from "../skills/registry.js";
 import type { SubagentService } from "../subagents/types.js";
 import { buildToolList, getTool } from "../tools/index.js";
@@ -1082,14 +1082,17 @@ function mapProviderError(err: unknown): { code: string; message: string } {
 
 /**
  * A "feature disabled" subagent service that returns an error result without
- * throwing. Used when no subagent dispatcher is configured (e.g. the Task tool
- * is called but the CLI didn't wire in a real dispatcher).
+ * throwing. Reachable only when a caller constructs `runAgentLoop` without
+ * passing `opts.subagents`. All first-party entrypoints (CLI `run`, HTTP
+ * `serve`, `createEngine`) now wire a real `SubagentDispatcher`, so this
+ * branch is effectively a last-resort fallback for library consumers that
+ * explicitly chose to disable subagents.
  */
 const disabledSubagentService: SubagentService = {
   // biome-ignore lint/suspicious/useAwait: async contract required by interface
   async dispatch() {
     return {
-      summary: "subagents_disabled: Task tool is not available in this configuration",
+      summary: "subagents_disabled: no dispatcher wired into this runAgentLoop invocation",
       status: "error" as const,
       usage: { input_tokens: 0, output_tokens: 0 },
     };

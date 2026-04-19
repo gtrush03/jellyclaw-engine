@@ -187,6 +187,10 @@ export async function createEngine(options: EngineOptions = {}): Promise<Engine>
       permissions,
       defaultModel: config.provider.defaultModel,
       defaultCwd: cwd,
+      // Wire the subagent registry so the Task tool spawns real child loops
+      // (error 7 fix). The registry was loaded above; the run-manager builds
+      // a SubagentDispatcher per run using this registry.
+      agentRegistry: agents,
     });
 
     // Step 7 — Engine

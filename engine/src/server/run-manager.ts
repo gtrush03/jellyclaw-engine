@@ -21,7 +21,11 @@ import { EventEmitter } from "node:events";
 import { access } from "node:fs/promises";
 import type { Logger } from "pino";
 
+import { SubagentDispatcher } from "../agents/dispatch.js";
+import { DEFAULT_DISPATCH_CONFIG } from "../agents/dispatch-types.js";
 import { runAgentLoop } from "../agents/loop.js";
+import type { AgentRegistry } from "../agents/registry.js";
+import { createSubagentSemaphore } from "../agents/semaphore.js";
 import { loadSoul } from "../agents/soul.js";
 import type { AgentEvent } from "../events.js";
 import type { HookRegistry } from "../hooks/registry.js";
@@ -38,6 +42,8 @@ import {
   SessionPaths,
   SessionWriter,
 } from "../session/index.js";
+import { createSessionRunner } from "../subagents/runner.js";
+import type { SubagentService } from "../subagents/types.js";
 import type {
   BufferedEvent,
   CreateRunOptions,
@@ -160,6 +166,20 @@ export interface RunManagerOptions {
   readonly defaultCwd?: string;
   /** MCP registry for tool augmentation (T0-01). */
   readonly mcp?: McpRegistry;
+  /**
+   * Subagent registry. When provided alongside provider + hooks + permissions +
+   * defaultModel, the manager constructs a `SubagentDispatcher` per run and
+   * wires it into `runAgentLoop` so the `Task` tool actually spawns child
+   * loops. When absent, the Task tool returns a graceful `subagents_disabled`
+   * error result (not a throw).
+   */
+  readonly agentRegistry?: AgentRegistry;
+  /**
+   * Escape hatch for tests / advanced consumers: provide a pre-built subagent
+   * service instead of letting the manager build one. When set, it wins over
+   * the `agentRegistry`-driven default dispatcher.
+   */
+  readonly subagents?: SubagentService;
 }
 
 /**
@@ -593,10 +613,70 @@ function makeDefaultRunFactory(
   const defaultModel = mgr.defaultModel as string;
   const defaultCwd = mgr.defaultCwd ?? process.cwd();
   const mcp = mgr.mcp;
+  const agentRegistry = mgr.agentRegistry;
+  const overrideSubagents = mgr.subagents;
+
+  // Default toolset the root session grants. Mirrors the CLI `run.ts` wiring
+  // so the HTTP/embedded-server path and the direct CLI behave identically.
+  const rootAllowedTools: readonly string[] = Object.freeze([
+    "Bash",
+    "Edit",
+    "Glob",
+    "Grep",
+    "NotebookEdit",
+    "Read",
+    "Task",
+    "TodoWrite",
+    "WebFetch",
+    "WebSearch",
+    "Write",
+  ]);
+
+  // One semaphore per RunManager — shared across all dispatched subagent runs
+  // so concurrency caps are global to the process, not per-turn.
+  const subagentSemaphore =
+    overrideSubagents === undefined && agentRegistry !== undefined
+      ? createSubagentSemaphore({ maxConcurrency: 2, logger })
+      : undefined;
 
   return (opts) => {
     const model = opts.model ?? defaultModel;
     const cwd = opts.cwd ?? defaultCwd;
+
+    // Build a subagent service for this run. Precedence:
+    //   1. Consumer-supplied override (RunManagerOptions.subagents) — wins.
+    //   2. Agent registry wired → real SubagentDispatcher (per run, because
+    //      the dispatcher's ParentContext.sessionId is per-run).
+    //   3. Neither → undefined, runAgentLoop falls back to the disabled
+    //      service and the Task tool returns a graceful error result.
+    let subagents: SubagentService | undefined;
+    if (overrideSubagents !== undefined) {
+      subagents = overrideSubagents;
+    } else if (agentRegistry !== undefined && subagentSemaphore !== undefined) {
+      subagents = new SubagentDispatcher({
+        registry: agentRegistry,
+        runner: createSessionRunner({
+          provider,
+          permissions,
+          hooks,
+          logger,
+          clock: Date.now,
+          ...(mcp !== undefined ? { mcp } : {}),
+        }),
+        semaphore: subagentSemaphore,
+        config: DEFAULT_DISPATCH_CONFIG,
+        parent: {
+          sessionId: opts.sessionId,
+          allowedTools: rootAllowedTools,
+          model,
+          depth: 0,
+        },
+        clock: Date.now,
+        logger,
+        signal: opts.signal,
+      });
+    }
+
     // Resolve the system prompt: caller override wins; else pull jellyclaw's
     // default voice (via `loadSoul()` — honours env + ~/.jellyclaw/soul.md).
     // Wrapped in an async generator so we can await the disk read without
@@ -620,6 +700,7 @@ function makeDefaultRunFactory(
         ...(opts.maxTurns !== undefined ? { maxTurns: opts.maxTurns } : {}),
         ...(opts.priorMessages !== undefined ? { priorMessages: opts.priorMessages } : {}),
         ...(mcp !== undefined ? { mcp } : {}),
+        ...(subagents !== undefined ? { subagents } : {}),
       });
     }
     return runWithSoul();
