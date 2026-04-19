@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /assets/vendor/
+
+Sitemap: https://jellyclaw.dev/sitemap.xml

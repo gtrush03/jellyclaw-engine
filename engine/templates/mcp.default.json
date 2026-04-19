@@ -1,0 +1,55 @@
+{
+  "$schema": "https://jellyclaw.dev/schemas/jellyclaw.json",
+  "mcp": [
+    {
+      "_comment": "Echo test server — safe to keep, illustrates stdio transport",
+      "transport": "stdio",
+      "name": "echo",
+      "command": "bun",
+      "args": ["./test/fixtures/mcp/echo-server.ts"]
+    },
+    {
+      "_comment": "DISABLED — Chrome MCP (Flow 2: dedicated debug profile). Uncomment and run scripts/jellyclaw-chrome.sh first.",
+      "_disabled": true,
+      "transport": "stdio",
+      "name": "playwright",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@playwright/mcp@latest",
+        "--browser",
+        "chrome",
+        "--cdp-endpoint",
+        "http://127.0.0.1:9333"
+      ]
+    },
+    {
+      "_comment": "DISABLED — Chrome MCP (Flow 1: Web Store extension). Uncomment after installing Playwright MCP Bridge.",
+      "_disabled": true,
+      "transport": "stdio",
+      "name": "playwright-extension",
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp@latest", "--extension"]
+    },
+    {
+      "_comment": "Default — Exa WebSearch via Streamable-HTTP MCP. Set EXA_API_KEY to enable.",
+      "_requires_env": ["EXA_API_KEY"],
+      "transport": "http",
+      "name": "exa",
+      "url": "https://mcp.exa.ai/mcp",
+      "headers": { "Authorization": "Bearer ${EXA_API_KEY}" }
+    },
+    {
+      "_comment": "DISABLED — Browserbase hosted MCP (cloud Chrome). Set BROWSERBASE_API_KEY + BROWSERBASE_PROJECT_ID in env, then flip _disabled to false. Per-request Context IDs flow via the x-browserbase-context header on /v1/sessions.",
+      "_disabled": true,
+      "transport": "http",
+      "name": "browserbase",
+      "url": "https://mcp.browserbase.com/mcp",
+      "headers": {
+        "Authorization": "Bearer ${BROWSERBASE_API_KEY}",
+        "X-Browserbase-Project": "${BROWSERBASE_PROJECT_ID}",
+        "X-Browserbase-Context-Id": "${BROWSERBASE_CONTEXT_ID:-}"
+      }
+    }
+  ]
+}

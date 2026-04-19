@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>jellyclaw — embeddable Claude Code replacement</title>
+<meta name="description" content="Open-source agent runtime with Bash, browser, and web search tools. Drop-in replacement for claude -p. BYOK, embeddable, TypeScript you can audit.">
+<meta name="theme-color" content="#0A1020">
+<meta property="og:title" content="jellyclaw">
+<meta property="og:description" content="Open-source agent runtime with Bash, browser, and web search tools. Drop-in replacement for claude -p. BYOK, embeddable, TypeScript you can audit.">
+<meta property="og:image" content="/assets/og-image.png">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://jellyclaw.dev/">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="jellyclaw">
+<meta name="twitter:description" content="open-source agent runtime — same tools as Claude Code, your infrastructure.">
+<meta name="twitter:image" content="/assets/og-image.png">
+<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+<link rel="preload" as="image" href="/assets/hero.jpg">
+<link rel="preload" as="image" href="/assets/wordmark.svg">
+<link rel="stylesheet" href="/css/style.css">
+<!--
+  Content-Security-Policy notes:
+    style-src keeps 'unsafe-inline' because asciinema-player (vendored at
+    /assets/vendor/asciinema-player.min.js) sets a handful of inline styles
+    on the player <div> at runtime for terminal sizing. Switching to a
+    nonce strategy would require patching the vendored UMD bundle, which
+    is out of scope for T2-03. No author-written inline styles in this
+    document — every rule lives in /css/style.css.
+    The eval-class permission is explicitly NOT granted.
+-->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; font-src 'self'; object-src 'none'; worker-src 'self'; manifest-src 'self'; media-src 'self'; frame-ancestors 'none'; form-action 'self'; base-uri 'self'; upgrade-insecure-requests">
+<meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
+<meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=(), payment=(), usb=(), accelerometer=(), gyroscope=(), magnetometer=(), interest-cohort=()">
+</head>
+<body>
+
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="topbar">
+  <a class="brand" href="/" aria-label="jellyclaw home">
+    <img src="/assets/wordmark.svg" alt="jellyclaw" width="180" height="40" decoding="async">
+  </a>
+  <nav class="topnav" aria-label="Primary">
+    <a href="#features">features</a>
+    <a href="#demo">demo</a>
+    <a href="https://github.com/gtrush03/jellyclaw" rel="noopener">github</a>
+  </nav>
+</header>
+
+<main id="main">
+
+<section id="hero" class="hero" aria-labelledby="hero-title">
+  <div class="hero-bg" aria-hidden="true"></div>
+  <div class="hero-inner">
+    <h1 id="hero-title" class="wordmark">
+      <img src="/assets/wordmark.svg" alt="jellyclaw" width="540" height="120" decoding="async">
+    </h1>
+    <p class="pitch">open-source agent runtime. same tools as Claude Code, your infrastructure.</p>
+    <div class="cta-row">
+      <a class="cta primary" href="/tui">Try it in your browser →</a>
+      <a class="cta secondary" href="https://github.com/gtrush03/jellyclaw" rel="noopener">GitHub</a>
+    </div>
+    <pre class="install"><code><span class="prompt">$</span> bun install &amp;&amp; ./jellyclaw tui</code></pre>
+    <p class="hero-sub">no proxy · no telemetry · your Anthropic key talks straight to the API.</p>
+  </div>
+</section>
+
+<section id="features" class="features" aria-labelledby="features-title">
+  <h2 id="features-title" class="section-title">what's in the box</h2>
+  <div class="cards">
+    <article class="card">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <rect x="2.5" y="4" width="19" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/>
+        <path d="M6 9l3 3-3 3M11 15h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      </svg>
+      <h3>Bash</h3>
+      <p>Full shell access with deny-wins permission rules. Runs in a sandbox you control — no secret network calls, no writes outside your project root.</p>
+    </article>
+    <article class="card">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.5"/>
+        <path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18" stroke="currentColor" stroke-width="1.5" fill="none"/>
+      </svg>
+      <h3>Browser</h3>
+      <p>Playwright MCP wired in. Browse, screenshot, fill forms — works headless or with Chrome visible, your choice.</p>
+    </article>
+    <article class="card">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+        <path d="M16 16l5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+      </svg>
+      <h3>Web search</h3>
+      <p><code>WebSearch</code> + <code>WebFetch</code> built in. No external proxy — results stream back as tool results the model can reason over.</p>
+    </article>
+  </div>
+
+  <h3 class="why-title">why jellyclaw</h3>
+  <ul class="why">
+    <li><strong>Transparent loop</strong> — Claude Code is a compiled binary you can't inspect. jellyclaw is TypeScript you can read, hook, and audit.</li>
+    <li><strong>BYOK economics</strong> — direct Anthropic API with aggressive prompt caching. No intermediary markup. You see the cache hits.</li>
+    <li><strong>Embeddable</strong> — library mode, HTTP server, or CLI. Spawn it from Swift, call it from Node, pipe a prompt in and stream events out.</li>
+  </ul>
+</section>
+
+<section id="demo" class="demo" aria-labelledby="demo-title">
+  <h2 id="demo-title" class="section-title">25 seconds in the TUI</h2>
+  <p class="demo-sub">A real recording. Boot, prompt, response, /help, exit. No edits.</p>
+
+  <figure class="demo-stage">
+    <div id="demo-mount"
+         class="demo-mount"
+         role="img"
+         aria-label="jellyclaw TUI demo recording"
+         data-demo-src="/assets/demo.cast"
+         data-demo-poster="/assets/demo-frame.png"
+         data-player-src="/assets/vendor/asciinema-player.min.js"
+         data-player-css="/assets/vendor/asciinema-player.css">
+      <noscript>
+        <img class="static-fallback" src="/assets/demo-frame.png" alt="Static screenshot of the jellyclaw TUI session" width="960" height="540">
+      </noscript>
+    </div>
+    <figcaption class="demo-caption">
+      <span class="demo-tag">recording</span>
+      <span>asciinema · self-hosted · ~12 KB</span>
+    </figcaption>
+  </figure>
+</section>
+
+<section id="cta" class="cta-section" aria-labelledby="cta-title">
+  <h2 id="cta-title" class="section-title">try it in 30 seconds</h2>
+  <p class="cta-pitch">
+    Clone, set your API key, launch the TUI. Same tools, same loop, your machine.
+    No login, no telemetry, no proxy in the middle.
+  </p>
+  <pre class="install large"><code><span class="prompt">$</span> git clone https://github.com/gtrush03/jellyclaw
+<span class="prompt">$</span> cd jellyclaw &amp;&amp; bun install
+<span class="prompt">$</span> export ANTHROPIC_API_KEY=sk-ant-…
+<span class="prompt">$</span> ./jellyclaw tui</code></pre>
+  <div class="cta-row centered">
+    <a class="cta primary" href="/tui">Try it in your browser →</a>
+    <a class="cta secondary" href="https://github.com/gtrush03/jellyclaw#readme" rel="noopener">Read the docs</a>
+  </div>
+  <p class="byok-disclaimer" role="note">
+    <strong>alpha — bring your own Anthropic key (BYOK).</strong>
+    jellyclaw never sees your key. Requests go straight to <code>api.anthropic.com</code>.
+  </p>
+</section>
+
+</main>
+
+<footer id="footer" class="footer">
+  <p class="copy">© 2026 jellyclaw · <a href="https://opensource.org/licenses/MIT" rel="noopener">MIT</a></p>
+  <nav class="footnav" aria-label="Footer">
+    <a href="https://github.com/gtrush03/jellyclaw" rel="noopener">GitHub</a>
+    <a href="https://github.com/gtrush03/jellyclaw#readme" rel="noopener">Docs</a>
+    <a href="https://github.com/gtrush03/jellyclaw/issues" rel="noopener">Status</a>
+  </nav>
+</footer>
+
+<script src="/js/demo-loader.js" defer></script>
+
+</body>
+</html>

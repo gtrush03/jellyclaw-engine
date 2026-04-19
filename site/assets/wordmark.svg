@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 160" role="img" aria-labelledby="wt wd">
+<title id="wt">jellyclaw</title>
+<desc id="wd">jellyclaw wordmark — open-source agent runtime, cyan→violet gradient</desc>
+<defs>
+<linearGradient id="g" x1="0" y1="0" x2="1" y2="0">
+<stop offset="0" stop-color="#3BA7FF"/><stop offset=".62" stop-color="#7B92FF"/><stop offset="1" stop-color="#9E7BFF"/>
+</linearGradient>
+<linearGradient id="d" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0" stop-color="#3BA7FF" stop-opacity=".95"/><stop offset="1" stop-color="#9E7BFF" stop-opacity=".55"/>
+</linearGradient>
+<linearGradient id="u" x1="0" y1="0" x2="1" y2="0">
+<stop offset="0" stop-color="#3BA7FF" stop-opacity="0"/><stop offset=".18" stop-color="#3BA7FF" stop-opacity=".85"/>
+<stop offset=".82" stop-color="#9E7BFF" stop-opacity=".85"/><stop offset="1" stop-color="#9E7BFF" stop-opacity="0"/>
+</linearGradient>
+</defs>
+<g transform="translate(36 28)">
+<path d="M0 56C0 26 22 6 50 6S100 26 100 56v8c-8-4-14 0-16 6-2-6-8-10-14-6-4-4-10-4-14 0-4-4-10-4-14 0-4-4-10-4-14 0-4-4-10-4-14 0-2-4-8-8-14 0Z" fill="url(#d)"/>
+<path d="M22 78c0 14-4 22-8 32M40 80c0 16-4 28-8 40M58 80c0 16 2 28 6 40M76 78c0 14 4 22 10 32" stroke="#9E7BFF" stroke-width="3" stroke-linecap="round" fill="none" opacity=".75"/>
+<circle cx="32" cy="40" r="6" fill="#FFB547" opacity=".9"/>
+<circle cx="68" cy="40" r="6" fill="#FF6FB5" opacity=".9"/>
+</g>
+<text x="160" y="108" font-family="'SF Pro Display','Inter','Helvetica Neue',Arial,sans-serif" font-weight="700" font-size="96" letter-spacing="-3" fill="url(#g)">jellyclaw</text>
+<rect x="160" y="124" width="496" height="3" rx="1.5" fill="url(#u)"/>
+</svg>
