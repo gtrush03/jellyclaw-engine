@@ -1,1 +1,23 @@
-{}
+{
+  "default": {
+    "identifier": "default",
+    "description": "Default capability for the main Jellyclaw window",
+    "local": true,
+    "windows": ["main"],
+    "permissions": [
+      "core:default",
+      "core:window:default",
+      "core:app:default",
+      "core:event:default",
+      "shell:default",
+      {
+        "identifier": "shell:allow-execute",
+        "allow": [{ "args": true, "name": "binaries/jellyclaw", "sidecar": true }]
+      },
+      {
+        "identifier": "shell:allow-kill",
+        "allow": [{ "args": true, "name": "binaries/jellyclaw", "sidecar": true }]
+      }
+    ]
+  }
+}

@@ -78,10 +78,7 @@ export interface RetryOptions {
 /**
  * Execute a function with exponential backoff retry.
  */
-async function withRetry<T>(
-  fn: () => Promise<T>,
-  options: RetryOptions = {},
-): Promise<T> {
+async function withRetry<T>(fn: () => Promise<T>, options: RetryOptions = {}): Promise<T> {
   const { maxAttempts = 5, initialDelayMs = 200, backoffMultiplier = 2 } = options;
 
   let lastError: unknown;
@@ -101,10 +98,7 @@ async function withRetry<T>(
     }
   }
 
-  throw new SidecarError(
-    `Failed after ${maxAttempts} attempts`,
-    lastError,
-  );
+  throw new SidecarError(`Failed after ${maxAttempts} attempts`, lastError);
 }
 
 // ---------------------------------------------------------------------------
@@ -129,10 +123,7 @@ export async function getSidecarInfo(
     const parsed = SidecarInfoSchema.safeParse(result);
 
     if (!parsed.success) {
-      throw new SidecarError(
-        `Invalid sidecar info: ${parsed.error.message}`,
-        parsed.error,
-      );
+      throw new SidecarError(`Invalid sidecar info: ${parsed.error.message}`, parsed.error);
     }
 
     return parsed.data;
@@ -160,10 +151,7 @@ export async function restartSidecar(invoke?: InvokeFn): Promise<SidecarInfo> {
   const parsed = SidecarInfoSchema.safeParse(result);
 
   if (!parsed.success) {
-    throw new SidecarError(
-      `Invalid sidecar info: ${parsed.error.message}`,
-      parsed.error,
-    );
+    throw new SidecarError(`Invalid sidecar info: ${parsed.error.message}`, parsed.error);
   }
 
   return parsed.data;
