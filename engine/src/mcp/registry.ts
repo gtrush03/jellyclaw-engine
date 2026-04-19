@@ -38,7 +38,7 @@ import {
   parseNamespaced,
 } from "./types.js";
 
-const DEFAULT_CONNECT_TIMEOUT_MS = 10_000;
+const DEFAULT_CONNECT_TIMEOUT_MS = 30_000;
 const DEFAULT_RETRY_INTERVAL_MS = 30_000;
 
 interface Entry {

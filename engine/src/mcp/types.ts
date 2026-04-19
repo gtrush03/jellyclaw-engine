@@ -40,7 +40,7 @@ export interface StdioMcpServerConfig {
   readonly cwd?: string;
   /**
    * Connection-attempt timeout. Applies to spawn + SDK `connect()` +
-   * initial `listTools()`. Defaults to 10_000 ms in the registry.
+   * initial `listTools()`. Defaults to 30_000 ms in the registry.
    */
   readonly connectTimeoutMs?: number;
 }
@@ -228,7 +228,7 @@ export {
 
 export interface McpRegistryOptions {
   readonly logger: Logger;
-  /** Per-connection timeout used by `start()`. Defaults to 10_000 ms. */
+  /** Per-connection timeout used by `start()`. Defaults to 30_000 ms. */
   readonly connectTimeoutMs?: number;
   /** Retry interval for dead servers. Defaults to 30_000 ms. */
   readonly retryIntervalMs?: number;

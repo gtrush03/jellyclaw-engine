@@ -36,7 +36,7 @@ import {
   type StdioMcpServerConfig,
 } from "./types.js";
 
-const DEFAULT_CONNECT_TIMEOUT_MS = 10_000;
+const DEFAULT_CONNECT_TIMEOUT_MS = 30_000;
 const DEFAULT_KILL_GRACE_MS = 3_000;
 const DEFAULT_RECONNECT_SCHEDULE = Object.freeze([500, 1_000, 2_000, 4_000, 8_000]);
 const DEFAULT_MAX_RECONNECT_ATTEMPTS = 5;

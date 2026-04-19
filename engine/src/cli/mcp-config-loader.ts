@@ -52,8 +52,10 @@ export interface LoadMcpConfigsDeps {
   readonly homedir?: () => string;
 }
 
-/** Default connect timeout for MCP servers (matches McpRegistry default). */
-const CONNECT_TIMEOUT_MS = 10_000;
+/** Default connect timeout for MCP servers (matches McpRegistry default).
+ * 30s accommodates slow-starting servers (Playwright, browser-launching MCPs)
+ * whose first-connect probe exceeds a tight 10s budget. */
+const CONNECT_TIMEOUT_MS = 30_000;
 
 /**
  * Expand `${VAR}` and `${VAR:-default}` placeholders in a string.
