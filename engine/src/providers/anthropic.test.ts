@@ -7,7 +7,7 @@ import {
 } from "node:http";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createLogger } from "../logger.js";
-import { AnthropicProvider, BETA_EXTENDED_CACHE_TTL } from "./anthropic.js";
+import { AnthropicProvider, BETA_CONTEXT_1M, BETA_EXTENDED_CACHE_TTL } from "./anthropic.js";
 import type { ProviderRequest } from "./types.js";
 
 /**
@@ -176,6 +176,26 @@ describe("AnthropicProvider.stream — request construction", () => {
     const beta = captures[0]?.headers["anthropic-beta"];
     expect(beta).toBeDefined();
     expect(String(beta)).toContain(BETA_EXTENDED_CACHE_TTL);
+  });
+
+  it("sets the 1M context beta header for the 4-6 family", async () => {
+    const prov = new AnthropicProvider({ apiKey: "sk-test", baseURL: url, logger });
+    for await (const _ of prov.stream(baseReq({ model: "claude-opus-4-6" }))) {
+      /* drain */
+    }
+    const beta = captures[0]?.headers["anthropic-beta"];
+    expect(beta).toBeDefined();
+    expect(String(beta)).toContain(BETA_CONTEXT_1M);
+  });
+
+  it("sets the 1M context beta header for the 4-7 family", async () => {
+    const prov = new AnthropicProvider({ apiKey: "sk-test", baseURL: url, logger });
+    for await (const _ of prov.stream(baseReq({ model: "claude-opus-4-7" }))) {
+      /* drain */
+    }
+    const beta = captures[0]?.headers["anthropic-beta"];
+    expect(beta).toBeDefined();
+    expect(String(beta)).toContain(BETA_CONTEXT_1M);
   });
 
   it("omits the beta header when systemTTL=5m", async () => {

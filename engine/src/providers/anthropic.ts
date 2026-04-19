@@ -21,6 +21,7 @@ import {
   defaultBreakpointOptions,
   planBreakpoints,
 } from "./cache-breakpoints.js";
+import { familyOf } from "./models.js";
 import type { Provider, ProviderChunk, ProviderRequest } from "./types.js";
 
 /**
@@ -156,7 +157,7 @@ export class AnthropicProvider implements Provider {
     const baseHeaders: Record<string, string> = {};
     const betas: string[] = [];
     if (planned.hasOneHourBreakpoint) betas.push(BETA_EXTENDED_CACHE_TTL);
-    if (req.model.startsWith("claude-opus-4-6") || req.model.startsWith("claude-sonnet-4-6")) {
+    if (["4-6", "4-7"].includes(familyOf(req.model) ?? "")) {
       betas.push(BETA_CONTEXT_1M);
     }
     if (betas.length > 0) baseHeaders["anthropic-beta"] = betas.join(",");

@@ -80,3 +80,19 @@ function firstNonEmpty(value: string | undefined): string | undefined {
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : undefined;
 }
+
+/**
+ * Returns the model family tier ("4-5" | "4-6" | "4-7") for a given model id,
+ * or `null` if the id does not match the `claude-(opus|sonnet|haiku)-4-(5|6|7)`
+ * shape. Used by provider code to gate family-wide behaviour (e.g. beta
+ * headers) without copy-pasting `.startsWith()` checks per model.
+ */
+export function familyOf(model: string): "4-5" | "4-6" | "4-7" | null {
+  const match = /^claude-(?:opus|sonnet|haiku)-4-(5|6|7)(?:-|$)/.exec(model);
+  if (match === null) return null;
+  const tier = match[1];
+  if (tier === "5") return "4-5";
+  if (tier === "6") return "4-6";
+  if (tier === "7") return "4-7";
+  return null;
+}
