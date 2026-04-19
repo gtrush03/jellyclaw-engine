@@ -1,0 +1,201 @@
+# T4-07: Release workflow for @jellyclaw/engine
+# Triggered on v* tags. Publishes to npm and updates Homebrew tap.
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  # Job 1: Build the universal engine binary (macOS)
+  build-engine-binary:
+    runs-on: macos-14
+    outputs:
+      artifact-name: engine-binary
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build engine binary
+        run: scripts/build-engine.sh --target universal --sign "${{ secrets.APPLE_SIGNING_IDENTITY }}"
+        env:
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+
+      - name: Upload engine binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: engine-binary
+          path: dist/bin/jellyclaw-universal
+          retention-days: 1
+
+      - name: Summary
+        run: |
+          echo "## Engine Binary Built" >> $GITHUB_STEP_SUMMARY
+          echo "- Target: universal" >> $GITHUB_STEP_SUMMARY
+          echo "- SHA256: $(shasum -a 256 dist/bin/jellyclaw-universal | awk '{print $1}')" >> $GITHUB_STEP_SUMMARY
+
+  # Job 2: Build signed + notarized DMG (macOS)
+  build-dmg:
+    needs: build-engine-binary
+    runs-on: macos-14
+    outputs:
+      dmg-url: ${{ steps.upload-release.outputs.url }}
+      dmg-sha256: ${{ steps.dmg-sha.outputs.sha256 }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download engine binary
+        uses: actions/download-artifact@v4
+        with:
+          name: engine-binary
+          path: dist/bin
+
+      - name: Make binary executable
+        run: chmod +x dist/bin/jellyclaw-universal
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build DMG
+        run: scripts/build-dmg.sh
+        env:
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_NOTARIZATION_APPLE_ID: ${{ secrets.APPLE_NOTARIZATION_APPLE_ID }}
+          APPLE_NOTARIZATION_PASSWORD: ${{ secrets.APPLE_NOTARIZATION_PASSWORD }}
+          APPLE_NOTARIZATION_TEAM_ID: ${{ secrets.APPLE_NOTARIZATION_TEAM_ID }}
+
+      - name: Calculate DMG SHA256
+        id: dmg-sha
+        run: |
+          SHA256=$(shasum -a 256 desktop/build/*.dmg | awk '{print $1}')
+          echo "sha256=$SHA256" >> $GITHUB_OUTPUT
+
+      - name: Upload DMG to Release
+        id: upload-release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: desktop/build/*.dmg
+          draft: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Summary
+        run: |
+          echo "## DMG Built" >> $GITHUB_STEP_SUMMARY
+          echo "- SHA256: ${{ steps.dmg-sha.outputs.sha256 }}" >> $GITHUB_STEP_SUMMARY
+
+  # Job 3: Publish to npm (Ubuntu)
+  publish-npm:
+    needs: build-engine-binary
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build
+        run: bun run build
+
+      - name: Publish to npm
+        run: scripts/publish-npm.sh --tag latest
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Summary
+        run: |
+          echo "## npm Package Published" >> $GITHUB_STEP_SUMMARY
+          echo "- Package: @jellyclaw/engine" >> $GITHUB_STEP_SUMMARY
+          echo "- Tag: latest" >> $GITHUB_STEP_SUMMARY
+
+  # Job 4: Update Homebrew tap (Ubuntu)
+  update-brew-tap:
+    needs: build-dmg
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate Homebrew formula
+        run: |
+          scripts/build-brew-formula.sh \
+            --tag "${{ github.ref_name }}" \
+            --dmg-url "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/Jellyclaw.dmg" \
+            --dmg-sha "${{ needs.build-dmg.outputs.dmg-sha256 }}"
+
+      - name: Push to Homebrew tap
+        run: |
+          git clone https://x-access-token:${{ secrets.BREW_TAP_TOKEN }}@github.com/gtrush/homebrew-jellyclaw.git tap
+          cp homebrew/jellyclaw.rb tap/Formula/jellyclaw.rb
+          cd tap
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/jellyclaw.rb
+          git commit -m "Update jellyclaw to ${{ github.ref_name }}"
+          git push
+        env:
+          BREW_TAP_TOKEN: ${{ secrets.BREW_TAP_TOKEN }}
+
+      - name: Summary
+        run: |
+          echo "## Homebrew Tap Updated" >> $GITHUB_STEP_SUMMARY
+          echo "- Formula: gtrush/jellyclaw/jellyclaw" >> $GITHUB_STEP_SUMMARY
+          echo "- Version: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+
+  # Job 5: Create GitHub Release (Ubuntu)
+  github-release:
+    needs: [build-dmg, publish-npm]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Summary
+        run: |
+          echo "## GitHub Release Created" >> $GITHUB_STEP_SUMMARY
+          echo "- Tag: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY

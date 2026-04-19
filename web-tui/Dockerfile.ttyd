@@ -1,0 +1,29 @@
+# syntax=docker/dockerfile:1.7
+#
+# ttyd staging image — fetches the static ttyd binary for the target arch.
+# Consumed by the root Dockerfile via `COPY --from=ttyd-stage`.
+# Binary source: https://github.com/tsl0922/ttyd/releases
+#
+# This file is kept as a reference / standalone build context; the root
+# Dockerfile inlines an identical stage so that a single `docker build`
+# produces the full jellyclaw image without extra composition.
+
+FROM debian:12-slim AS ttyd-stage
+
+ARG TTYD_VERSION=1.7.7
+ARG TARGETARCH
+
+# hadolint ignore=DL3008
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates curl \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN case "$TARGETARCH" in \
+      amd64) asset=ttyd.x86_64 ;; \
+      arm64) asset=ttyd.aarch64 ;; \
+      *) echo "unsupported arch: $TARGETARCH"; exit 1 ;; \
+    esac \
+    && curl -fsSL "https://github.com/tsl0922/ttyd/releases/download/${TTYD_VERSION}/${asset}" \
+         -o /usr/local/bin/ttyd \
+    && chmod +x /usr/local/bin/ttyd \
+    && /usr/local/bin/ttyd --version

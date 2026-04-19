@@ -1,0 +1,172 @@
+# Desktop build workflow (T4-06).
+#
+# Builds and signs the Jellyclaw Desktop DMG for macOS.
+# Triggered on version tags or manual dispatch.
+
+name: Desktop Build
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      skip_notarization:
+        description: 'Skip Apple notarization (for testing)'
+        required: false
+        default: 'false'
+        type: boolean
+
+# Required secrets:
+#   APPLE_DEVELOPER_CERT_P12_BASE64 - Base64-encoded Developer ID Application certificate
+#   APPLE_DEVELOPER_CERT_PASSWORD   - Password for the P12 certificate
+#   APPLE_ID                        - Apple ID email for notarytool
+#   APPLE_TEAM_ID                   - Apple Developer Team ID
+#   APPLE_APP_PASSWORD              - App-specific password for notarytool
+
+env:
+  BUN_VERSION: '1.1.0'
+  RUST_VERSION: '1.75.0'
+
+jobs:
+  build-macos:
+    name: Build macOS DMG
+    runs-on: macos-14  # ARM64 runner for universal builds
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Setup Rust
+        uses: dtolnay/rust-action@stable
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - name: Install Tauri CLI
+        run: cargo install tauri-cli --version ^2.0
+
+      - name: Install dependencies
+        run: |
+          bun install
+          cd desktop && bun install
+
+      - name: Import signing certificate
+        if: ${{ github.event_name == 'push' || github.event.inputs.skip_notarization != 'true' }}
+        env:
+          APPLE_DEVELOPER_CERT_P12_BASE64: ${{ secrets.APPLE_DEVELOPER_CERT_P12_BASE64 }}
+          APPLE_DEVELOPER_CERT_PASSWORD: ${{ secrets.APPLE_DEVELOPER_CERT_PASSWORD }}
+        run: |
+          # Create temporary keychain
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+          KEYCHAIN_PASSWORD=$(openssl rand -base64 32)
+
+          # Create and configure keychain
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          # Import certificate
+          echo "$APPLE_DEVELOPER_CERT_P12_BASE64" | base64 --decode > $RUNNER_TEMP/certificate.p12
+          security import $RUNNER_TEMP/certificate.p12 \
+            -P "$APPLE_DEVELOPER_CERT_PASSWORD" \
+            -A \
+            -t cert \
+            -f pkcs12 \
+            -k "$KEYCHAIN_PATH"
+
+          # Allow codesign to access keychain
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          # Add keychain to search list
+          security list-keychain -d user -s "$KEYCHAIN_PATH" $(security list-keychains -d user | tr -d '"')
+
+          # Find and export signing identity
+          IDENTITY=$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" | head -1 | sed 's/.*"\(.*\)"/\1/')
+          echo "SIGNING_IDENTITY=$IDENTITY" >> $GITHUB_ENV
+
+      - name: Build DMG (signed)
+        if: ${{ github.event_name == 'push' || github.event.inputs.skip_notarization != 'true' }}
+        env:
+          SIGNING_IDENTITY: ${{ env.SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+        run: |
+          scripts/build-dmg.sh
+
+      - name: Build DMG (unsigned/mock)
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.skip_notarization == 'true' }}
+        run: |
+          scripts/build-dmg.sh --ci-mode=mock
+
+      - name: Upload DMG artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: jellyclaw-desktop-dmg
+          path: dist/dmg/Jellyclaw.dmg
+          retention-days: 30
+
+      - name: Upload engine binary metadata
+        uses: actions/upload-artifact@v4
+        with:
+          name: engine-binary-metadata
+          path: dist/bin/*.meta.json
+          retention-days: 30
+
+      - name: Upload engine binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: engine-binaries
+          path: |
+            dist/bin/jellyclaw-arm64
+            dist/bin/jellyclaw-x86_64
+            dist/bin/jellyclaw-universal
+          retention-days: 30
+
+      - name: Cleanup keychain
+        if: always()
+        run: |
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+          if [ -f "$KEYCHAIN_PATH" ]; then
+            security delete-keychain "$KEYCHAIN_PATH" || true
+          fi
+          rm -f $RUNNER_TEMP/certificate.p12 || true
+
+  # Validation job to ensure secrets are configured
+  validate-secrets:
+    name: Validate Secrets
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check required secrets
+        env:
+          HAS_CERT: ${{ secrets.APPLE_DEVELOPER_CERT_P12_BASE64 != '' }}
+          HAS_CERT_PASS: ${{ secrets.APPLE_DEVELOPER_CERT_PASSWORD != '' }}
+          HAS_APPLE_ID: ${{ secrets.APPLE_ID != '' }}
+          HAS_TEAM_ID: ${{ secrets.APPLE_TEAM_ID != '' }}
+          HAS_APP_PASS: ${{ secrets.APPLE_APP_PASSWORD != '' }}
+        run: |
+          echo "Checking required secrets..."
+          echo "APPLE_DEVELOPER_CERT_P12_BASE64: $HAS_CERT"
+          echo "APPLE_DEVELOPER_CERT_PASSWORD: $HAS_CERT_PASS"
+          echo "APPLE_ID: $HAS_APPLE_ID"
+          echo "APPLE_TEAM_ID: $HAS_TEAM_ID"
+          echo "APPLE_APP_PASSWORD: $HAS_APP_PASS"
+
+          if [ "${{ github.event_name }}" = "push" ]; then
+            if [ "$HAS_CERT" != "true" ] || \
+               [ "$HAS_CERT_PASS" != "true" ] || \
+               [ "$HAS_APPLE_ID" != "true" ] || \
+               [ "$HAS_TEAM_ID" != "true" ] || \
+               [ "$HAS_APP_PASS" != "true" ]; then
+              echo "::error::Missing required secrets for release build"
+              exit 1
+            fi
+          fi
+
+          echo "All required secrets are configured!"

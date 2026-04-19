@@ -1,0 +1,53 @@
+# Caddyfile — reverse proxy for jellyclaw.dev
+#
+# Fly.io terminates TLS at the edge, so Caddy only needs to serve plain HTTP
+# inside the container. Three routes:
+#   /         → static landing page (site/)
+#   /v1/*     → jellyclaw-serve on 127.0.0.1:8080
+#   /tui, /tui/* → ttyd on 127.0.0.1:7681
+#
+# See phases/PHASE-08-hosting and T3-01 spec for context.
+{
+	admin off
+	auto_https off
+	# Fly terminates TLS at the edge; we only serve HTTP inside the container.
+	servers {
+		trusted_proxies static private_ranges
+	}
+}
+
+:80 {
+	encode zstd gzip
+
+	# jellyclaw-serve API (matched before the static fallback)
+	handle /v1/* {
+		reverse_proxy 127.0.0.1:8080
+	}
+
+	# Web TUI (ttyd) — both /tui and /tui/*
+	handle_path /tui {
+		redir /tui/ permanent
+	}
+	handle /tui/* {
+		reverse_proxy 127.0.0.1:7681
+	}
+
+	# Static landing page (default fallback)
+	handle {
+		root * /srv/site
+		try_files {path} /index.html
+		file_server
+		header {
+			X-Content-Type-Options nosniff
+			X-Frame-Options DENY
+			Referrer-Policy strict-origin-when-cross-origin
+			Permissions-Policy "accelerometer=(), camera=(), geolocation=(), microphone=()"
+		}
+	}
+
+	log {
+		output stderr
+		format console
+		level INFO
+	}
+}

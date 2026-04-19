@@ -1,0 +1,53 @@
+# Production deploy: main -> staging (smoke) -> prod
+# Adapted from docs/hosting/01-fly-deployment.md with bun toolchain per CLAUDE.md
+name: Deploy to Fly (prod)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+concurrency:
+  group: fly-deploy-prod-${{ github.ref }}
+  cancel-in-progress: false  # never cancel a prod deploy mid-flight
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Typecheck
+        run: bun run typecheck
+
+      - name: Test
+        run: bun run test
+
+      - name: Build
+        run: bun run build
+
+      # TODO: pin to tagged release when one lands (currently only @master is documented)
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy to staging
+        run: flyctl deploy --app jellyclaw-staging --remote-only --strategy rolling --wait-timeout 300
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Smoke test staging
+        run: |
+          curl --fail --retry 5 --retry-delay 5 \
+            https://jellyclaw-staging.fly.dev/v1/health
+
+      - name: Promote to prod
+        run: flyctl deploy --app jellyclaw-prod --remote-only --strategy rolling --wait-timeout 300
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}

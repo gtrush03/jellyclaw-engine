@@ -1,0 +1,26 @@
+# Dependencies & build artifacts pulled in by the builder stage itself.
+node_modules
+engine/node_modules
+engine/coverage
+
+# VCS / CI metadata
+.git
+.github
+
+# Documentation and authoring-only trees — not needed in the runtime image.
+docs
+test
+phases
+prompts
+skills
+agents
+desktop
+integration
+scripts/autobuild-simple
+
+# Runtime / scratch dirs — never ship these.
+tmp/
+.autobuild-simple/
+
+# NOTE: site/ and web-tui/ are intentionally NOT ignored — the runner stage
+# copies Caddy's docroot from site/ and the ttyd wrapper from web-tui/.

@@ -1,0 +1,51 @@
+app            = "jellyclaw-prod"
+primary_region = "iad"
+
+[build]
+  dockerfile = "Dockerfile"
+  ignorefile = ".dockerignore"
+
+[env]
+  NODE_ENV       = "production"
+  JELLYCLAW_HOME = "/data/jellyclaw"
+  LOG_LEVEL      = "info"
+  PLAYWRIGHT_BROWSERS_PATH = "/ms-playwright"
+  JELLYCLAW_CHROME_MODE    = "inline"
+
+[http_service]
+  internal_port        = 8080
+  force_https          = true
+  auto_stop_machines   = "off"
+  auto_start_machines  = true
+  min_machines_running = 2
+  processes            = ["app"]
+
+  [http_service.concurrency]
+    type        = "connections"
+    soft_limit  = 200
+    hard_limit  = 400
+
+  [[http_service.checks]]
+    grace_period = "30s"
+    interval     = "15s"
+    method       = "GET"
+    path         = "/v1/health"
+    timeout      = "5s"
+
+[[vm]]
+  size     = "shared-cpu-2x"
+  memory   = "1gb"
+  cpu_kind = "shared"
+
+[[mounts]]
+  source              = "jellyclaw_data"
+  destination         = "/data"
+  initial_size        = "10gb"
+  snapshot_retention  = 5
+  scheduled_snapshots = true
+  processes           = ["app"]
+
+[deploy]
+  strategy        = "rolling"
+  max_unavailable = 1
+  wait_timeout    = "5m"

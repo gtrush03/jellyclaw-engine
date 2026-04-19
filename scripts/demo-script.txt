@@ -1,0 +1,7 @@
+# jellyclaw demo script
+# One user message per non-comment, non-blank line. The TUI replays each line
+# as if typed (300 ms cadence) when launched with `--demo-script <this-file>`.
+# Recording target: 25–30 seconds total runtime.
+
+write a haiku about submarines
+/help
