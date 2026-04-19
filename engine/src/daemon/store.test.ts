@@ -27,8 +27,8 @@ describe("JobStore", () => {
   });
 
   describe("schema-migrate", () => {
-    it("creates schema on fresh DB", () => {
-      store.open();
+    it("creates schema on fresh DB", async () => {
+      await store.open();
       expect(store.getSchemaVersion()).toBe(1);
 
       // Verify tables exist by inserting a job.
@@ -42,8 +42,8 @@ describe("JobStore", () => {
       expect(job.id).toBe("test-001");
     });
 
-    it("reopening existing DB at current schema_version is a no-op", () => {
-      store.open();
+    it("reopening existing DB at current schema_version is a no-op", async () => {
+      await store.open();
       store.insertJob({
         id: "test-002",
         kind: "wakeup",
@@ -55,7 +55,7 @@ describe("JobStore", () => {
 
       // Reopen.
       const store2 = new JobStore({ stateDir: tempDir });
-      store2.open();
+      await store2.open();
 
       expect(store2.getSchemaVersion()).toBe(1);
       const job = store2.getById("test-002");
@@ -67,8 +67,8 @@ describe("JobStore", () => {
   });
 
   describe("insert/cancel/listDue ordering", () => {
-    it("inserts and retrieves jobs", () => {
-      store.open();
+    it("inserts and retrieves jobs", async () => {
+      await store.open();
 
       const job1 = store.insertJob({
         id: "job-a",
@@ -96,8 +96,8 @@ describe("JobStore", () => {
       expect(due[1]?.id).toBe("job-a");
     });
 
-    it("cancels pending jobs", () => {
-      store.open();
+    it("cancels pending jobs", async () => {
+      await store.open();
 
       store.insertJob({
         id: "job-c",
@@ -118,8 +118,8 @@ describe("JobStore", () => {
       expect(due.length).toBe(0);
     });
 
-    it("cannot cancel non-pending jobs", () => {
-      store.open();
+    it("cannot cancel non-pending jobs", async () => {
+      await store.open();
 
       store.insertJob({
         id: "job-d",
@@ -138,8 +138,8 @@ describe("JobStore", () => {
   });
 
   describe("wal checkpoint after 100 jobs", () => {
-    it("checkpoints without error", () => {
-      store.open();
+    it("checkpoints without error", async () => {
+      await store.open();
 
       for (let i = 0; i < 100; i++) {
         store.insertJob({
@@ -162,7 +162,7 @@ describe("JobStore", () => {
 
   describe("concurrent writer coordination via BEGIN IMMEDIATE", () => {
     it("handles concurrent inserts", async () => {
-      store.open();
+      await store.open();
 
       // Simulate concurrent writes.
       const promises = [];
@@ -193,8 +193,8 @@ describe("JobStore", () => {
   });
 
   describe("job events", () => {
-    it("appends and lists events", () => {
-      store.open();
+    it("appends and lists events", async () => {
+      await store.open();
 
       store.insertJob({
         id: "event-job",
@@ -216,8 +216,8 @@ describe("JobStore", () => {
   });
 
   describe("markDone and markError", () => {
-    it("marks job as done", () => {
-      store.open();
+    it("marks job as done", async () => {
+      await store.open();
 
       store.insertJob({
         id: "done-job",
@@ -236,8 +236,8 @@ describe("JobStore", () => {
       expect(job?.last_fired_at).toBe(1500);
     });
 
-    it("marks job as failed with error", () => {
-      store.open();
+    it("marks job as failed with error", async () => {
+      await store.open();
 
       store.insertJob({
         id: "fail-job",
@@ -257,8 +257,8 @@ describe("JobStore", () => {
   });
 
   describe("countPending and countRunning", () => {
-    it("returns correct counts", () => {
-      store.open();
+    it("returns correct counts", async () => {
+      await store.open();
 
       store.insertJob({
         id: "count-1",

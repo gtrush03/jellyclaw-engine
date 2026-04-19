@@ -18,16 +18,15 @@
 
 import { randomUUID } from "node:crypto";
 import { EventEmitter } from "node:events";
-
-import type { Logger } from "pino";
-
 import { access } from "node:fs/promises";
+import type { Logger } from "pino";
 
 import { runAgentLoop } from "../agents/loop.js";
 import { loadSoul } from "../agents/soul.js";
 import type { AgentEvent } from "../events.js";
 import type { HookRegistry } from "../hooks/registry.js";
 import { run as engineRun } from "../internal.js";
+import type { McpRegistry } from "../mcp/registry.js";
 import type { CompiledPermissions } from "../permissions/types.js";
 import type { Provider } from "../providers/types.js";
 import type { Db, JsonlWriter } from "../session/index.js";
@@ -68,9 +67,7 @@ export const DEFAULT_POST_COMPLETION_TTL_MS = 5 * 60 * 1000;
  *    subagent.*, stream.ping) are ignored — they don't contribute to the
  *    user/assistant alternation the chat API expects.
  */
-export function eventsToPriorMessages(
-  events: readonly AgentEvent[],
-): ReadonlyArray<PriorMessage> {
+export function eventsToPriorMessages(events: readonly AgentEvent[]): ReadonlyArray<PriorMessage> {
   const out: PriorMessage[] = [];
   let pendingAssistant: string[] | null = null;
 
@@ -161,6 +158,8 @@ export interface RunManagerOptions {
   readonly permissions?: CompiledPermissions;
   readonly defaultModel?: string;
   readonly defaultCwd?: string;
+  /** MCP registry for tool augmentation (T0-01). */
+  readonly mcp?: McpRegistry;
 }
 
 /**
@@ -593,6 +592,7 @@ function makeDefaultRunFactory(
   const permissions = mgr.permissions as CompiledPermissions;
   const defaultModel = mgr.defaultModel as string;
   const defaultCwd = mgr.defaultCwd ?? process.cwd();
+  const mcp = mgr.mcp;
 
   return (opts) => {
     const model = opts.model ?? defaultModel;
@@ -605,7 +605,7 @@ function makeDefaultRunFactory(
       const systemPrompt =
         opts.appendSystemPrompt !== undefined
           ? opts.appendSystemPrompt
-          : (await loadSoul({ logger })) ?? undefined;
+          : ((await loadSoul({ logger })) ?? undefined);
       yield* runAgentLoop({
         provider,
         hooks,
@@ -619,6 +619,7 @@ function makeDefaultRunFactory(
         ...(systemPrompt !== undefined ? { systemPrompt } : {}),
         ...(opts.maxTurns !== undefined ? { maxTurns: opts.maxTurns } : {}),
         ...(opts.priorMessages !== undefined ? { priorMessages: opts.priorMessages } : {}),
+        ...(mcp !== undefined ? { mcp } : {}),
       });
     }
     return runWithSoul();

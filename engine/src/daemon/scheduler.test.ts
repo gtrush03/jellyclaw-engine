@@ -48,7 +48,7 @@ describe("Scheduler", () => {
         return Promise.resolve();
       });
 
-      scheduler.start();
+      await scheduler.start();
 
       // Schedule a job 10 seconds out.
       const scheduledFireAt = currentTime + 10000;
@@ -106,7 +106,7 @@ describe("Scheduler", () => {
         return Promise.resolve();
       });
 
-      scheduler.start();
+      await scheduler.start();
 
       // Schedule a job 30 seconds out.
       const fireAt = currentTime + 30000;
@@ -143,7 +143,7 @@ describe("Scheduler", () => {
         return Promise.resolve();
       });
 
-      scheduler2.start();
+      await scheduler2.start();
 
       // Advance time past fire_at.
       for (let i = 0; i < 500; i++) {
@@ -270,7 +270,7 @@ describe("Scheduler", () => {
         return Promise.resolve();
       });
 
-      scheduler.start();
+      await scheduler.start();
 
       // Insert a cron job that fires at currentTime + 1000.
       scheduler.store.insertJob({

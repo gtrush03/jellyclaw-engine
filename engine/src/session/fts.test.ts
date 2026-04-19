@@ -84,7 +84,7 @@ describe("fts.searchMessages", () => {
 
     db.raw
       .prepare("UPDATE messages SET content = ? WHERE id = ?")
-      .run("rewritten now mentions gizmos", id);
+      .run(["rewritten now mentions gizmos", id]);
 
     expect(searchMessages(db, { query: "widgets" })).toHaveLength(0);
     expect(searchMessages(db, { query: "gizmos" })).toHaveLength(1);

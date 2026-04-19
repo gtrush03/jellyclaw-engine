@@ -14,7 +14,8 @@
 
 import { randomUUID } from "node:crypto";
 import { realpathSync } from "node:fs";
-import path from "node:path";
+import { homedir } from "node:os";
+import path, { join } from "node:path";
 import { SubagentDispatcher } from "../agents/dispatch.js";
 import { DEFAULT_DISPATCH_CONFIG } from "../agents/dispatch-types.js";
 import { runAgentLoop } from "../agents/loop.js";
@@ -27,8 +28,12 @@ import type { AgentEvent } from "../events.js";
 import { HookRegistry } from "../hooks/registry.js";
 import type { RunOptions } from "../internal.js";
 import { createLogger } from "../logger.js";
-import type { McpRegistry } from "../mcp/registry.js";
+import { McpRegistry } from "../mcp/registry.js";
+import { ensureChromeRunning, extractLocalCdpPorts } from "./chrome-autolaunch.js";
+import { captureAllTabs } from "./session-screenshot.js";
 import { AnthropicProvider } from "../providers/anthropic.js";
+import { resolveModel } from "../providers/models.js";
+import { parseRole, selectAuth } from "../providers/subscription-auth.js";
 import { findLatestForProject } from "../session/continue.js";
 import { openDb } from "../session/db.js";
 import { WishLedger } from "../session/idempotency.js";
@@ -39,7 +44,10 @@ import { NoSessionForProjectError, SessionNotFoundError } from "../session/types
 import { buildSkillInjection } from "../skills/inject.js";
 import { SkillRegistry } from "../skills/registry.js";
 import { createSessionRunner } from "../subagents/runner.js";
+import type { Credentials } from "./credentials.js";
+import { loadCredentials } from "./credentials.js";
 import { ExitError } from "./main.js";
+import { loadMcpConfigs } from "./mcp-config-loader.js";
 import {
   type CreateOutputWriterOptions,
   isOutputFormat,
@@ -134,15 +142,37 @@ async function defaultReadStdin(): Promise<string> {
 }
 
 async function* realRunFn(opts: RunOptions): AsyncIterable<AgentEvent> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (apiKey === undefined || apiKey.length === 0) {
-    throw new ExitError(2, "ANTHROPIC_API_KEY not set. Export it or add to .env.local.");
-  }
   const logger = createLogger({
     level: process.env.JELLYCLAW_LOG_LEVEL ?? "info",
     destination: "stderr",
   });
-  const provider = new AnthropicProvider({ apiKey, logger });
+
+  // Load credentials from disk, with env fallback for back-compat (T0-01).
+  const diskCreds = await loadCredentials();
+  const envKey = process.env.ANTHROPIC_API_KEY;
+  const creds: Credentials = {
+    ...diskCreds,
+    // Env fallback: if no anthropicApiKey in creds file, check ANTHROPIC_API_KEY env var
+    ...(diskCreds.anthropicApiKey === undefined && typeof envKey === "string" && envKey.length > 0
+      ? { anthropicApiKey: envKey }
+      : {}),
+  };
+  const auth = selectAuth(creds, parseRole(process.env.JELLYCLAW_ROLE));
+  if (auth === null) {
+    throw new ExitError(
+      1,
+      "jellyclaw: no credentials. Run `jellyclaw auth login` or `jellyclaw key set`.",
+    );
+  }
+  // For now, only apiKey auth is supported for the provider.
+  // Subscription (OAuth) auth will require different SDK configuration.
+  if (auth.kind !== "apiKey") {
+    throw new ExitError(
+      1,
+      "jellyclaw: subscription auth not yet supported for `run`. Use an API key.",
+    );
+  }
+  const provider = new AnthropicProvider({ apiKey: auth.key, logger });
 
   // Load settings.json from ~/.claude and ./.claude (T2-05, T2-06).
   // Permission mode is resolved with priority: flag > settings > env > "default".
@@ -169,16 +199,27 @@ async function* realRunFn(opts: RunOptions): AsyncIterable<AgentEvent> {
   process.once("SIGINT", onSig);
   process.once("SIGTERM", onSig);
 
-  // MCP registry: T2-05 will load `mcpConfig` from settings.json. For now,
-  // we pass undefined (no MCP servers configured) to avoid regressions.
-  // The structural wiring is in place so T2-05 only needs to provide configs.
+  // MCP registry: load configs from CLI flag, cwd, and home configs (T0-01).
+  const cwd = opts.cwd ?? process.cwd();
+  const mcpConfigs = await loadMcpConfigs({
+    mcpConfig: opts.mcpConfig,
+    configDir: opts.configDir,
+    cwd,
+    logger,
+  });
   let mcp: McpRegistry | undefined;
-  // TODO(T2-05): Load MCP config from settings.json and construct registry:
-  //   const mcpConfigs = loadMcpConfigs(opts.mcpConfigPath);
-  //   if (mcpConfigs.length > 0) {
-  //     mcp = new McpRegistry({ logger });
-  //     await mcp.start(mcpConfigs);
-  //   }
+  if (mcpConfigs.length > 0) {
+    // T4-01: Auto-launch Chrome if MCP configs contain local CDP endpoints.
+    await ensureChromeRunning(mcpConfigs, logger);
+    mcp = new McpRegistry({ logger });
+    try {
+      await mcp.start(mcpConfigs);
+      logger.info({ count: mcpConfigs.length }, `mcp: started ${mcpConfigs.length} server(s)`);
+    } catch (err) {
+      logger.warn({ err }, "one or more MCP servers failed to start; continuing without them");
+      // Keep `mcp` around — registry handles per-server failure with retry/backoff.
+    }
+  }
 
   // Subagent dispatcher: build AgentRegistry, Semaphore, SessionRunner, and wire
   // into a SubagentDispatcher so Task tool calls work. T2-02.
@@ -244,7 +285,7 @@ async function* realRunFn(opts: RunOptions): AsyncIterable<AgentEvent> {
     }
   }
 
-  const model = "claude-opus-4-6";
+  const model = resolveModel({ configModel: "claude-opus-4-7", env: process.env });
 
   // Build the session runner (recursive runAgentLoop driver).
   const sessionRunner = createSessionRunner({
@@ -332,7 +373,13 @@ async function* realRunFn(opts: RunOptions): AsyncIterable<AgentEvent> {
       additionalRoots = normalized;
     }
 
-    yield* runAgentLoop({
+    // T4-02: Intercept events to add final_screenshots to session.completed.
+    // Note: Screenshots must be captured AFTER mcp.stop() because playwright-mcp's
+    // CDP connection blocks Page.captureScreenshot commands. However, Chrome itself
+    // (launched via jellyclaw-chrome.sh) stays running as a detached process.
+    let pendingSessionCompleted: AgentEvent | null = null;
+
+    for await (const event of runAgentLoop({
       provider,
       hooks,
       permissions,
@@ -351,11 +398,49 @@ async function* realRunFn(opts: RunOptions): AsyncIterable<AgentEvent> {
       ...(skills.length > 0 ? { skillRegistry } : {}),
       ...(toolFilter !== undefined ? { toolFilter } : {}),
       ...(additionalRoots !== undefined ? { additionalRoots } : {}),
-    });
+    })) {
+      if (event.type === "session.completed") {
+        // Defer session.completed until after mcp.stop() so we can capture screenshots.
+        pendingSessionCompleted = event;
+      } else {
+        yield event;
+      }
+    }
+
+    // Stop MCP first so playwright-mcp releases its CDP connection.
+    if (mcp !== undefined) {
+      await mcp.stop();
+      mcp = undefined; // Prevent double-stop in finally
+      // Give CDP time to stabilize after MCP releases its connection.
+      // 1s delay helps prevent screenshot capture timeouts.
+      await new Promise((r) => setTimeout(r, 1000));
+    }
+
+    // T4-02: Now capture screenshots (CDP is no longer blocked by playwright-mcp).
+    if (pendingSessionCompleted) {
+      const finalScreenshots: string[] = [];
+      try {
+        const ports = extractLocalCdpPorts(mcpConfigs);
+        if (ports.size > 0) {
+          const outDir = join(homedir(), ".jellyclaw", "sessions", sessionId, "screenshots");
+          for (const port of ports) {
+            const saved = await captureAllTabs(port, outDir, logger);
+            finalScreenshots.push(...saved);
+          }
+        }
+      } catch (err) {
+        logger.warn({ err }, "session: final-screenshot hook failed");
+      }
+      // Emit modified session.completed with final_screenshots if any.
+      yield {
+        ...pendingSessionCompleted,
+        ...(finalScreenshots.length > 0 ? { final_screenshots: finalScreenshots } : {}),
+      };
+    }
   } finally {
     process.off("SIGINT", onSig);
     process.off("SIGTERM", onSig);
-    // Clean up MCP registry if it was started.
+    // Clean up MCP registry if it was started (may have been stopped above).
     if (mcp !== undefined) {
       await mcp.stop();
     }

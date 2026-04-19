@@ -29,7 +29,6 @@ import { teamCreateTool, teamDeleteTool } from "./team.js";
 import { todowriteTool } from "./todowrite.js";
 import type { Tool } from "./types.js";
 import { webfetchTool } from "./webfetch.js";
-import { websearchTool } from "./websearch.js";
 import { writeTool } from "./write.js";
 
 export const builtinTools: readonly Tool<unknown, unknown>[] = [
@@ -55,7 +54,6 @@ export const builtinTools: readonly Tool<unknown, unknown>[] = [
   teamDeleteTool as Tool<unknown, unknown>,
   todowriteTool as Tool<unknown, unknown>,
   webfetchTool as Tool<unknown, unknown>,
-  websearchTool as Tool<unknown, unknown>,
   writeTool as Tool<unknown, unknown>,
 ];
 
@@ -98,10 +96,6 @@ export { teamCreateTool, teamDeleteTool } from "./team.js";
 export { todowriteTool } from "./todowrite.js";
 export * from "./types.js";
 export { webfetchTool } from "./webfetch.js";
-// TODO: wire emitWebSearchRegistrationWarning into the engine bootstrap when Phase 10 lands.
-export {
-  _resetWebSearchWarning,
-  emitWebSearchRegistrationWarning,
-  websearchTool,
-} from "./websearch.js";
+// WebSearch intentionally absent from builtinTools — provided via
+// the default Exa MCP instead. See docs/tools.md and T5-02.
 export { writeTool } from "./write.js";

@@ -163,8 +163,7 @@ export function planBreakpoints(
   // The `extended-cache-ttl-2025-04-11` beta header is required whenever
   // ANY cache_control block uses ttl="1h". Tools always get 1h when present;
   // system uses opts.systemTTL (defaults to "5m" — see note above).
-  const hasOneHourBreakpoint =
-    plan.toolsPlaced || (plan.systemPlaced && opts.systemTTL === "1h");
+  const hasOneHourBreakpoint = plan.toolsPlaced || (plan.systemPlaced && opts.systemTTL === "1h");
 
   return { system, tools, messages, hasOneHourBreakpoint, plan };
 }

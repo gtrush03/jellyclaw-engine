@@ -19,10 +19,7 @@
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import type {
-  EmbeddedServerHandle,
-  SpawnEmbeddedServerOptions,
-} from "./shared/spawn-server.js";
+import type { EmbeddedServerHandle, SpawnEmbeddedServerOptions } from "./shared/spawn-server.js";
 import { TuiHealthTimeoutError } from "./shared/spawn-server.js";
 import type { LaunchTuiFn, SpawnEmbeddedServerFn, WaitForHealthFn } from "./tui.js";
 import { flagsToEnvPatch, tuiAction } from "./tui.js";
@@ -45,7 +42,11 @@ function makeRec(): Recorder {
   return { spawnCalls: [], waitCalls: [], launchCalls: [], stops: 0, disposes: 0 };
 }
 
-function makeSpawn(rec: Recorder, base = "http://127.0.0.1:51234", token = "srv-tok"): SpawnEmbeddedServerFn {
+function makeSpawn(
+  rec: Recorder,
+  base = "http://127.0.0.1:51234",
+  token = "srv-tok",
+): SpawnEmbeddedServerFn {
   return async (opts) => {
     rec.spawnCalls.push(opts ?? {});
     const handle: EmbeddedServerHandle = {
@@ -85,7 +86,11 @@ function makeLaunch(rec: Recorder, onExit: Promise<number> | undefined): LaunchT
     // Embedded-path simulation: if launchTui was handed a spawnServer +
     // waitForHealth, drive them so the rest of the test recording mirrors
     // the real launchTui's lifecycle.
-    if (opts.spawnServer !== undefined && opts.waitForHealth !== undefined && opts.url === undefined) {
+    if (
+      opts.spawnServer !== undefined &&
+      opts.waitForHealth !== undefined &&
+      opts.url === undefined
+    ) {
       const handle = await opts.spawnServer({ cwd: opts.cwd ?? process.cwd() });
       await opts.waitForHealth(handle.baseUrl);
       const stopHandle = handle;

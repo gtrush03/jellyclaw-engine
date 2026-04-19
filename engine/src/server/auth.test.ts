@@ -1,9 +1,11 @@
 import { Buffer } from "node:buffer";
 
 import { Hono } from "hono";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { constantTimeTokenCompare, createAuthMiddleware } from "./auth.js";
+import type { AuthProvider, Principal } from "./auth/index.js";
+import { selfHostedPrincipal } from "./auth/index.js";
 import type { AppVariables } from "./types.js";
 
 function makeApp(token: string): Hono<{ Variables: AppVariables }> {
@@ -11,6 +13,23 @@ function makeApp(token: string): Hono<{ Variables: AppVariables }> {
   app.use("*", createAuthMiddleware({ authToken: token }));
   app.get("/v1/health", (c) => c.json({ ok: true }));
   return app;
+}
+
+function makeAppWithProvider(provider: AuthProvider): Hono<{ Variables: AppVariables }> {
+  const app = new Hono<{ Variables: AppVariables }>();
+  app.use("*", createAuthMiddleware({ provider }));
+  app.get("/v1/health", (c) => {
+    const principal = c.get("principal");
+    const authenticated = c.get("authenticated");
+    return c.json({ ok: true, principal, authenticated });
+  });
+  return app;
+}
+
+function makeMockProvider(returnValue: Principal | null): AuthProvider {
+  return {
+    authenticate: vi.fn().mockResolvedValue(returnValue),
+  };
 }
 
 describe("auth middleware", () => {
@@ -83,5 +102,46 @@ describe("constantTimeTokenCompare", () => {
 
   it("returns false for wrong equal-length input", () => {
     expect(constantTimeTokenCompare("xyz", Buffer.from("abc"))).toBe(false);
+  });
+});
+
+describe("auth middleware with provider", () => {
+  it("returns 401 when provider returns null", async () => {
+    const provider = makeMockProvider(null);
+    const app = makeAppWithProvider(provider);
+
+    const res = await app.request("/v1/health");
+
+    expect(res.status).toBe(401);
+    expect(await res.json()).toEqual({ error: "unauthorized" });
+  });
+
+  it("sets c.var.principal when provider returns Principal", async () => {
+    const principal = selfHostedPrincipal();
+    const provider = makeMockProvider(principal);
+    const app = makeAppWithProvider(provider);
+
+    const res = await app.request("/v1/health");
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.principal.accountId).toBe("self-hosted");
+    expect(body.principal.kind).toBe("bearer");
+  });
+
+  it("sets c.var.authenticated = true for back-compat", async () => {
+    const principal = selfHostedPrincipal();
+    const provider = makeMockProvider(principal);
+    const app = makeAppWithProvider(provider);
+
+    const res = await app.request("/v1/health");
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.authenticated).toBe(true);
+  });
+
+  it("refuses to construct without provider or authToken", () => {
+    expect(() => createAuthMiddleware({})).toThrow();
   });
 });

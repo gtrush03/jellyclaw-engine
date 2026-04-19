@@ -21,9 +21,9 @@
  */
 
 import { mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs";
-import Database from "better-sqlite3";
 import type { Logger } from "pino";
 
+import { openSqlite, type SqliteDatabase } from "../db/sqlite.js";
 import { createLogger } from "../logger.js";
 import type { SessionPaths } from "./paths.js";
 
@@ -42,7 +42,7 @@ export interface OpenDbOptions {
 
 export interface Db {
   /** Escape hatch for writer.ts / fts.ts (Agent B). */
-  readonly raw: Database.Database;
+  readonly raw: SqliteDatabase;
   readonly paths: SessionPaths;
   close(): void;
 }
@@ -65,7 +65,7 @@ const MIGRATIONS: readonly Migration[] = [
   { v: 1, sqlUrl: new URL("./schema.sql", import.meta.url) },
 ];
 
-function currentSchemaVersion(db: Database.Database): number {
+function currentSchemaVersion(db: SqliteDatabase): number {
   // `schema_version` may not exist yet on a freshly-created DB.
   const tableExists = db
     .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='schema_version'")
@@ -97,7 +97,7 @@ function stripTopLevelPragmas(sql: string): string {
   return sql.replace(/^[ \t]*PRAGMA[^;]*;[ \t]*(?:--[^\n]*)?\r?\n?/gim, "");
 }
 
-function applyMigrations(db: Database.Database, logger: Logger): void {
+function applyMigrations(db: SqliteDatabase, logger: Logger): void {
   const before = currentSchemaVersion(db);
   for (const migration of MIGRATIONS) {
     if (migration.v <= before) continue;
@@ -123,7 +123,7 @@ interface IntegrityRow {
   integrity_check: string;
 }
 
-function isIntegrityOk(db: Database.Database): boolean {
+function isIntegrityOk(db: SqliteDatabase): boolean {
   // A badly corrupt file (e.g. zero-length, garbage header) can cause
   // `PRAGMA integrity_check` itself to throw ("file is not a database").
   // Treat any throw as "not ok" — the caller will quarantine and reopen.
@@ -171,10 +171,10 @@ interface JournalModeRow {
   journal_mode: string;
 }
 
-function applyRuntimePragmas(db: Database.Database, logger: Logger): void {
+function applyRuntimePragmas(db: SqliteDatabase, logger: Logger): void {
   // `journal_mode = WAL` returns the new mode; assert it actually took.
   // Network filesystems (NFS/SMB) may silently fall back to `delete`.
-  const journalRows = db.pragma("journal_mode = WAL") as JournalModeRow[];
+  const journalRows = db.pragma("journal_mode", "WAL") as JournalModeRow[];
   const journal = journalRows[0]?.journal_mode;
   if (journal !== "wal") {
     logger.warn(
@@ -182,8 +182,8 @@ function applyRuntimePragmas(db: Database.Database, logger: Logger): void {
       "session-db: WAL mode not enabled (possibly shared/network filesystem)",
     );
   }
-  db.pragma("synchronous = NORMAL");
-  db.pragma("foreign_keys = ON");
+  db.pragma("synchronous", "NORMAL");
+  db.pragma("foreign_keys", "ON");
 }
 
 // ---------------------------------------------------------------------------
@@ -208,7 +208,7 @@ export async function openDb(opts: OpenDbOptions): Promise<Db> {
   mkdirSync(paths.sessionsRoot(), { recursive: true });
 
   const dbPath = paths.indexDb();
-  let db = new Database(dbPath, { readonly });
+  let db = await openSqlite(dbPath, { readonly });
 
   // Integrity check first — if it fails, quarantine and reopen.
   if (!readonly && !isIntegrityOk(db)) {
@@ -222,7 +222,7 @@ export async function openDb(opts: OpenDbOptions): Promise<Db> {
       { dbPath, quarantinedTo },
       "session-db: CORRUPT database detected; quarantined and reopening fresh",
     );
-    db = new Database(dbPath, { readonly });
+    db = await openSqlite(dbPath, { readonly });
   }
 
   applyRuntimePragmas(db, logger);

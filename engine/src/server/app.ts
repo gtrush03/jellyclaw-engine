@@ -26,6 +26,11 @@ import { Hono } from "hono";
 import type { Logger } from "pino";
 
 import { createAuthMiddleware } from "./auth.js";
+import {
+  createBearerAuthProvider,
+  createCompositeAuthProvider,
+  createMultiTenantAuthProviderStub,
+} from "./auth/index.js";
 import { createCorsMiddleware } from "./cors.js";
 import { registerConfigRoutes } from "./routes/config.js";
 import { registerEventRoutes } from "./routes/events.js";
@@ -84,7 +89,16 @@ export function createApp(opts: CreateAppOptions): Hono<{ Variables: AppVariable
   });
 
   // 4. auth — mandatory bearer for everything below
-  app.use("*", createAuthMiddleware({ authToken: opts.config.authToken }));
+  // Provider construction: DI override → managed mode composite → self-hosted bearer
+  const provider =
+    opts.config.authProvider ??
+    (process.env.JELLYCLAW_MODE === "managed"
+      ? createCompositeAuthProvider([
+          createMultiTenantAuthProviderStub(),
+          createBearerAuthProvider({ authToken: opts.config.authToken }),
+        ])
+      : createBearerAuthProvider({ authToken: opts.config.authToken }));
+  app.use("*", createAuthMiddleware({ provider }));
 
   // 5. routes
   const sessionManager =

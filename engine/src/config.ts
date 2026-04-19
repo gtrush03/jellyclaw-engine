@@ -99,6 +99,9 @@ const StdioMcpServerConfig = z.object({
   cwd: z.string().optional(),
   timeoutMs: z.number().int().positive().default(30_000),
   enabled: z.boolean().default(true),
+  _disabled: z.boolean().optional(),
+  _comment: z.string().optional(),
+  _requires_env: z.array(z.string()).optional(),
 });
 
 const HttpMcpServerConfig = z.object({
@@ -109,6 +112,9 @@ const HttpMcpServerConfig = z.object({
   oauth: OAuthConfig.optional(),
   timeoutMs: z.number().int().positive().default(30_000),
   enabled: z.boolean().default(true),
+  _disabled: z.boolean().optional(),
+  _comment: z.string().optional(),
+  _requires_env: z.array(z.string()).optional(),
 });
 
 const SseMcpServerConfig = z.object({
@@ -119,6 +125,9 @@ const SseMcpServerConfig = z.object({
   oauth: OAuthConfig.optional(),
   timeoutMs: z.number().int().positive().default(30_000),
   enabled: z.boolean().default(true),
+  _disabled: z.boolean().optional(),
+  _comment: z.string().optional(),
+  _requires_env: z.array(z.string()).optional(),
 });
 
 export const McpServerConfig = z.discriminatedUnion("transport", [

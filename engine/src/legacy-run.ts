@@ -64,6 +64,10 @@ export interface RunOptions {
   appendSystemPrompt?: string;
   /** Additional allowed directories (T2-10). Path tools can access these in addition to cwd. */
   addDir?: readonly string[];
+  /** Explicit MCP config file path (T0-01). Overrides cwd/home configs. */
+  mcpConfig?: string;
+  /** Config directory override (T0-01). Defaults to ~/.jellyclaw. */
+  configDir?: string;
 }
 
 async function resolveConfig(options: LegacyCreateEngineOptions): Promise<JellyclawConfig> {

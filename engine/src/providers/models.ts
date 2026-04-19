@@ -13,11 +13,24 @@
  * multi-provider registry is out of scope.
  */
 
-export const KNOWN_MODELS = ["claude-sonnet-4-5", "claude-opus-4-5", "claude-haiku-4-5"] as const;
+export const KNOWN_MODELS = [
+  // 4.7 family — April 2026 (current latest)
+  "claude-opus-4-7",
+  "claude-sonnet-4-7",
+  "claude-haiku-4-7",
+  // 4.6 family — Feb 2026
+  "claude-opus-4-6",
+  "claude-sonnet-4-6",
+  "claude-haiku-4-6",
+  // 4.5 family — late 2025 (kept for back-compat)
+  "claude-sonnet-4-5",
+  "claude-opus-4-5",
+  "claude-haiku-4-5",
+] as const;
 
 export type KnownModel = (typeof KNOWN_MODELS)[number];
 
-export const DEFAULT_MODEL: KnownModel = "claude-sonnet-4-5";
+export const DEFAULT_MODEL: KnownModel = "claude-sonnet-4-7";
 
 export class InvalidModelError extends Error {
   readonly modelId: string;

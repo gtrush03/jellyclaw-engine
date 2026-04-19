@@ -107,11 +107,11 @@ export class Scheduler {
   }
 
   /** Start the scheduler tick loop. */
-  start(): void {
+  async start(): Promise<void> {
     if (this.#running) return;
 
     // Open the store.
-    this.store.open();
+    await this.store.open();
 
     // Write PID file.
     const pidPath = path.join(this.stateDir, "scheduler.pid");

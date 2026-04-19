@@ -31,7 +31,7 @@ describe("IPC", () => {
       return Promise.resolve();
     });
 
-    scheduler.start();
+    await scheduler.start();
 
     ipcServer = new IpcServer({ scheduler });
     ipcServer.start();

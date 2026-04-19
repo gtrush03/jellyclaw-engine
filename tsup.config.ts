@@ -12,6 +12,7 @@ const EXTERNAL: readonly string[] = [
   "@openrouter/ai-sdk-provider",
   "@modelcontextprotocol/sdk",
   "better-sqlite3",
+  "bun:sqlite", // Bun's built-in sqlite (runtime-resolved)
   "better-sse",
   "@vscode/ripgrep",
   "pdfjs-dist",

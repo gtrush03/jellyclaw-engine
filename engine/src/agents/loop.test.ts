@@ -1323,6 +1323,178 @@ describe("runAgentLoop: disallowed-tool-error", () => {
 // Compaction integration test (T3-01)
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Browser rate limiting tests (Phase 07.5 T2-01)
+// ---------------------------------------------------------------------------
+
+describe("runAgentLoop: browser-rate-limit", () => {
+  it("rate limits browser MCP tools after burst exhausted (10 succeed, next 60 fail)", async () => {
+    // Simulate 70 rapid browser_navigate calls.
+    // With burst 10 and no time passage, only 10 should succeed.
+    const fakeTool: FakeMcpTool = {
+      name: "browser_navigate",
+      namespacedName: "mcp__playwright__browser_navigate",
+      description: "Navigate to URL",
+      inputSchema: { type: "object", properties: { url: { type: "string" } } },
+      server: "playwright",
+    };
+
+    const callToolMock = vi.fn(async () => ({
+      isError: false,
+      content: [{ type: "text" as const, text: "navigated" }],
+    }));
+
+    const fakeMcp = createFakeMcpRegistry([fakeTool], callToolMock);
+
+    // Create 70 tool_use turns
+    const turns: TurnScript[] = [];
+    for (let i = 0; i < 70; i++) {
+      turns.push(toolUseTurn(`toolu_nav_${i}`, "mcp__playwright__browser_navigate", `{"url":"https://example.com/${i}"}`));
+    }
+    // Final turn: text-only to end the loop
+    turns.push(TEXT_ONLY_TURN);
+
+    const { provider } = makeStubProvider(turns);
+
+    // Use a fixed clock (no time passage) so burst is the only capacity
+    const clock = 1_700_000_000_000;
+    const events = await collect(
+      runAgentLoop(
+        baseOpts({
+          provider,
+          mcp: fakeMcp as never,
+          now: () => clock, // Fixed time - no refill
+          maxTurns: 75, // Allow all 70 tool calls + final text turn
+        }),
+      ),
+    );
+
+    // Count successes (tool.result) and rate_limited errors
+    const results = events.filter((e) => e.type === "tool.result");
+    const rateLimited = events.filter(
+      (e) => e.type === "tool.error" && (e as { code: string }).code === "rate_limited",
+    );
+
+    // With burst 10 and no time passage: 10 succeed, 60 rate limited
+    expect(results).toHaveLength(10);
+    expect(rateLimited).toHaveLength(60);
+
+    // Verify rate_limited error message
+    const firstRateLimited = rateLimited[0] as Extract<AgentEvent, { type: "tool.error" }>;
+    expect(firstRateLimited.code).toBe("rate_limited");
+    expect(firstRateLimited.message).toContain("60 req/min");
+    expect(firstRateLimited.message).toContain("burst 10");
+  });
+
+  it("rate limit bucket refills over time", async () => {
+    // First exhaust the burst, then advance time and verify refill
+    const fakeTool: FakeMcpTool = {
+      name: "browser_click",
+      namespacedName: "mcp__playwright__browser_click",
+      description: "Click element",
+      inputSchema: { type: "object", properties: { ref: { type: "string" } } },
+      server: "playwright",
+    };
+
+    const callToolMock = vi.fn(async () => ({
+      isError: false,
+      content: [{ type: "text" as const, text: "clicked" }],
+    }));
+
+    const fakeMcp = createFakeMcpRegistry([fakeTool], callToolMock);
+
+    // 15 calls: first 10 succeed (burst), next 5 fail (rate limited),
+    // then we "wait" 10 seconds, next 10 should succeed
+    // Total: 25 calls
+    const turns: TurnScript[] = [];
+    for (let i = 0; i < 25; i++) {
+      turns.push(toolUseTurn(`toolu_click_${i}`, "mcp__playwright__browser_click", `{"ref":"#btn${i}"}`));
+    }
+    turns.push(TEXT_ONLY_TURN);
+
+    const { provider } = makeStubProvider(turns);
+
+    // Clock advances 10 seconds between call 15 and 16
+    let clock = 1_700_000_000_000;
+    let callCount = 0;
+    const events = await collect(
+      runAgentLoop(
+        baseOpts({
+          provider,
+          mcp: fakeMcp as never,
+          now: () => {
+            // After 15 tool calls (both success and error), jump 10 seconds
+            // Each tool execution involves multiple now() calls, so track by event sequence
+            if (callCount === 15) {
+              clock += 10_000; // 10 seconds
+            }
+            callCount++;
+            return clock++;
+          },
+        }),
+      ),
+    );
+
+    const results = events.filter((e) => e.type === "tool.result");
+    const rateLimited = events.filter(
+      (e) => e.type === "tool.error" && (e as { code: string }).code === "rate_limited",
+    );
+
+    // Should have more than 10 successes due to refill
+    // First 10 succeed, 5 fail, then ~10 more tokens refilled, ~10 more succeed
+    // Exact numbers depend on timing, but should have 15-20 successes
+    expect(results.length).toBeGreaterThan(10);
+    expect(rateLimited.length).toBeLessThan(15); // Some should succeed after refill
+  });
+
+  it("non-browser MCP tools are NOT rate limited", async () => {
+    // mcp__github__* should not be affected by the browser rate limiter
+    const fakeTool: FakeMcpTool = {
+      name: "list_repos",
+      namespacedName: "mcp__github__list_repos",
+      description: "List repos",
+      inputSchema: { type: "object" },
+      server: "github",
+    };
+
+    const callToolMock = vi.fn(async () => ({
+      isError: false,
+      content: [{ type: "text" as const, text: "repos" }],
+    }));
+
+    const fakeMcp = createFakeMcpRegistry([fakeTool], callToolMock);
+
+    // 20 rapid calls - all should succeed since github is not rate limited
+    const turns: TurnScript[] = [];
+    for (let i = 0; i < 20; i++) {
+      turns.push(toolUseTurn(`toolu_gh_${i}`, "mcp__github__list_repos", "{}"));
+    }
+    turns.push(TEXT_ONLY_TURN);
+
+    const { provider } = makeStubProvider(turns);
+
+    const clock = 1_700_000_000_000;
+    const events = await collect(
+      runAgentLoop(
+        baseOpts({
+          provider,
+          mcp: fakeMcp as never,
+          now: () => clock, // Fixed time
+        }),
+      ),
+    );
+
+    const results = events.filter((e) => e.type === "tool.result");
+    const rateLimited = events.filter(
+      (e) => e.type === "tool.error" && (e as { code: string }).code === "rate_limited",
+    );
+
+    // All 20 should succeed - no rate limiting for non-browser tools
+    expect(results).toHaveLength(20);
+    expect(rateLimited).toHaveLength(0);
+  });
+});
+
 describe("runAgentLoop: compaction-integration", () => {
   it("loop continues running after a compaction pass without error events", async () => {
     let turnIdx = 0;

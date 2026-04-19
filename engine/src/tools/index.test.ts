@@ -43,6 +43,7 @@ describe("Tool registry", () => {
   });
 
   describe("existing tools still registered", () => {
+    // WebSearch intentionally absent — now provided via Exa MCP. See T5-02.
     const expectedTools = [
       "AskUserQuestion",
       "Bash",
@@ -57,7 +58,6 @@ describe("Tool registry", () => {
       "Task",
       "TodoWrite",
       "WebFetch",
-      "WebSearch",
       "Write",
     ];
 

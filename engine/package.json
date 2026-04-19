@@ -82,7 +82,8 @@
     "turndown": "^7.2.0",
     "undici": "^8.1.0",
     "zod": "^3.23.0",
-    "zod-to-json-schema": "^3.25.0"
+    "zod-to-json-schema": "^3.25.0",
+    "@playwright/mcp": "^0.0.70"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",

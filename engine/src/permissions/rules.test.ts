@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { compilePermissions, firstMatch, matchRule, parseRule } from "./rules.js";
+import {
+  compilePermissions,
+  DEFAULT_ALLOW_PATTERNS,
+  firstMatch,
+  matchRule,
+  parseRule,
+} from "./rules.js";
 import type { PermissionRule, PermissionRuleWarning, ToolCall } from "./types.js";
 
 function isRule(x: PermissionRule | PermissionRuleWarning): x is PermissionRule {
@@ -218,7 +224,9 @@ describe("compilePermissions", () => {
   it("defaults mode to 'default' when omitted", () => {
     const c = compilePermissions({});
     expect(c.mode).toBe("default");
-    expect(c.rules).toEqual([]);
+    // Now includes DEFAULT_ALLOW_PATTERNS for browser MCP tools (Phase 07.5)
+    expect(c.rules.length).toBe(DEFAULT_ALLOW_PATTERNS.length);
+    expect(c.rules.every((r) => r.ruleClass === "allow")).toBe(true);
     expect(c.warnings).toEqual([]);
     expect(c.mcpTools).toEqual({});
   });
@@ -233,10 +241,13 @@ describe("compilePermissions", () => {
       allow: ["Bash(git *)", "Bash("],
       deny: ["Write(**)", "mcp__BadCaps__x"],
     });
-    expect(c.rules.length).toBe(2);
+    // 1 user allow + 3 default allows + 1 deny = 5 rules
+    // 1 user allow warning + 1 deny warning = 2 warnings
+    const userRules = c.rules.filter((r) => !DEFAULT_ALLOW_PATTERNS.includes(r.source));
+    expect(userRules.length).toBe(2); // Bash(git *) and Write(**)
     expect(c.warnings.length).toBe(2);
-    const allowRule = c.rules.find((r) => r.ruleClass === "allow");
-    const denyRule = c.rules.find((r) => r.ruleClass === "deny");
+    const allowRule = userRules.find((r) => r.ruleClass === "allow");
+    const denyRule = userRules.find((r) => r.ruleClass === "deny");
     expect(allowRule?.source).toBe("Bash(git *)");
     expect(denyRule?.source).toBe("Write(**)");
   });
@@ -246,7 +257,13 @@ describe("compilePermissions", () => {
       allow: ["Bash(git *)", "Write(src/**)", "Edit(**)"],
     });
     const allowRules = c.rules.filter((r) => r.ruleClass === "allow");
-    expect(allowRules.map((r) => r.source)).toEqual(["Bash(git *)", "Write(src/**)", "Edit(**)"]);
+    // User rules come first, then defaults
+    expect(allowRules.map((r) => r.source)).toEqual([
+      "Bash(git *)",
+      "Write(src/**)",
+      "Edit(**)",
+      ...DEFAULT_ALLOW_PATTERNS,
+    ]);
   });
 
   it("passes mcpTools through unchanged", () => {
@@ -293,5 +310,111 @@ describe("firstMatch", () => {
     expect(hit).toBeUndefined();
     const denyHit = firstMatch(c.rules, call("Bash", { command: "rm foo" }), "deny");
     expect(denyHit?.source).toBe("Bash(rm *)");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Browser MCP auto-allow tests (Phase 07.5 T2-01)
+// ---------------------------------------------------------------------------
+
+describe("DEFAULT_ALLOW_PATTERNS", () => {
+  it("includes mcp__playwright__* pattern", () => {
+    expect(DEFAULT_ALLOW_PATTERNS).toContain("mcp__playwright__*");
+  });
+
+  it("includes mcp__playwright-extension__* pattern", () => {
+    expect(DEFAULT_ALLOW_PATTERNS).toContain("mcp__playwright-extension__*");
+  });
+
+  it("includes mcp__chrome-devtools__* pattern", () => {
+    expect(DEFAULT_ALLOW_PATTERNS).toContain("mcp__chrome-devtools__*");
+  });
+});
+
+describe("browser MCP auto-allow (Phase 07.5)", () => {
+  it("mcp__playwright__browser_navigate → allow under any permission mode", () => {
+    // Test with default mode
+    const cDefault = compilePermissions({ mode: "default" });
+    const hitDefault = firstMatch(cDefault.rules, call("mcp__playwright__browser_navigate"), "allow");
+    expect(hitDefault).toBeDefined();
+    expect(hitDefault?.source).toBe("mcp__playwright__*");
+
+    // Test with plan mode
+    const cPlan = compilePermissions({ mode: "plan" });
+    const hitPlan = firstMatch(cPlan.rules, call("mcp__playwright__browser_navigate"), "allow");
+    expect(hitPlan).toBeDefined();
+
+    // Test with acceptEdits mode
+    const cAccept = compilePermissions({ mode: "acceptEdits" });
+    const hitAccept = firstMatch(cAccept.rules, call("mcp__playwright__browser_navigate"), "allow");
+    expect(hitAccept).toBeDefined();
+  });
+
+  it("mcp__playwright__browser_evaluate → allow (NOT ask; carve-out was removed)", () => {
+    const c = compilePermissions({ mode: "default" });
+    const hit = firstMatch(c.rules, call("mcp__playwright__browser_evaluate"), "allow");
+    expect(hit).toBeDefined();
+    expect(hit?.source).toBe("mcp__playwright__*");
+
+    // Should NOT match any ask rule
+    const askHit = firstMatch(c.rules, call("mcp__playwright__browser_evaluate"), "ask");
+    expect(askHit).toBeUndefined();
+  });
+
+  it("mcp__playwright__browser_run_code → allow", () => {
+    const c = compilePermissions({});
+    const hit = firstMatch(c.rules, call("mcp__playwright__browser_run_code"), "allow");
+    expect(hit).toBeDefined();
+    expect(hit?.source).toBe("mcp__playwright__*");
+  });
+
+  it("mcp__playwright__browser_file_upload → allow", () => {
+    const c = compilePermissions({});
+    const hit = firstMatch(c.rules, call("mcp__playwright__browser_file_upload"), "allow");
+    expect(hit).toBeDefined();
+    expect(hit?.source).toBe("mcp__playwright__*");
+  });
+
+  it("mcp__chrome-devtools__lighthouse_audit → allow (wildcard handles T3-02 even though deferred)", () => {
+    const c = compilePermissions({});
+    const hit = firstMatch(c.rules, call("mcp__chrome-devtools__lighthouse_audit"), "allow");
+    expect(hit).toBeDefined();
+    expect(hit?.source).toBe("mcp__chrome-devtools__*");
+  });
+
+  it("mcp__playwright-extension__browser_snapshot → allow", () => {
+    const c = compilePermissions({});
+    const hit = firstMatch(c.rules, call("mcp__playwright-extension__browser_snapshot"), "allow");
+    expect(hit).toBeDefined();
+    expect(hit?.source).toBe("mcp__playwright-extension__*");
+  });
+
+  it("mcp__some-other-server__foo → NOT auto-allowed by this patch", () => {
+    const c = compilePermissions({});
+    const hit = firstMatch(c.rules, call("mcp__some-other-server__foo"), "allow");
+    // Should NOT match any of the default browser patterns
+    expect(hit).toBeUndefined();
+  });
+
+  it("Bash still respects existing rules (no regression)", () => {
+    // User can still deny Bash
+    const c = compilePermissions({
+      deny: ["Bash(rm *)"],
+      allow: ["Bash(git *)"],
+    });
+
+    // rm command matches deny (use "rm foo" not "rm -rf /" to avoid path separator issue)
+    const denyHit = firstMatch(c.rules, call("Bash", { command: "rm foo" }), "deny");
+    expect(denyHit).toBeDefined();
+    expect(denyHit?.source).toBe("Bash(rm *)");
+
+    // git command matches allow
+    const allowHit = firstMatch(c.rules, call("Bash", { command: "git push" }), "allow");
+    expect(allowHit).toBeDefined();
+    expect(allowHit?.source).toBe("Bash(git *)");
+
+    // Browser rules don't affect Bash - git * matches, not mcp__playwright__*
+    const bashGitHit = firstMatch(c.rules, call("Bash", { command: "git status" }), "allow");
+    expect(bashGitHit?.source).toBe("Bash(git *)"); // NOT mcp__playwright__*
   });
 });

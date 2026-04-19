@@ -265,8 +265,8 @@ Target hit rate in steady-state Genie usage: ≥85% on system+tools,
 Built-in tools exposed by the OpenCode substrate (unchanged): `read`, `write`,
 `edit`, `bash`, `glob`, `grep`, `task`, `webfetch`, `todowrite`.
 
-MCP servers configured via `~/.jellyclaw/mcp.json` (superset of OpenCode's
-format). Playwright is included by default but pinned — see §15.
+MCP servers configured via `<cwd>/jellyclaw.json` or `~/.jellyclaw/jellyclaw.json`
+under the `.mcp[]` array. Playwright is included by default but pinned — see §15.
 
 ---
 

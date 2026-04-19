@@ -273,17 +273,6 @@ export class InvalidNotebookError extends ToolError {
   }
 }
 
-export class WebSearchNotConfiguredError extends ToolError {
-  constructor() {
-    super(
-      "WebSearchNotConfigured",
-      "WebSearch is not built into jellyclaw. Configure a search MCP (e.g. @modelcontextprotocol/server-brave-search, tavily-mcp) in your jellyclaw.json `mcp` map. See docs/tools.md#websearch.",
-      {},
-    );
-    this.name = "WebSearchNotConfiguredError";
-  }
-}
-
 export class EditRequiresReadError extends ToolError {
   constructor(path: string) {
     super(

@@ -6,11 +6,7 @@ import { Hono } from "hono";
 import { describe, expect, it } from "vitest";
 
 import { createLogger } from "../../logger.js";
-import type {
-  PendingPermission,
-  SessionManager,
-  SessionSummary,
-} from "../session-manager.js";
+import type { PendingPermission, SessionManager, SessionSummary } from "../session-manager.js";
 import type { AppVariables } from "../types.js";
 import { registerPermissionRoutes } from "./permissions.js";
 

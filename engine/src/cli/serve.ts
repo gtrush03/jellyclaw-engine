@@ -18,6 +18,7 @@ import type { Hono } from "hono";
 import { HookRegistry } from "../hooks/registry.js";
 import type { Logger } from "../logger.js";
 import { createLogger } from "../logger.js";
+import { McpRegistry } from "../mcp/registry.js";
 import { compilePermissions } from "../permissions/rules.js";
 import type { CompiledPermissions } from "../permissions/types.js";
 import { AnthropicProvider } from "../providers/anthropic.js";
@@ -25,6 +26,7 @@ import type { Provider } from "../providers/types.js";
 import type { AppVariables, CorsOrigin, RunManager, ServerConfig } from "../server/types.js";
 import { AuthTokenMissingError, BindSafetyError } from "../server/types.js";
 import { SessionPaths } from "../session/paths.js";
+import { loadMcpConfigs } from "./mcp-config-loader.js";
 
 /** Default model for HTTP-initiated runs. Cheap for smoke tests; per-run
  * overrides via CreateRunOptions.model supersede this. */
@@ -309,6 +311,7 @@ async function productionDeps(): Promise<ServeActionDeps> {
       permissions?: CompiledPermissions;
       defaultModel?: string;
       defaultCwd?: string;
+      mcp?: McpRegistry;
     }) => RunManager;
   };
   const appMod = (await import("../server/app.js")) as {
@@ -338,6 +341,22 @@ async function productionDeps(): Promise<ServeActionDeps> {
     ) => void;
   };
 
+  // Load MCP configs at startup (T0-01).
+  const cwd = process.cwd();
+  const bootLogger = createLogger({ name: "jellyclaw-serve-boot", level: "info" });
+  const mcpConfigs = await loadMcpConfigs({ cwd, logger: bootLogger });
+  let mcp: McpRegistry | undefined;
+  if (mcpConfigs.length > 0) {
+    mcp = new McpRegistry({ logger: bootLogger });
+    try {
+      await mcp.start(mcpConfigs);
+      bootLogger.info({ count: mcpConfigs.length }, `mcp: started ${mcpConfigs.length} server(s)`);
+    } catch (err) {
+      bootLogger.warn({ err }, "one or more MCP servers failed to start; continuing without them");
+      // Keep `mcp` around — registry handles per-server failure with retry/backoff.
+    }
+  }
+
   return {
     env: process.env,
     stdout: process.stdout,
@@ -363,6 +382,7 @@ async function productionDeps(): Promise<ServeActionDeps> {
         permissions,
         defaultModel: DEFAULT_SERVE_MODEL,
         defaultCwd: process.cwd(),
+        ...(mcp !== undefined ? { mcp } : {}),
       });
     },
     buildApp: ({ config, runManager, sessionPaths, logger, version }) => {

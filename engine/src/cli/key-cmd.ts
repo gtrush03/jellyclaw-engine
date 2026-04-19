@@ -27,9 +27,7 @@ export async function keyAction(): Promise<number> {
     if (result.kind === "cancelled") return 130;
     if (result.kind === "skipped") {
       if (existing.anthropicApiKey === undefined) {
-        process.stderr.write(
-          "jellyclaw key: no key provided and none on file — nothing to do\n",
-        );
+        process.stderr.write("jellyclaw key: no key provided and none on file — nothing to do\n");
       }
       return 0;
     }

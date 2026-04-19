@@ -89,7 +89,7 @@ export class SessionWriter {
   private readonly stmtUpsertToolCall: ReturnType<Db["raw"]["prepare"]>;
   private readonly stmtUpsertTokens: ReturnType<Db["raw"]["prepare"]>;
   private readonly stmtUpsertCost: ReturnType<Db["raw"]["prepare"]>;
-  private readonly txUsage: ReturnType<Db["raw"]["transaction"]>;
+  private readonly txUsage: (input: UpdateUsageInput) => void;
 
   private writeQueue: Promise<unknown> = Promise.resolve();
 

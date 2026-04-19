@@ -7,10 +7,10 @@
  * two integration-ish cases) the final exit code.
  */
 
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import type { CheckResult, DoctorDeps } from "./doctor.js";
-import { doctorAction, renderTable, runChecks } from "./doctor.js";
+import { defaultCheckChromeBrowser, doctorAction, renderTable, runChecks } from "./doctor.js";
 
 function makeDeps(overrides: Partial<DoctorDeps> = {}): DoctorDeps {
   const pass = (name: string): CheckResult => ({
@@ -27,6 +27,7 @@ function makeDeps(overrides: Partial<DoctorDeps> = {}): DoctorDeps {
     checkMcpServers: async () => pass("MCP servers"),
     checkSqliteIntegrity: async () => pass("sqlite integrity"),
     checkRuntime: async () => pass("runtime"),
+    checkChromeBrowser: async () => [], // Empty by default (non-darwin or skipped)
   };
   return { ...base, ...overrides };
 }
@@ -140,17 +141,47 @@ describe("runChecks", () => {
     expect(results.find((r) => r.name === "MCP servers")?.status).toBe("warn");
   });
 
-  it("unreachable required MCP server → fail", async () => {
+  it("no MCP servers configured → warn with template hint", async () => {
     const deps = makeDeps({
       checkMcpServers: async () => ({
         name: "MCP servers",
-        status: "fail",
-        detail: "required servers unreachable: atlas",
-        remediation: "check ~/.jellyclaw/mcp.json",
+        status: "warn",
+        detail: "no MCP servers configured",
+        remediation: "copy the default template: cp /path/to/template ~/.jellyclaw/jellyclaw.json",
       }),
     });
     const results = await runChecks(deps);
-    expect(results.find((r) => r.name === "MCP servers")?.status).toBe("fail");
+    const mcp = results.find((r) => r.name === "MCP servers");
+    expect(mcp?.status).toBe("warn");
+    expect(mcp?.remediation).toContain("jellyclaw.json");
+  });
+
+  it("MCP servers configured and reachable → pass", async () => {
+    const deps = makeDeps({
+      checkMcpServers: async () => ({
+        name: "MCP servers",
+        status: "pass",
+        detail: "2/2 reachable",
+      }),
+    });
+    const results = await runChecks(deps);
+    const mcp = results.find((r) => r.name === "MCP servers");
+    expect(mcp?.status).toBe("pass");
+    expect(mcp?.detail).toContain("reachable");
+  });
+
+  it("malformed config → probe degrades gracefully (does not crash)", async () => {
+    const deps = makeDeps({
+      // biome-ignore lint/suspicious/useAwait: DoctorDeps returns Promise; stub throws to simulate malformed config
+      checkMcpServers: async () => {
+        throw new Error("Invalid JSON at jellyclaw.json:42");
+      },
+    });
+    const results = await runChecks(deps);
+    // The dispatcher wraps all probes in try/catch — a malformed config doesn't crash
+    const row = results.find((r) => r.name === "checkMcpServers");
+    expect(row?.status).toBe("fail");
+    expect(row?.detail).toContain("Invalid JSON");
   });
 
   it("sqlite integrity ok → pass", async () => {
@@ -289,5 +320,86 @@ describe("doctor-clean-install-exits-0", () => {
     });
     // Should still exit 0 because warnings don't flip exit code
     expect(code).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Chrome browser check (T1-02)
+// ---------------------------------------------------------------------------
+
+describe("defaultCheckChromeBrowser", () => {
+  const originalPlatform = process.platform;
+
+  afterEach(() => {
+    Object.defineProperty(process, "platform", { value: originalPlatform });
+  });
+
+  it("returns empty array on non-darwin platform", async () => {
+    Object.defineProperty(process, "platform", { value: "linux" });
+    const results = await defaultCheckChromeBrowser({
+      chromePath: "/fake/path",
+      port: 9333,
+      profileDir: "/fake/profile",
+      existsSync: () => true,
+      fetchCdp: async () => ({ ok: true, browser: "Chrome/147" }),
+    });
+    expect(results).toEqual([]);
+  });
+
+  it("Chrome present + CDP up: returns two pass results", async () => {
+    Object.defineProperty(process, "platform", { value: "darwin" });
+    const results = await defaultCheckChromeBrowser({
+      chromePath: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+      port: 9333,
+      profileDir: "/Users/test/Library/Application Support/jellyclaw-chrome-profile",
+      existsSync: () => true, // Chrome and profile both exist
+      fetchCdp: async () => ({ ok: true, browser: "Chrome/147.0.7727.57" }),
+    });
+    expect(results).toHaveLength(3);
+    expect(results[0]?.name).toBe("Chrome");
+    expect(results[0]?.status).toBe("pass");
+    expect(results[1]?.name).toBe("Chrome CDP");
+    expect(results[1]?.status).toBe("pass");
+    expect(results[1]?.detail).toContain("Chrome/147");
+    expect(results[2]?.name).toBe("Chrome profile");
+    expect(results[2]?.status).toBe("pass");
+  });
+
+  it("Chrome present + CDP down: returns pass + warn", async () => {
+    Object.defineProperty(process, "platform", { value: "darwin" });
+    const results = await defaultCheckChromeBrowser({
+      chromePath: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+      port: 9333,
+      profileDir: "/Users/test/Library/Application Support/jellyclaw-chrome-profile",
+      existsSync: (path) => path.includes("Google Chrome"), // Chrome exists, profile doesn't
+      // biome-ignore lint/suspicious/useAwait: test stub throws synchronously
+      fetchCdp: async () => {
+        throw new Error("connection refused");
+      },
+    });
+    expect(results).toHaveLength(3);
+    expect(results[0]?.name).toBe("Chrome");
+    expect(results[0]?.status).toBe("pass");
+    expect(results[1]?.name).toBe("Chrome CDP");
+    expect(results[1]?.status).toBe("warn");
+    expect(results[1]?.detail).toContain("not listening");
+    expect(results[2]?.name).toBe("Chrome profile");
+    expect(results[2]?.status).toBe("warn");
+  });
+
+  it("Chrome missing: returns warn with hint, no CDP check", async () => {
+    Object.defineProperty(process, "platform", { value: "darwin" });
+    const results = await defaultCheckChromeBrowser({
+      chromePath: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+      port: 9333,
+      profileDir: "/Users/test/Library/Application Support/jellyclaw-chrome-profile",
+      existsSync: () => false, // Chrome not installed
+      fetchCdp: async () => ({ ok: true, browser: "should not be called" }),
+    });
+    expect(results).toHaveLength(1);
+    expect(results[0]?.name).toBe("Chrome");
+    expect(results[0]?.status).toBe("warn");
+    expect(results[0]?.detail).toContain("not found");
+    expect(results[0]?.remediation).toContain("brew install");
   });
 });

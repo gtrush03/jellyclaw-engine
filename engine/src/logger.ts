@@ -17,6 +17,7 @@ const DEFAULT_REDACT = [
   "OPENAI_API_KEY",
   "OPENROUTER_API_KEY",
   "OPENCODE_SERVER_PASSWORD",
+  "BROWSERBASE_API_KEY",
   "anthropicApiKey",
   "openaiApiKey",
   "token",

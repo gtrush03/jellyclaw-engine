@@ -20,10 +20,12 @@
 import { existsSync, constants as fsConstants, promises as fsp } from "node:fs";
 import { createRequire } from "node:module";
 import { homedir } from "node:os";
-import { join, resolve as resolvePath } from "node:path";
+import { resolve as resolvePath } from "node:path";
 
 import type { McpServerConfig } from "../mcp/types.js";
 import { SessionPaths } from "../session/paths.js";
+import { loadMcpConfigs } from "./mcp-config-loader.js";
+import { getDefaultMcpTemplatePath } from "./templates.js";
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -48,6 +50,7 @@ export interface DoctorDeps {
   readonly checkMcpServers: () => Promise<CheckResult>;
   readonly checkSqliteIntegrity: () => Promise<CheckResult>;
   readonly checkRuntime: () => Promise<CheckResult>;
+  readonly checkChromeBrowser: () => Promise<CheckResult[]>;
 }
 
 export interface DoctorActionOptions {
@@ -62,7 +65,7 @@ export interface DoctorActionOptions {
 // Core dispatcher
 // ---------------------------------------------------------------------------
 
-const CHECK_ORDER: ReadonlyArray<keyof DoctorDeps> = [
+const CHECK_ORDER: ReadonlyArray<keyof Omit<DoctorDeps, "checkChromeBrowser">> = [
   "checkNodeVersion",
   "checkRuntime",
   "checkOpencodePin",
@@ -89,6 +92,21 @@ export async function runChecks(deps: DoctorDeps): Promise<CheckResult[]> {
       });
     }
   }
+
+  // Chrome browser check (returns multiple results, macOS only)
+  try {
+    const chromeResults = await deps.checkChromeBrowser();
+    results.push(...chromeResults);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    results.push({
+      name: "Chrome browser",
+      status: "fail",
+      detail: `probe threw: ${message}`,
+      remediation: "file a bug — doctor probes must not throw",
+    });
+  }
+
   return results;
 }
 
@@ -310,65 +328,46 @@ export async function defaultCheckApiKey(): Promise<CheckResult> {
   };
 }
 
-/**
- * Minimal local shape for the `mcp.json` config file. Kept local to
- * doctor rather than reused from `mcp/types.ts` because the doctor only
- * cares about a handful of fields and must be tolerant of partial data.
- */
-interface DoctorMcpEntry {
-  readonly name: string;
-  readonly required: boolean;
-  readonly config: McpServerConfig;
-}
-
 export interface McpProbeDep {
   /** Returns true if the server was reachable within the timeout. */
-  readonly probe: (entry: DoctorMcpEntry, signal: AbortSignal) => Promise<void>;
+  readonly probe: (config: McpServerConfig, signal: AbortSignal) => Promise<void>;
   readonly timeoutMs: number;
-  readonly loadConfigs: () => Promise<DoctorMcpEntry[]>;
+  readonly loadConfigs: () => Promise<readonly McpServerConfig[]>;
+  readonly templatePath: () => string;
 }
 
 export async function defaultCheckMcpServers(dep: McpProbeDep): Promise<CheckResult> {
-  const entries = await dep.loadConfigs();
-  if (entries.length === 0) {
+  const configs = await dep.loadConfigs();
+  if (configs.length === 0) {
     return {
       name: "MCP servers",
-      status: "pass",
+      status: "warn",
       detail: "no MCP servers configured",
+      remediation: `copy the default template: cp ${dep.templatePath()} ~/.jellyclaw/jellyclaw.json`,
     };
   }
 
   const unreachable: string[] = [];
-  const unreachableRequired: string[] = [];
-  for (const entry of entries) {
+  for (const config of configs) {
     const signal = AbortSignal.timeout(dep.timeoutMs);
     try {
-      await dep.probe(entry, signal);
+      await dep.probe(config, signal);
     } catch {
-      unreachable.push(entry.name);
-      if (entry.required) unreachableRequired.push(entry.name);
+      unreachable.push(config.name);
     }
   }
 
-  if (unreachableRequired.length > 0) {
-    return {
-      name: "MCP servers",
-      status: "fail",
-      detail: `required servers unreachable: ${unreachableRequired.join(", ")}`,
-      remediation: "check MCP server configuration in ~/.jellyclaw/mcp.json and retry",
-    };
-  }
   if (unreachable.length > 0) {
     return {
       name: "MCP servers",
       status: "warn",
-      detail: `${entries.length - unreachable.length}/${entries.length} reachable; unreachable: ${unreachable.join(", ")}`,
+      detail: `${configs.length - unreachable.length}/${configs.length} reachable; unreachable: ${unreachable.join(", ")}`,
     };
   }
   return {
     name: "MCP servers",
     status: "pass",
-    detail: `${entries.length}/${entries.length} reachable`,
+    detail: `${configs.length}/${configs.length} reachable`,
   };
 }
 
@@ -404,34 +403,113 @@ export async function defaultCheckSqliteIntegrity(dep: SqlitePragmaDep): Promise
 }
 
 // ---------------------------------------------------------------------------
+// Chrome browser check (macOS only)
+// ---------------------------------------------------------------------------
+
+export interface ChromeProbeDep {
+  readonly chromePath: string;
+  readonly port: number;
+  readonly profileDir: string;
+  readonly existsSync: (path: string) => boolean;
+  readonly fetchCdp: (
+    url: string,
+    signal: AbortSignal,
+  ) => Promise<{ ok: boolean; browser?: string; status?: number }>;
+}
+
+export async function defaultCheckChromeBrowser(dep: ChromeProbeDep): Promise<CheckResult[]> {
+  // Skip on non-darwin platforms
+  if (process.platform !== "darwin") {
+    return [];
+  }
+
+  const results: CheckResult[] = [];
+
+  // Check 1: Chrome installed
+  if (dep.existsSync(dep.chromePath)) {
+    results.push({
+      name: "Chrome",
+      status: "pass",
+      detail: `installed at ${dep.chromePath}`,
+    });
+  } else {
+    results.push({
+      name: "Chrome",
+      status: "warn",
+      detail: "Chrome not found — Chrome-MCP flows disabled",
+      remediation:
+        "brew install --cask google-chrome (or Chrome Web Store extension path; see docs/chrome-setup.md)",
+    });
+    // Early return if Chrome not installed
+    return results;
+  }
+
+  // Check 2: CDP reachable
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 1000);
+    try {
+      const res = await dep.fetchCdp(
+        `http://127.0.0.1:${dep.port}/json/version`,
+        controller.signal,
+      );
+      if (res.ok && res.browser) {
+        results.push({
+          name: "Chrome CDP",
+          status: "pass",
+          detail: `reachable on :${dep.port} (${res.browser})`,
+        });
+      } else {
+        results.push({
+          name: "Chrome CDP",
+          status: "warn",
+          detail: `port ${dep.port} returned HTTP ${res.status ?? "unknown"}`,
+        });
+      }
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  } catch {
+    results.push({
+      name: "Chrome CDP",
+      status: "warn",
+      detail: `port ${dep.port} not listening — run \`scripts/jellyclaw-chrome.sh\` to start`,
+    });
+  }
+
+  // Check 3: user-data-dir
+  if (dep.existsSync(dep.profileDir)) {
+    results.push({
+      name: "Chrome profile",
+      status: "pass",
+      detail: `user-data-dir ready at ${dep.profileDir}`,
+    });
+  } else {
+    results.push({
+      name: "Chrome profile",
+      status: "warn",
+      detail: `user-data-dir not yet created at ${dep.profileDir} (created on first launch)`,
+    });
+  }
+
+  return results;
+}
+
+// ---------------------------------------------------------------------------
 // Default dep wiring (called by `doctorAction`)
 // ---------------------------------------------------------------------------
 
-async function loadMcpConfigsFromDisk(paths: SessionPaths): Promise<DoctorMcpEntry[]> {
-  const configPath = join(paths.root(), "mcp.json");
+async function loadMcpConfigsFromDisk(cwd: string): Promise<readonly McpServerConfig[]> {
   try {
-    const raw = await fsp.readFile(configPath, "utf8");
-    const parsed = JSON.parse(raw) as unknown;
-    if (!parsed || typeof parsed !== "object") return [];
-    const servers = (parsed as { servers?: unknown }).servers;
-    if (!servers || typeof servers !== "object") return [];
-    const out: DoctorMcpEntry[] = [];
-    for (const [name, value] of Object.entries(servers as Record<string, unknown>)) {
-      if (!value || typeof value !== "object") continue;
-      const obj = value as { required?: unknown } & McpServerConfig;
-      out.push({
-        name,
-        required: obj.required === true,
-        config: obj,
-      });
-    }
-    return out;
+    return await loadMcpConfigs({ cwd });
   } catch {
+    // loadMcpConfigs throws ExitError on missing --mcp-config, but we call it
+    // without that flag, so this only fires on unexpected errors. Treat as empty.
     return [];
   }
 }
 
-async function defaultMcpProbe(entry: DoctorMcpEntry, signal: AbortSignal): Promise<void> {
+async function defaultMcpProbe(config: McpServerConfig, signal: AbortSignal): Promise<void> {
   // Lazily import the registry to avoid loading MCP plumbing when the
   // check isn't needed (unit tests always inject a stub).
   const { McpRegistry } = await import("../mcp/registry.js");
@@ -448,7 +526,7 @@ async function defaultMcpProbe(entry: DoctorMcpEntry, signal: AbortSignal): Prom
     else signal.addEventListener("abort", onAbort, { once: true });
   });
   try {
-    await Promise.race([registry.start([entry.config]), aborted]);
+    await Promise.race([registry.start([config]), aborted]);
   } finally {
     await registry.stop().catch(() => undefined);
   }
@@ -467,6 +545,22 @@ async function defaultSqliteIntegrity(paths: SessionPaths): Promise<string> {
   }
 }
 
+async function defaultFetchCdp(
+  url: string,
+  signal: AbortSignal,
+): Promise<{ ok: boolean; browser?: string; status?: number }> {
+  const res = await fetch(url, { signal });
+  if (res.ok) {
+    const data = (await res.json()) as { Browser?: string };
+    const browser = data.Browser;
+    if (browser !== undefined) {
+      return { ok: true, browser };
+    }
+    return { ok: true };
+  }
+  return { ok: false, status: res.status };
+}
+
 function buildDefaultDeps(paths: SessionPaths): DoctorDeps {
   return {
     checkNodeVersion: defaultCheckNodeVersion,
@@ -477,13 +571,22 @@ function buildDefaultDeps(paths: SessionPaths): DoctorDeps {
     checkApiKey: defaultCheckApiKey,
     checkMcpServers: () =>
       defaultCheckMcpServers({
-        loadConfigs: () => loadMcpConfigsFromDisk(paths),
+        loadConfigs: () => loadMcpConfigsFromDisk(process.cwd()),
         probe: defaultMcpProbe,
         timeoutMs: 5000,
+        templatePath: getDefaultMcpTemplatePath,
       }),
     checkSqliteIntegrity: () =>
       defaultCheckSqliteIntegrity({
         integrityCheck: () => defaultSqliteIntegrity(paths),
+      }),
+    checkChromeBrowser: () =>
+      defaultCheckChromeBrowser({
+        chromePath: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+        port: Number(process.env.JELLYCLAW_CHROME_PORT ?? 9333),
+        profileDir: `${homedir()}/Library/Application Support/jellyclaw-chrome-profile`,
+        existsSync,
+        fetchCdp: defaultFetchCdp,
       }),
   };
 }

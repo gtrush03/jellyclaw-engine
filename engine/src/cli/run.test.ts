@@ -660,3 +660,206 @@ describe("createRunAction: add-dir-multiple", () => {
     expect(opts?.addDir).toEqual(["/tmp/dir-a", "/tmp/dir-b"]);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Credential wiring tests (T0-01)
+// ---------------------------------------------------------------------------
+
+describe("realRunFn: credential-loading-wired", () => {
+  it("run.ts imports loadCredentials from credentials.js", async () => {
+    const fs = await import("node:fs/promises");
+    const path = await import("node:path");
+    const runTsPath = path.join(process.cwd(), "engine/src/cli/run.ts");
+    const content = await fs.readFile(runTsPath, "utf8");
+
+    // Should import loadCredentials.
+    expect(content).toContain("loadCredentials");
+    expect(content).toContain('from "./credentials.js"');
+  });
+
+  it("run.ts imports selectAuth and parseRole from subscription-auth.js", async () => {
+    const fs = await import("node:fs/promises");
+    const path = await import("node:path");
+    const runTsPath = path.join(process.cwd(), "engine/src/cli/run.ts");
+    const content = await fs.readFile(runTsPath, "utf8");
+
+    // Should import selectAuth and parseRole.
+    expect(content).toContain("selectAuth");
+    expect(content).toContain("parseRole");
+    expect(content).toContain('from "../providers/subscription-auth.js"');
+  });
+
+  it("run.ts no longer references process.env.ANTHROPIC_API_KEY for the main check", async () => {
+    const fs = await import("node:fs/promises");
+    const path = await import("node:path");
+    const runTsPath = path.join(process.cwd(), "engine/src/cli/run.ts");
+    const content = await fs.readFile(runTsPath, "utf8");
+
+    // Should use env var as fallback in creds merge, not as primary check.
+    // The old pattern was: const apiKey = process.env.ANTHROPIC_API_KEY;
+    // The new pattern merges it into creds object for back-compat.
+    expect(content).toContain("diskCreds.anthropicApiKey === undefined");
+    expect(content).toContain('typeof envKey === "string"');
+  });
+
+  it("run.ts throws ExitError when no credentials available", async () => {
+    const fs = await import("node:fs/promises");
+    const path = await import("node:path");
+    const runTsPath = path.join(process.cwd(), "engine/src/cli/run.ts");
+    const content = await fs.readFile(runTsPath, "utf8");
+
+    // Should check auth === null and throw ExitError.
+    expect(content).toContain("auth === null");
+    expect(content).toContain("jellyclaw: no credentials");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// MCP wiring tests (T0-01)
+// ---------------------------------------------------------------------------
+
+describe("realRunFn: mcp-loading-wired", () => {
+  it("run.ts imports loadMcpConfigs", async () => {
+    const fs = await import("node:fs/promises");
+    const path = await import("node:path");
+    const runTsPath = path.join(process.cwd(), "engine/src/cli/run.ts");
+    const content = await fs.readFile(runTsPath, "utf8");
+
+    // Should import loadMcpConfigs.
+    expect(content).toContain("loadMcpConfigs");
+    expect(content).toContain('from "./mcp-config-loader.js"');
+  });
+
+  it("run.ts imports McpRegistry as a value (not just type)", async () => {
+    const fs = await import("node:fs/promises");
+    const path = await import("node:path");
+    const runTsPath = path.join(process.cwd(), "engine/src/cli/run.ts");
+    const content = await fs.readFile(runTsPath, "utf8");
+
+    // Should import McpRegistry as a value (for instantiation).
+    expect(content).toContain("{ McpRegistry }");
+    expect(content).not.toContain("import type { McpRegistry }");
+  });
+
+  it("run.ts calls loadMcpConfigs with opts.mcpConfig", async () => {
+    const fs = await import("node:fs/promises");
+    const path = await import("node:path");
+    const runTsPath = path.join(process.cwd(), "engine/src/cli/run.ts");
+    const content = await fs.readFile(runTsPath, "utf8");
+
+    // Should call loadMcpConfigs with mcpConfig option.
+    expect(content).toContain("loadMcpConfigs({");
+    expect(content).toContain("mcpConfig: opts.mcpConfig");
+  });
+
+  it("run.ts creates McpRegistry when configs exist", async () => {
+    const fs = await import("node:fs/promises");
+    const path = await import("node:path");
+    const runTsPath = path.join(process.cwd(), "engine/src/cli/run.ts");
+    const content = await fs.readFile(runTsPath, "utf8");
+
+    // Should create registry when configs > 0.
+    expect(content).toContain("if (mcpConfigs.length > 0)");
+    expect(content).toContain("mcp = new McpRegistry({ logger })");
+  });
+
+  it("run.ts warns and continues when MCP server fails to start", async () => {
+    const fs = await import("node:fs/promises");
+    const path = await import("node:path");
+    const runTsPath = path.join(process.cwd(), "engine/src/cli/run.ts");
+    const content = await fs.readFile(runTsPath, "utf8");
+
+    // Should catch errors from mcp.start and log warning.
+    expect(content).toContain("one or more MCP servers failed to start");
+    expect(content).toContain("logger.warn");
+  });
+
+  it("run.ts passes mcp to runAgentLoop", async () => {
+    const fs = await import("node:fs/promises");
+    const path = await import("node:path");
+    const runTsPath = path.join(process.cwd(), "engine/src/cli/run.ts");
+    const content = await fs.readFile(runTsPath, "utf8");
+
+    // Should spread mcp into runAgentLoop options.
+    expect(content).toContain("...(mcp !== undefined ? { mcp } : {})");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// run-manager.ts MCP wiring tests (T0-01)
+// ---------------------------------------------------------------------------
+
+describe("run-manager: mcp-threaded", () => {
+  it("run-manager.ts imports McpRegistry type", async () => {
+    const fs = await import("node:fs/promises");
+    const path = await import("node:path");
+    const rmPath = path.join(process.cwd(), "engine/src/server/run-manager.ts");
+    const content = await fs.readFile(rmPath, "utf8");
+
+    expect(content).toContain("McpRegistry");
+    expect(content).toContain('from "../mcp/registry.js"');
+  });
+
+  it("run-manager.ts includes mcp in RunManagerOptions", async () => {
+    const fs = await import("node:fs/promises");
+    const path = await import("node:path");
+    const rmPath = path.join(process.cwd(), "engine/src/server/run-manager.ts");
+    const content = await fs.readFile(rmPath, "utf8");
+
+    expect(content).toContain("readonly mcp?: McpRegistry");
+  });
+
+  it("run-manager.ts passes mcp to runAgentLoop", async () => {
+    const fs = await import("node:fs/promises");
+    const path = await import("node:path");
+    const rmPath = path.join(process.cwd(), "engine/src/server/run-manager.ts");
+    const content = await fs.readFile(rmPath, "utf8");
+
+    expect(content).toContain("...(mcp !== undefined ? { mcp } : {})");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// serve.ts MCP wiring tests (T0-01)
+// ---------------------------------------------------------------------------
+
+describe("serve: mcp-threaded", () => {
+  it("serve.ts imports loadMcpConfigs", async () => {
+    const fs = await import("node:fs/promises");
+    const path = await import("node:path");
+    const servePath = path.join(process.cwd(), "engine/src/cli/serve.ts");
+    const content = await fs.readFile(servePath, "utf8");
+
+    expect(content).toContain("loadMcpConfigs");
+    expect(content).toContain('from "./mcp-config-loader.js"');
+  });
+
+  it("serve.ts imports McpRegistry", async () => {
+    const fs = await import("node:fs/promises");
+    const path = await import("node:path");
+    const servePath = path.join(process.cwd(), "engine/src/cli/serve.ts");
+    const content = await fs.readFile(servePath, "utf8");
+
+    expect(content).toContain("{ McpRegistry }");
+  });
+
+  it("serve.ts loads MCP configs in productionDeps", async () => {
+    const fs = await import("node:fs/promises");
+    const path = await import("node:path");
+    const servePath = path.join(process.cwd(), "engine/src/cli/serve.ts");
+    const content = await fs.readFile(servePath, "utf8");
+
+    expect(content).toContain("await loadMcpConfigs");
+    expect(content).toContain("mcpConfigs.length > 0");
+    expect(content).toContain("new McpRegistry");
+  });
+
+  it("serve.ts passes mcp to createRunManager", async () => {
+    const fs = await import("node:fs/promises");
+    const path = await import("node:path");
+    const servePath = path.join(process.cwd(), "engine/src/cli/serve.ts");
+    const content = await fs.readFile(servePath, "utf8");
+
+    expect(content).toContain("...(mcp !== undefined ? { mcp } : {})");
+  });
+});

@@ -18,11 +18,7 @@ import { z } from "zod";
 
 import type { Logger } from "../../logger.js";
 import type { SessionManager } from "../session-manager.js";
-import {
-  type AppVariables,
-  type CreateRunOptions,
-  type RunManager,
-} from "../types.js";
+import { type AppVariables, type CreateRunOptions, type RunManager } from "../types.js";
 
 // ---------------------------------------------------------------------------
 // Schemas
@@ -36,6 +32,18 @@ const CreateSessionBodySchema = z
     cwd: z.string().min(1).optional(),
   })
   .strict();
+
+/**
+ * Browserbase Context ID header validation (T6-02).
+ * Accepts alphanumeric + underscores + hyphens, 8-128 chars.
+ * Empty string is allowed (means "no context").
+ */
+const BrowserbaseContextHeaderSchema = z
+  .string()
+  .refine(
+    (val) => val === "" || /^[A-Za-z0-9_-]{8,128}$/.test(val),
+    "x-browserbase-context must be 8-128 alphanumeric chars, underscores, or hyphens",
+  );
 
 const SessionSummaryResponseSchema = z.object({
   id: z.string(),
@@ -87,7 +95,33 @@ export function registerSessionRoutes(
     if (!parsed.success) {
       return c.json({ error: "bad_request", issues: parsed.error.issues }, 400);
     }
-    const opts = stripUndefined(parsed.data) as unknown as CreateRunOptions;
+
+    // T6-02: Parse optional x-browserbase-context header for per-request Context ID.
+    // Note: HTTP Headers API automatically trims whitespace from values, so whitespace-only
+    // headers arrive as empty strings (indistinguishable from genuinely empty headers).
+    const browserbaseContextRaw = c.req.header("x-browserbase-context");
+    let requestEnv: Record<string, string> | undefined;
+    if (browserbaseContextRaw !== undefined && browserbaseContextRaw !== "") {
+      // Validate: reject malformed values (invalid chars, wrong length)
+      const headerParsed = BrowserbaseContextHeaderSchema.safeParse(browserbaseContextRaw);
+      if (!headerParsed.success) {
+        return c.json(
+          {
+            error: "bad_request",
+            message: headerParsed.error.issues[0]?.message ?? "invalid x-browserbase-context",
+          },
+          400,
+        );
+      }
+      requestEnv = { BROWSERBASE_CONTEXT_ID: browserbaseContextRaw };
+      logger.debug(
+        { contextId: browserbaseContextRaw },
+        "POST /v1/sessions: browserbase context ID provided",
+      );
+    }
+
+    const baseOpts = stripUndefined(parsed.data) as unknown as CreateRunOptions;
+    const opts: CreateRunOptions = requestEnv !== undefined ? { ...baseOpts, requestEnv } : baseOpts;
     try {
       const run = await runManager.create(opts);
       sessionManager.attachRun(run);

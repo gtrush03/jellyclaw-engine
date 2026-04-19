@@ -21,13 +21,15 @@
     "test:hook-patch": "bun run scripts/verify-hook-patch.ts",
     "test:scrub-patch": "bun run scripts/verify-scrub-patch.ts",
     "test:watch": "vitest",
+    "test:e2e:web-tui": "bash scripts/run-web-tui-e2e.sh",
     "lint": "biome check .",
     "format": "biome format --write .",
     "typecheck": "tsc --noEmit",
     "postinstall": "patch-package --patch-dir patches --error-on-fail",
     "verify:patches": "patch-package --patch-dir patches --dry-run",
     "clean": "rm -rf dist node_modules/.cache",
-    "tui": "node engine/dist/cli.js tui"
+    "tui": "node engine/dist/cli.js tui",
+    "serve:site": "bun site/serve.config.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.40.0",
@@ -65,7 +67,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "latest",
-    "@playwright/mcp": "0.0.41",
+    "@playwright/test": "1.59.1",
     "@types/better-sqlite3": "latest",
     "@types/diff": "^8.0.0",
     "@types/node": "latest",

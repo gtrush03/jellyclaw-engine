@@ -358,7 +358,10 @@ export function buildProgram(): Command {
     .command("start")
     .description("start the scheduler daemon")
     .option("--foreground", "run in foreground (do not daemonize)")
-    .option("--state-dir <dir>", "override state directory (~/.jellyclaw or $XDG_DATA_HOME/jellyclaw)")
+    .option(
+      "--state-dir <dir>",
+      "override state directory (~/.jellyclaw or $XDG_DATA_HOME/jellyclaw)",
+    )
     .action(async (options: { foreground?: boolean; stateDir?: string }) => {
       const mod = (await import("./daemon.js")) as typeof import("./daemon.js");
       const code = await mod.daemonStartAction({

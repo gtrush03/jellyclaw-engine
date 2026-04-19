@@ -15,10 +15,50 @@
  *
  * All other tools are passthrough (no limit) — additional policies can be
  * layered here as the threat model expands.
+ *
+ * Phase 07.5: Added global browser rate limit bucket (BROWSER_BUCKET) that
+ * gates ALL browser MCP tools regardless of domain. This is pure runaway
+ * protection — the only safety gate since browser tools run fully autonomous.
  */
 
 import { createLogger, type Logger } from "../logger.js";
 import type { ToolCall } from "../permissions/types.js";
+
+// ---------------------------------------------------------------------------
+// Global browser rate limit bucket (Phase 07.5)
+// ---------------------------------------------------------------------------
+
+/**
+ * Global rate limit bucket for all browser MCP tools.
+ * 60 requests per minute, burst of 10.
+ *
+ * This is the ONLY safety gate for autonomous browser tools — prevents
+ * runaway tool calls while allowing normal usage patterns.
+ */
+export const BROWSER_BUCKET = {
+  name: "browser",
+  /** Max tokens (burst capacity). */
+  capacity: 10,
+  /** Refill rate: 60/min = 1/sec. */
+  refillPerSecond: 1,
+} as const;
+
+/**
+ * Pattern matching browser MCP tools that should be rate-limited.
+ * Covers playwright, playwright-extension, and chrome-devtools servers.
+ */
+const BROWSER_RATE_LIMITED_PATTERN = /^mcp__(playwright|playwright-extension|chrome-devtools)__/;
+
+/**
+ * Check if a tool name should be rate-limited by the global browser bucket.
+ */
+export function isBrowserRateLimited(toolName: string): boolean {
+  return BROWSER_RATE_LIMITED_PATTERN.test(toolName);
+}
+
+// ---------------------------------------------------------------------------
+// Domain-based rate limiting (existing implementation)
+// ---------------------------------------------------------------------------
 
 export interface RateLimitBucketConfig {
   readonly capacity: number;

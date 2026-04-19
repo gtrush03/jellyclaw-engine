@@ -51,6 +51,8 @@ export const SessionCompletedEvent = EventBase.extend({
   summary: z.string().optional(),
   turns: z.number().int().nonnegative(),
   duration_ms: z.number().int().nonnegative(),
+  /** T4-02: Paths to final-state screenshots captured before session teardown. */
+  final_screenshots: z.array(z.string()).optional(),
 });
 export type SessionCompletedEvent = z.infer<typeof SessionCompletedEvent>;
 

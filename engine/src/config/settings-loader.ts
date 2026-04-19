@@ -37,15 +37,35 @@ const HookEventKindSchema = z.enum([
   "PreCompact",
 ]);
 
-const HookConfigSchema = z.object({
-  matcher: z.string().optional(),
+const FlatHookConfig = z.object({
+  matcher: z.union([z.string(), z.record(z.string(), z.unknown())]).optional(),
   command: z.string().min(1),
   args: z.array(z.string()).optional(),
   timeout: z.number().int().positive().max(120_000).optional(),
   blocking: z.boolean().optional(),
   name: z.string().optional(),
   env: z.record(z.string(), z.string()).optional(),
+  type: z.literal("command").optional(),
 });
+
+// Claude Code's "nested" format: { matcher?, hooks: [{ type: "command", command, timeout? }, ...] }
+const NestedHookConfig = z.object({
+  matcher: z.union([z.string(), z.record(z.string(), z.unknown())]).optional(),
+  hooks: z.array(
+    z.object({
+      type: z.literal("command"),
+      command: z.string().min(1),
+      timeout: z.number().int().positive().max(120_000).optional(),
+      args: z.array(z.string()).optional(),
+      blocking: z.boolean().optional(),
+      name: z.string().optional(),
+      env: z.record(z.string(), z.string()).optional(),
+    }),
+  ),
+});
+
+// Accept EITHER shape; flattener normalizes nested → flat.
+const HookConfigSchema = z.union([FlatHookConfig, NestedHookConfig]);
 
 const HooksRecordSchema = z.record(HookEventKindSchema, z.array(HookConfigSchema)).optional();
 
@@ -181,7 +201,33 @@ function flattenHooks(hooksRecord: HooksRecord | undefined): HookConfig[] {
   const out: HookConfig[] = [];
   for (const [event, configs] of Object.entries(hooksRecord)) {
     for (const rawConfig of configs) {
+      // Support both shapes:
+      //  - Flat: { command, matcher?, ... }
+      //  - Nested (Claude Code): { matcher?, hooks: [{ type: "command", command, ... }] }
+      const anyConfig = rawConfig as Record<string, unknown>;
+      if (Array.isArray(anyConfig.hooks)) {
+        // Nested — expand each inner hook into a flat HookConfig
+        const outerMatcher = typeof anyConfig.matcher === "string" ? anyConfig.matcher : undefined;
+        for (const inner of anyConfig.hooks as Array<Record<string, unknown>>) {
+          if (typeof inner.command !== "string" || inner.command.length === 0) continue;
+          out.push({
+            event: event as HookEventKind,
+            command: inner.command,
+            ...(outerMatcher !== undefined ? { matcher: outerMatcher } : {}),
+            ...(Array.isArray(inner.args) ? { args: inner.args as string[] } : {}),
+            ...(typeof inner.timeout === "number" ? { timeout: inner.timeout } : {}),
+            ...(typeof inner.blocking === "boolean" ? { blocking: inner.blocking } : {}),
+            ...(typeof inner.name === "string" ? { name: inner.name } : {}),
+            ...(inner.env !== undefined && typeof inner.env === "object"
+              ? { env: inner.env as Record<string, string> }
+              : {}),
+          });
+        }
+        continue;
+      }
+      // Flat shape
       const config = rawConfig as RawHookConfig;
+      if (typeof config.command !== "string" || config.command.length === 0) continue;
       out.push({
         event: event as HookEventKind,
         command: config.command,

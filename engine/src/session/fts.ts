@@ -96,7 +96,7 @@ export function searchMessages(db: Db, opts: FtsSearchOptions): FtsHit[] {
      LIMIT ?
   `;
 
-  const rows = db.raw.prepare(sql).all(...bindings) as FtsRow[];
+  const rows = db.raw.prepare(sql).all(bindings) as FtsRow[];
   return rows.map((r) => ({
     sessionId: r.session_id,
     role: r.role,

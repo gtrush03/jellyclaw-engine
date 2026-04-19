@@ -71,7 +71,7 @@ describe("GET /v1/events", () => {
     try {
       const text = await res.text();
       expect(text).toContain("event: event");
-      expect(text).toContain("\"type\":\"agent.message\"");
+      expect(text).toContain('"type":"agent.message"');
     } catch {
       // abort → fetch may throw; ok for this smoke test.
     }
@@ -83,9 +83,7 @@ describe("GET /v1/events", () => {
     const controller = new AbortController();
     setTimeout(() => controller.abort(), 20);
     try {
-      await app.request(
-        new Request("http://localhost/v1/events", { signal: controller.signal }),
-      );
+      await app.request(new Request("http://localhost/v1/events", { signal: controller.signal }));
     } catch {
       // expected on abort
     }

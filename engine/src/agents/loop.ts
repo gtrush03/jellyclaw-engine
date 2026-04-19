@@ -37,6 +37,8 @@ import type { McpCallToolResult } from "../mcp/types.js";
 import { decide } from "../permissions/engine.js";
 import type { AskHandler, CompiledPermissions, ToolCall } from "../permissions/types.js";
 import { adaptChunk, adaptDone, createAdapterState } from "../providers/adapter.js";
+import { BROWSER_BUCKET, isBrowserRateLimited } from "../ratelimit/policies.js";
+import { TokenBucket } from "../ratelimit/token-bucket.js";
 import type { Provider, ProviderRequest, SystemBlock } from "../providers/types.js";
 import type { SkillRegistry } from "../skills/registry.js";
 import type { SubagentService } from "../subagents/types.js";
@@ -183,6 +185,15 @@ export async function* runAgentLoop(
   // Subagents: require caller to provide one, or default to a disabled service
   // that returns an error result (not a throw). The CLI path MUST always supply one.
   const subagents: SubagentService = opts.subagents ?? disabledSubagentService;
+
+  // Global browser rate limit bucket (Phase 07.5).
+  // 60 req/min (1/sec refill) with burst of 10 — the ONLY safety gate for
+  // autonomous browser tools.
+  const browserBucket = new TokenBucket({
+    capacity: BROWSER_BUCKET.capacity,
+    refillPerSecond: BROWSER_BUCKET.refillPerSecond,
+    now,
+  });
 
   // Per-run session handle for tools that need session state (e.g. TodoWrite).
   const sessionState: SessionState = { todos: [] };
@@ -439,6 +450,7 @@ export async function* runAgentLoop(
         permService,
         subagents,
         sessionHandle,
+        browserBucket,
         ...(opts.skillRegistry !== undefined ? { skillRegistry: opts.skillRegistry } : {}),
       });
       for (const ev of outcome.events) yield ev;
@@ -479,6 +491,8 @@ interface ExecuteToolArgs {
   readonly subagents: SubagentService;
   readonly sessionHandle: SessionHandle;
   readonly skillRegistry?: SkillRegistry;
+  /** Global browser rate limit bucket (Phase 07.5). */
+  readonly browserBucket: TokenBucket;
 }
 
 async function executeTool(args: ExecuteToolArgs): Promise<ToolExecutionOutcome> {
@@ -622,6 +636,7 @@ async function executeTool(args: ExecuteToolArgs): Promise<ToolExecutionOutcome>
       state,
       toolInput,
       events,
+      browserBucket: args.browserBucket,
     });
   }
 
@@ -766,6 +781,8 @@ interface ExecuteMcpToolArgs {
   readonly state: ReturnType<typeof createAdapterState>;
   readonly toolInput: Readonly<Record<string, unknown>>;
   readonly events: AgentEvent[];
+  /** Global browser rate limit bucket (Phase 07.5). */
+  readonly browserBucket: TokenBucket;
 }
 
 /**
@@ -774,7 +791,7 @@ interface ExecuteMcpToolArgs {
  * run — this function handles the actual call and result mapping.
  */
 async function executeMcpTool(args: ExecuteMcpToolArgs): Promise<ToolExecutionOutcome> {
-  const { tc, opts, now, state, toolInput, events } = args;
+  const { tc, opts, now, state, toolInput, events, browserBucket } = args;
   const { tool_id, tool_name } = tc;
   const mcp = opts.mcp;
 
@@ -792,6 +809,28 @@ async function executeMcpTool(args: ExecuteMcpToolArgs): Promise<ToolExecutionOu
       message: "MCP registry not configured",
     });
     return { events, result: errorResult(tool_id, "MCP registry not configured") };
+  }
+
+  // Phase 07.5: Rate limit browser MCP tools.
+  // This is the ONLY safety gate since browser tools run fully autonomous.
+  if (isBrowserRateLimited(tool_name)) {
+    const allowed = browserBucket.tryAcquire(1);
+    if (!allowed) {
+      events.push({
+        type: "tool.error",
+        session_id: opts.sessionId,
+        ts: now(),
+        seq: state.seq++,
+        tool_id,
+        tool_name,
+        code: "rate_limited",
+        message: "browser: 60 req/min (burst 10) limit hit — back off and retry",
+      });
+      return {
+        events,
+        result: errorResult(tool_id, "rate_limited: browser: 60 req/min (burst 10) limit hit"),
+      };
+    }
   }
 
   const start = now();

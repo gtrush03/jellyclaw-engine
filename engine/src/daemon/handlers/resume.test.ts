@@ -16,10 +16,10 @@ describe("ResumeHandler", () => {
   let tempDir: string;
   let store: JobStore;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "jc-resume-test-"));
     store = new JobStore({ stateDir: tempDir });
-    store.open();
+    await store.open();
   });
 
   afterEach(() => {
@@ -61,7 +61,11 @@ describe("ResumeHandler", () => {
       await handler.handleWakeup(store.getById(job.id)!);
 
       // Should have continued session.
-      expect(mockContinueSession).toHaveBeenCalledWith("session-123", "Check build status", "CI completion");
+      expect(mockContinueSession).toHaveBeenCalledWith(
+        "session-123",
+        "Check build status",
+        "CI completion",
+      );
 
       // Job should be marked done.
       const updatedJob = store.getById(job.id);
@@ -325,7 +329,7 @@ describe("ResumeHandler", () => {
         await handler1.handleWakeup(job);
       });
 
-      scheduler1.start();
+      await scheduler1.start();
 
       // Schedule a wakeup job 30 seconds out.
       const fireAt = currentTime + 30000;
@@ -369,7 +373,7 @@ describe("ResumeHandler", () => {
         await handler2.handleWakeup(job);
       });
 
-      scheduler2.start();
+      await scheduler2.start();
 
       // Advance time past fire_at.
       for (let i = 0; i < 500; i++) {
@@ -412,7 +416,7 @@ describe("ResumeHandler", () => {
         now: fakeNow,
       });
 
-      scheduler.start();
+      await scheduler.start();
 
       // Insert both types of jobs.
       scheduler.store.insertJob({

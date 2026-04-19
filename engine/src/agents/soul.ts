@@ -96,7 +96,10 @@ export async function loadSoul(opts?: {
     // ENOENT is expected and silent. Anything else, warn and fall through.
     const code = (err as NodeJS.ErrnoException | undefined)?.code;
     if (code !== undefined && code !== "ENOENT" && opts?.logger !== undefined) {
-      opts.logger.warn({ err, path: customPath }, "failed to read ~/.jellyclaw/soul.md — using default");
+      opts.logger.warn(
+        { err, path: customPath },
+        "failed to read ~/.jellyclaw/soul.md — using default",
+      );
     }
   }
   return JELLYCLAW_SOUL;

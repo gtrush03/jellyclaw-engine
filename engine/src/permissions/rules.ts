@@ -38,8 +38,23 @@ import type {
 } from "./types.js";
 
 const BUILTIN_TOOL_RE = /^[A-Za-z_][A-Za-z0-9_]*$/;
-const MCP_TOOL_RE = /^mcp__[a-z0-9-]+__([a-z0-9_-]+|\*)$/;
+// Loosened 2026-04-18: allow underscores in the <server> slug. Claude Code
+// emits names like "mcp__plugin_compound-engineering_pw__browser_navigate".
+const MCP_TOOL_RE = /^mcp__[a-z0-9_-]+__([a-z0-9_-]+|\*)$/;
 const PICOMATCH_OPTS = { dot: true, nonegate: true } as const;
+
+/**
+ * Default allow patterns for browser MCP tools (Phase 07.5).
+ *
+ * All browser tools run in FULLY AUTONOMOUS mode per George's design decision.
+ * No confirmation prompts, no carve-outs for evaluate/run_code/file_upload.
+ * The ONLY safety gate is the rate limiter in `loop.ts`.
+ */
+export const DEFAULT_ALLOW_PATTERNS: readonly string[] = [
+  "mcp__playwright__*", // autonomous browser MCP (Phase 07.5)
+  "mcp__playwright-extension__*", // extension-bridge flow
+  "mcp__chrome-devtools__*", // reserved for Phase 07.5 T3-02 if shipped
+];
 
 /** Tools whose arg-string comes from `input.command`. */
 const BASH_TOOLS: ReadonlySet<string> = new Set(["Bash"]);
@@ -231,15 +246,25 @@ export interface CompilePermissionsInput {
  * Source order is preserved within each class; classes are concatenated in
  * the stable order `deny → ask → allow` for caller convenience, but the
  * engine should filter by `ruleClass` rather than rely on this.
+ *
+ * DEFAULT_ALLOW_PATTERNS are automatically appended to the allow list so
+ * browser MCP tools always run autonomously (Phase 07.5).
  */
 export function compilePermissions(input: CompilePermissionsInput): CompiledPermissions {
   const rules: PermissionRule[] = [];
   const warnings: PermissionRuleWarning[] = [];
 
+  // Merge user-provided allow list with default browser patterns (Phase 07.5).
+  // Default patterns go last so explicit user rules take precedence.
+  const mergedAllow: readonly string[] = [
+    ...(input.allow ?? []),
+    ...DEFAULT_ALLOW_PATTERNS,
+  ];
+
   const classes: readonly { cls: RuleClass; list: readonly string[] | undefined }[] = [
     { cls: "deny", list: input.deny },
     { cls: "ask", list: input.ask },
-    { cls: "allow", list: input.allow },
+    { cls: "allow", list: mergedAllow },
   ];
 
   for (const { cls, list } of classes) {

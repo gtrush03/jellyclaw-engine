@@ -10,9 +10,9 @@
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import type { Database as DatabaseType, Statement } from "better-sqlite3";
-import Database from "better-sqlite3";
 import { z } from "zod";
+
+import { openSqlite, type SqliteDatabase, type SqliteStatement } from "../db/sqlite.js";
 
 // ---------------------------------------------------------------------------
 // Zod schemas — types flow FROM Zod (per CLAUDE.md convention).
@@ -104,19 +104,19 @@ export class JobStore {
   readonly dbPath: string;
   readonly stateDir: string;
   readonly #now: () => number;
-  #db: DatabaseType | null = null;
+  #db: SqliteDatabase | null = null;
 
   // Prepared statements (lazy-initialized after open).
-  #stmtInsertJob: Statement | null = null;
-  #stmtClaimJob: Statement | null = null;
-  #stmtListDue: Statement | null = null;
-  #stmtMarkDone: Statement | null = null;
-  #stmtMarkError: Statement | null = null;
-  #stmtCancel: Statement | null = null;
-  #stmtGetById: Statement | null = null;
-  #stmtUpdateFireAt: Statement | null = null;
-  #stmtAppendEvent: Statement | null = null;
-  #stmtListEvents: Statement | null = null;
+  #stmtInsertJob: SqliteStatement | null = null;
+  #stmtClaimJob: SqliteStatement | null = null;
+  #stmtListDue: SqliteStatement | null = null;
+  #stmtMarkDone: SqliteStatement | null = null;
+  #stmtMarkError: SqliteStatement | null = null;
+  #stmtCancel: SqliteStatement | null = null;
+  #stmtGetById: SqliteStatement | null = null;
+  #stmtUpdateFireAt: SqliteStatement | null = null;
+  #stmtAppendEvent: SqliteStatement | null = null;
+  #stmtListEvents: SqliteStatement | null = null;
 
   constructor(opts: JobStoreOptions = {}) {
     this.stateDir = opts.stateDir ?? defaultStateDir();
@@ -125,19 +125,19 @@ export class JobStore {
   }
 
   /** Open the database, run migrations, prepare statements. */
-  open(): void {
+  async open(): Promise<void> {
     if (this.#db !== null) return;
 
     // Ensure state directory exists.
     fs.mkdirSync(this.stateDir, { recursive: true, mode: 0o700 });
 
-    this.#db = new Database(this.dbPath);
+    this.#db = await openSqlite(this.dbPath);
 
-    // Pragmas per spec.
-    this.#db.pragma("journal_mode = WAL");
-    this.#db.pragma("synchronous = NORMAL");
-    this.#db.pragma("busy_timeout = 2000");
-    this.#db.pragma("foreign_keys = ON");
+    // Pragmas per spec (two-arg form for the adapter).
+    this.#db.pragma("journal_mode", "WAL");
+    this.#db.pragma("synchronous", "NORMAL");
+    this.#db.pragma("busy_timeout", 2000);
+    this.#db.pragma("foreign_keys", "ON");
 
     this.#migrate();
     this.#prepareStatements();
@@ -283,7 +283,7 @@ export class JobStore {
     `);
   }
 
-  #requireDb(): DatabaseType {
+  #requireDb(): SqliteDatabase {
     if (this.#db === null) {
       throw new Error("JobStore: database not open. Call open() first.");
     }
@@ -352,7 +352,7 @@ export class JobStore {
     const ts = firedAt ?? this.#now();
     db.exec("BEGIN IMMEDIATE");
     try {
-      this.#stmtMarkDone?.run(ts, id);
+      this.#stmtMarkDone?.run([ts, id]);
       db.exec("COMMIT");
     } catch (err) {
       db.exec("ROLLBACK");
@@ -366,7 +366,7 @@ export class JobStore {
     const ts = firedAt ?? this.#now();
     db.exec("BEGIN IMMEDIATE");
     try {
-      this.#stmtMarkError?.run(error, ts, id);
+      this.#stmtMarkError?.run([error, ts, id]);
       db.exec("COMMIT");
     } catch (err) {
       db.exec("ROLLBACK");
@@ -413,7 +413,7 @@ export class JobStore {
     }
     sql += " ORDER BY created_at DESC";
 
-    const rows = db.prepare(sql).all(...params) as Record<string, unknown>[];
+    const rows = db.prepare(sql).all(params) as Record<string, unknown>[];
     return rows.map((r) => Job.parse(r));
   }
 
@@ -430,7 +430,7 @@ export class JobStore {
     const ts = lastFiredAt ?? this.#now();
     db.exec("BEGIN IMMEDIATE");
     try {
-      this.#stmtUpdateFireAt?.run(nextFireAt, ts, id);
+      this.#stmtUpdateFireAt?.run([nextFireAt, ts, id]);
       db.exec("COMMIT");
     } catch (err) {
       db.exec("ROLLBACK");
@@ -444,7 +444,7 @@ export class JobStore {
     const ts = this.#now();
     db.exec("BEGIN IMMEDIATE");
     try {
-      this.#stmtAppendEvent?.run(jobId, ts, event, detail ?? null);
+      this.#stmtAppendEvent?.run([jobId, ts, event, detail ?? null]);
       db.exec("COMMIT");
     } catch (err) {
       db.exec("ROLLBACK");

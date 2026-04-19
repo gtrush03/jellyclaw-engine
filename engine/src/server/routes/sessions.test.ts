@@ -175,6 +175,138 @@ describe("POST /v1/sessions", () => {
     expect(created[0]?.prompt).toBe("hi");
     expect(attached).toHaveLength(1);
   });
+
+  // T6-02: x-browserbase-context header tests
+  it("201 with valid x-browserbase-context header threads into requestEnv", async () => {
+    const { manager: rm, created } = makeRunStub();
+    const { manager: sm } = makeSessionStub([]);
+    const app = buildApp(rm, sm);
+    const res = await app.request(
+      new Request("http://localhost/v1/sessions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-browserbase-context": "ctx_abc123_xyz",
+        },
+        body: JSON.stringify({ prompt: "hi" }),
+      }),
+    );
+    expect(res.status).toBe(201);
+    expect(created).toHaveLength(1);
+    expect(created[0]?.requestEnv).toEqual({ BROWSERBASE_CONTEXT_ID: "ctx_abc123_xyz" });
+  });
+
+  it("201 without x-browserbase-context header does not inject requestEnv", async () => {
+    const { manager: rm, created } = makeRunStub();
+    const { manager: sm } = makeSessionStub([]);
+    const app = buildApp(rm, sm);
+    const res = await app.request(
+      new Request("http://localhost/v1/sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: "hi" }),
+      }),
+    );
+    expect(res.status).toBe(201);
+    expect(created).toHaveLength(1);
+    expect(created[0]?.requestEnv).toBeUndefined();
+  });
+
+  it("400 on malformed x-browserbase-context (too short)", async () => {
+    const { manager: rm } = makeRunStub();
+    const { manager: sm } = makeSessionStub([]);
+    const app = buildApp(rm, sm);
+    const res = await app.request(
+      new Request("http://localhost/v1/sessions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-browserbase-context": "short",
+        },
+        body: JSON.stringify({ prompt: "hi" }),
+      }),
+    );
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: string; message: string };
+    expect(body.error).toBe("bad_request");
+    expect(body.message).toContain("8-128");
+  });
+
+  it("400 on malformed x-browserbase-context (too long)", async () => {
+    const { manager: rm } = makeRunStub();
+    const { manager: sm } = makeSessionStub([]);
+    const app = buildApp(rm, sm);
+    const res = await app.request(
+      new Request("http://localhost/v1/sessions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-browserbase-context": "a".repeat(129),
+        },
+        body: JSON.stringify({ prompt: "hi" }),
+      }),
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it("400 on malformed x-browserbase-context (invalid chars)", async () => {
+    const { manager: rm } = makeRunStub();
+    const { manager: sm } = makeSessionStub([]);
+    const app = buildApp(rm, sm);
+    const res = await app.request(
+      new Request("http://localhost/v1/sessions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-browserbase-context": "../etc/passwd",
+        },
+        body: JSON.stringify({ prompt: "hi" }),
+      }),
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it("201 with whitespace-only x-browserbase-context (HTTP trims to empty)", async () => {
+    // HTTP Headers API automatically trims whitespace-only values to empty string.
+    // Empty is valid and means "no context", so this should succeed.
+    const { manager: rm, created } = makeRunStub();
+    const { manager: sm } = makeSessionStub([]);
+    const app = buildApp(rm, sm);
+    const res = await app.request(
+      new Request("http://localhost/v1/sessions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-browserbase-context": "   ",
+        },
+        body: JSON.stringify({ prompt: "hi" }),
+      }),
+    );
+    expect(res.status).toBe(201);
+    expect(created).toHaveLength(1);
+    // Whitespace-only becomes empty, which means no context
+    expect(created[0]?.requestEnv).toBeUndefined();
+  });
+
+  it("201 with empty x-browserbase-context does not inject requestEnv", async () => {
+    const { manager: rm, created } = makeRunStub();
+    const { manager: sm } = makeSessionStub([]);
+    const app = buildApp(rm, sm);
+    const res = await app.request(
+      new Request("http://localhost/v1/sessions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-browserbase-context": "",
+        },
+        body: JSON.stringify({ prompt: "hi" }),
+      }),
+    );
+    expect(res.status).toBe(201);
+    expect(created).toHaveLength(1);
+    // Empty header means no context — don't inject
+    expect(created[0]?.requestEnv).toBeUndefined();
+  });
 });
 
 describe("GET /v1/sessions/:id", () => {

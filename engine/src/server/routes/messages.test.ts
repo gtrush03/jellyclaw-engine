@@ -104,10 +104,7 @@ describe("GET /v1/sessions/:id/messages", () => {
       delta: "hi",
       final: true,
     };
-    const sm = makeSm(
-      { id: "s1", createdAt: 0, status: "running", latestRunId: "r1" },
-      [msg],
-    );
+    const sm = makeSm({ id: "s1", createdAt: 0, status: "running", latestRunId: "r1" }, [msg]);
     const app = buildApp(rm, sm);
     const res = await app.request(new Request("http://localhost/v1/sessions/s1/messages"));
     expect(res.status).toBe(200);

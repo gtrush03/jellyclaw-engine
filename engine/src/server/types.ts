@@ -9,6 +9,7 @@
 
 import type { EventEmitter } from "node:events";
 import type { AgentEvent } from "../events.js";
+import type { AuthProvider, Principal } from "./auth/index.js";
 
 // ---------------------------------------------------------------------------
 // Server configuration (resolved from CLI flags + env before app.ts is built)
@@ -20,6 +21,11 @@ export interface ServerConfig {
   readonly authToken: string; // required (auto-generated if missing); never empty
   readonly corsOrigins: readonly CorsOrigin[]; // parsed from --cors
   readonly verbose: boolean;
+  /**
+   * Optional auth provider override. DI seam for tests; production callers
+   * should let `app.ts` construct the provider from `authToken` + env.
+   */
+  readonly authProvider?: AuthProvider;
 }
 
 /**
@@ -28,7 +34,11 @@ export interface ServerConfig {
  */
 export type CorsOrigin =
   | { readonly kind: "exact"; readonly value: string }
-  | { readonly kind: "localhost-wildcard"; readonly scheme: "http" | "https"; readonly host: "localhost" | "127.0.0.1" };
+  | {
+      readonly kind: "localhost-wildcard";
+      readonly scheme: "http" | "https";
+      readonly host: "localhost" | "127.0.0.1";
+    };
 
 // ---------------------------------------------------------------------------
 // RunEntry — one per POST /v1/runs, kept in RunManager
@@ -99,6 +109,13 @@ export interface CreateRunOptions {
    * automatically from the session JSONL when `sessionId` is provided.
    */
   readonly priorMessages?: ReadonlyArray<PriorMessage>;
+  /**
+   * Per-request environment variable overrides for MCP header expansion.
+   * Used to inject runtime values like Browserbase Context IDs from incoming
+   * HTTP headers. Keys are env var names (e.g., "BROWSERBASE_CONTEXT_ID"),
+   * values are the override strings.
+   */
+  readonly requestEnv?: Readonly<Record<string, string>>;
 }
 
 export interface ResumeRunOptions {
@@ -137,6 +154,8 @@ export interface RunManager {
 export interface AppVariables {
   readonly authenticated: true;
   readonly requestId: string;
+  /** The authenticated caller's identity. Set by auth middleware. */
+  readonly principal: Principal;
 }
 
 // ---------------------------------------------------------------------------
