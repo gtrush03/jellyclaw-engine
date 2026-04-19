@@ -114,3 +114,8 @@ logs/
 desktop/src-tauri/target/
 target/
 desktop/src-tauri/binaries/
+
+# Playwright runtime artifacts
+.playwright-mcp/
+engine/test-results/
+test-results/
