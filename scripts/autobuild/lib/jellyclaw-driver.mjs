@@ -37,9 +37,7 @@ export async function shellCommand({
     });
     const duration_ms = Date.now() - started;
     const exitMatches = result.exitCode === expectExit;
-    const stdoutMatches = expectStdout
-      ? (result.stdout || "").includes(expectStdout)
-      : true;
+    const stdoutMatches = expectStdout ? (result.stdout || "").includes(expectStdout) : true;
     const passed = exitMatches && stdoutMatches;
     return {
       passed,
@@ -59,13 +57,7 @@ export async function shellCommand({
   }
 }
 
-export async function runCommand({
-  command,
-  waitForStderr,
-  timeoutSec = 10,
-  cwd,
-  env,
-}) {
+export async function runCommand({ command, waitForStderr, timeoutSec = 10, cwd, env }) {
   const started = Date.now();
   const child = execa(command, {
     shell: true,

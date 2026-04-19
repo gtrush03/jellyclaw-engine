@@ -255,9 +255,7 @@ function anyRunBusy(state) {
 function pickNextQueued(state) {
   if (!state.queue || state.queue.length === 0) return null;
   // Compute the minimum tier present in queue.
-  const queuedRuns = state.queue
-    .map((id) => ({ id, run: state.runs[id] }))
-    .filter((x) => x.run);
+  const queuedRuns = state.queue.map((id) => ({ id, run: state.runs[id] })).filter((x) => x.run);
   if (queuedRuns.length === 0) {
     // We have IDs in queue but no run record yet — allow first pick.
     return state.queue[0];
@@ -428,7 +426,10 @@ export async function killWorker({ promptId, tmuxSessionName: name, reason, log 
  *
  * Returns one of: "result" | "killed" | "max-iter".
  */
-export async function pollCostUntilResult(promptId, { log = logger(), maxIterations = Infinity } = {}) {
+export async function pollCostUntilResult(
+  promptId,
+  { log = logger(), maxIterations = Infinity } = {},
+) {
   if (process.env.AUTOBUILD_DRY_RUN === "1") {
     // Dry-run: synthesize a tiny cost and skip gating. Existing dry-run tests
     // expect this path.
@@ -556,7 +557,11 @@ async function runTestsForPrompt(promptId, log) {
       s.queue = s.queue.filter((id) => id !== promptId);
       if (!s.escalated.includes(promptId)) s.escalated.push(promptId);
     });
-    appendTransition(sdir, { to: "escalated", reason: "scope_violation", violations: scopeCheck.violations });
+    appendTransition(sdir, {
+      to: "escalated",
+      reason: "scope_violation",
+      violations: scopeCheck.violations,
+    });
     return;
   }
 
@@ -576,7 +581,10 @@ async function runTestsForPrompt(promptId, log) {
       stdout: "pipe",
     });
   } catch (err) {
-    log.warn({ promptId, err: err?.message ?? String(err) }, "engine rebuild failed — proceeding anyway");
+    log.warn(
+      { promptId, err: err?.message ?? String(err) },
+      "engine rebuild failed — proceeding anyway",
+    );
   }
 
   // Tests.

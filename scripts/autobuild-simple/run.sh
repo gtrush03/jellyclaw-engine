@@ -25,7 +25,7 @@
 set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-PROMPTS_DIR="$REPO/prompts/phase-99b-unfucking-v2"
+PROMPTS_DIR="${JELLYCLAW_PROMPTS_DIR:-$REPO/prompts/phase-08-hosting/T6-04-landing-and-tui}"
 SESSION="jc-autobuild"
 LOG_DIR="$REPO/.autobuild-simple"
 mkdir -p "$LOG_DIR"
@@ -74,9 +74,23 @@ else
   tmux pipe-pane -t "$SESSION" -o "cat >> $LOG_DIR/tmux.log"
   # Start claude. `--dangerously-skip-permissions` means no approval prompts
   # block the loop. Drop that flag if you want per-action confirms.
-  tmux send-keys -t "$SESSION" "claude --dangerously-skip-permissions" Enter
+  tmux send-keys -t "$SESSION" "/Users/gtrush/.local/bin/claude --dangerously-skip-permissions --model opus" Enter
   echo "waiting for claude to boot..."
   sleep 8
+  # Claude 4.7+ may show a "Settings Error" banner on boot for unrecognized
+  # defaultMode values (e.g. "auto"). The dialog highlights "Exit and fix
+  # manually"; we want the second option "Continue without these settings".
+  # Detect by capturing the pane and sending Down+Enter only if we see it.
+  if tmux capture-pane -t "$SESSION" -p -S - 2>/dev/null | grep -q "Settings Error\|Continue without these settings"; then
+    echo "dismissing settings warning: selecting 'Continue without these settings'"
+    tmux send-keys -t "$SESSION" Down
+    sleep 1
+    tmux send-keys -t "$SESSION" Enter
+    sleep 2
+    # SKILL.md note: TUI sometimes swallows first Enter. Send a second.
+    tmux send-keys -t "$SESSION" Enter
+    sleep 4
+  fi
 fi
 
 echo "===================================================================="
@@ -115,19 +129,22 @@ send_prompt_to_claude() {
 
 pane_new_contains() {
   local needle="$1"
-  # Anchor the marker at START-OF-LINE (after any TUI indent whitespace).
-  # The prompt I sent has the marker embedded mid-paragraph, so it FAILS
-  # the anchor. Claude's real completion — per our instruction — prints the
-  # marker on its own line. This matches the anchor.
-  #
-  # Long prompt ids wrap across pane lines too, splitting the marker. This
-  # method tolerates both cases because it only requires a line that STARTS
-  # with the marker after whitespace.
+  # STRICT: line must equal the marker EXACTLY after trimming leading
+  # whitespace, an optional Claude-assistant bullet ("⏺ "), and any trailing
+  # whitespace / single trailing period. This rejects the common wrapped-
+  # prompt false positive where the pane shows:
+  #   DONE: <id> . If any test or acceptance criterion cannot pass, ...
+  # Claude's real completion marker prints on its own line — bare, or prefixed
+  # by "⏺ ". Neither looks like the wrapped-prompt line, so equality works.
   tmux capture-pane -t "$SESSION" -p -S - | awk -v n="$needle" '
     {
       s = $0
       sub(/^[[:space:]]+/, "", s)
-      if (index(s, n) == 1) { found = 1; exit }
+      sub(/^⏺[[:space:]]+/, "", s)
+      sub(/[[:space:]]+$/, "", s)
+      sub(/\.$/, "", s)
+      sub(/[[:space:]]+$/, "", s)
+      if (s == n) { found = 1; exit }
     }
     END { exit (found ? 0 : 1) }
   '
@@ -189,7 +206,7 @@ for ID in "${PROMPTS[@]}"; do
 
   log_state "SEND $ID"
 
-  PROMPT="Read the spec at $FILE in full. Implement the fix exactly as specified in the 'Fix' section. Run every acceptance test from the frontmatter and confirm they all pass (show the output). When every test passes, print one final line on its own: DONE: $ID . If any test cannot pass, print one line: FAIL: $ID <reason> and stop."
+  PROMPT="Read the spec at $FILE in full. Implement the fix exactly as specified in the 'Fix' section — DO NOT skip work because files 'look already good'; every file listed in 'scope' MUST be materially edited (polish passes, brief-driven refinements, token substitutions, new tests). Use the Task tool to spawn parallel subagents (Explore, general-purpose) for research-heavy or multi-file work — you have full agent access. Run every acceptance test from the frontmatter AND the 'Verification' block at the bottom of the spec; confirm they all pass (show the output). When every test passes AND every scoped file has a fresh mtime, print one final line on its own: DONE: $ID . If any test or acceptance criterion cannot pass, print one line: FAIL: $ID <reason> and stop."
 
   send_prompt_to_claude "$PROMPT"
 

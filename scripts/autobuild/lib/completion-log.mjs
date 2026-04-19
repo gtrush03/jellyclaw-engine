@@ -332,9 +332,7 @@ function buildRow({ promptId, promptTitle, endedAtIso, startedAtIso, commits, te
   const duration = formatDuration(startedAtIso, endedAtIso);
   const shaList = (commits || []).filter(Boolean).join(", ") || "—";
   const testsCell =
-    tests && Number.isFinite(tests.total)
-      ? `${tests.passed ?? 0}/${tests.total ?? 0}`
-      : "—";
+    tests && Number.isFinite(tests.total) ? `${tests.passed ?? 0}/${tests.total ?? 0}` : "—";
   return `| ${promptId} | ${safeTitle} | ${completedUtc} | ${duration} | ${shaList} | ${testsCell} |`;
 }
 
@@ -362,7 +360,8 @@ function upsertChecklistEntry(content, { phaseId, phaseName, phaseComplete, pass
   const entryRe = new RegExp(`^- \\[[x\\s]\\].*Phase\\s+${escapeRe(phaseId)}\\b`);
   const mark = phaseComplete ? "[x]" : "[ ]";
   const icon = phaseComplete ? "✅" : "🔄";
-  const counterSuffix = passCount > 0 ? ` (${passCount} sub-prompt${passCount === 1 ? "" : "s"})` : "";
+  const counterSuffix =
+    passCount > 0 ? ` (${passCount} sub-prompt${passCount === 1 ? "" : "s"})` : "";
   const desired = `- ${mark} ${icon} Phase ${phaseId} — ${phaseName}${counterSuffix}`;
 
   for (let i = 0; i < lines.length; i++) {
@@ -376,14 +375,7 @@ function upsertChecklistEntry(content, { phaseId, phaseName, phaseComplete, pass
   const checklistIdx = lines.findIndex((l) => l.trim() === CHECKLIST_HEADING);
   if (checklistIdx === -1) {
     // No checklist heading at all — prepend a minimal one.
-    const block = [
-      "",
-      CHECKLIST_HEADING,
-      "",
-      "### Unfucking v2",
-      desired,
-      "",
-    ];
+    const block = ["", CHECKLIST_HEADING, "", "### Unfucking v2", desired, ""];
     // Insert right before "## Phase completion details" if present, else at EOF.
     const detailsIdx = lines.findIndex((l) => l.trim() === DETAILS_HEADING);
     if (detailsIdx !== -1) {

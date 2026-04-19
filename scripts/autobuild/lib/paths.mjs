@@ -10,9 +10,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const DEFAULT_REPO_ROOT = resolve(HERE, "..", "..", "..");
 
 export function repoRoot() {
-  return process.env.AUTOBUILD_ROOT
-    ? resolve(process.env.AUTOBUILD_ROOT)
-    : DEFAULT_REPO_ROOT;
+  return process.env.AUTOBUILD_ROOT ? resolve(process.env.AUTOBUILD_ROOT) : DEFAULT_REPO_ROOT;
 }
 
 export function autobuildDir() {

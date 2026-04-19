@@ -110,9 +110,7 @@ export function updateState(mutator, path = stateFile()) {
   mkdirSync(dirname(path), { recursive: true });
   const release = acquireLock(path);
   try {
-    const current = existsSync(path)
-      ? JSON.parse(readFileSync(path, "utf8"))
-      : defaultState();
+    const current = existsSync(path) ? JSON.parse(readFileSync(path, "utf8")) : defaultState();
     const copy = JSON.parse(JSON.stringify(current));
     const produced = mutator(copy);
     const next = produced || copy;

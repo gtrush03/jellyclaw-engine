@@ -59,9 +59,7 @@ async function runJellyclawRunTest(test, opts) {
 
 async function runSmokeSuiteTest(test, opts) {
   const nodeScript = join(opts.cwd, "engine", "test", "smoke", "run-smoke.mjs");
-  const cmd = existsSync(nodeScript)
-    ? `node ${JSON.stringify(nodeScript)}`
-    : "bun run test";
+  const cmd = existsSync(nodeScript) ? `node ${JSON.stringify(nodeScript)}` : "bun run test";
   return shellCommand({
     command: cmd,
     expectExit: 0,

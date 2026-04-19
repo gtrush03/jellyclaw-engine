@@ -16,16 +16,13 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const DEFAULT_REPO_ROOT = resolve(HERE, "..", "..");
 
 function repoRoot() {
-  return process.env.AUTOBUILD_ROOT
-    ? resolve(process.env.AUTOBUILD_ROOT)
-    : DEFAULT_REPO_ROOT;
+  return process.env.AUTOBUILD_ROOT ? resolve(process.env.AUTOBUILD_ROOT) : DEFAULT_REPO_ROOT;
 }
 function stateFile() {
   return join(repoRoot(), ".autobuild", "state.json");
 }
 
-const useColor =
-  process.stdout.isTTY && process.env.NO_COLOR == null && !process.env.JC_NO_COLOR;
+const useColor = process.stdout.isTTY && process.env.NO_COLOR == null && !process.env.JC_NO_COLOR;
 const C = {
   reset: useColor ? "\x1b[0m" : "",
   bold: useColor ? "\x1b[1m" : "",
@@ -76,8 +73,7 @@ function stateColor(s) {
   if (s === "testing" || s === "starting") return "cyan";
   if (s === "stalled" || s === "needs_review") return "amber";
   if (s === "escalated" || s === "crashed" || s === "failed") return "red";
-  if (s === "queued" || s === "done" || s === "passed" || s === "completed")
-    return "grey";
+  if (s === "queued" || s === "done" || s === "passed" || s === "completed") return "grey";
   return "grey";
 }
 
@@ -109,12 +105,7 @@ export function render(state, opts = {}) {
 
   if (state == null) {
     out.push(paint("amber", "rig not running"));
-    out.push(
-      paint(
-        "dim",
-        "  no state.json — run `scripts/autobuild/bin/autobuild run`",
-      ),
-    );
+    out.push(paint("dim", "  no state.json — run `scripts/autobuild/bin/autobuild run`"));
     return out.join("\n") + "\n";
   }
   if (state._corrupt) {
@@ -156,14 +147,25 @@ export function render(state, opts = {}) {
 
   // Header row
   const header =
-    " " +
-    fixed.map((c) => c.label.padEnd(c.w)).join("  ") +
-    "  " +
-    "TAIL".padEnd(tailW);
+    " " + fixed.map((c) => c.label.padEnd(c.w)).join("  ") + "  " + "TAIL".padEnd(tailW);
   out.push(paint("dim", header));
 
   // Sort: running first (by started_at asc), then queued, then escalated, then done
-  const order = { running: 0, testing: 0, healthy: 0, starting: 1, stalled: 2, escalated: 3, needs_review: 3, queued: 4, done: 5, completed: 5, passed: 5, failed: 5, crashed: 6 };
+  const order = {
+    running: 0,
+    testing: 0,
+    healthy: 0,
+    starting: 1,
+    stalled: 2,
+    escalated: 3,
+    needs_review: 3,
+    queued: 4,
+    done: 5,
+    completed: 5,
+    passed: 5,
+    failed: 5,
+    crashed: 6,
+  };
   const ids = Object.keys(runs).sort((a, b) => {
     const ra = runs[a];
     const rb = runs[b];
@@ -264,6 +266,5 @@ function main() {
 
 // Only run the loop when invoked as a script (not when imported by tests).
 const isMainModule =
-  import.meta.url === `file://${process.argv[1]}` ||
-  process.argv[1]?.endsWith("/grid.mjs");
+  import.meta.url === `file://${process.argv[1]}` || process.argv[1]?.endsWith("/grid.mjs");
 if (isMainModule) main();

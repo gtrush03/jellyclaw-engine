@@ -28,9 +28,7 @@ export function parsePrompt(filePath) {
     tier: Number(data.tier),
     title: String(data.title),
     scope: data.scope.map(String),
-    depends_on_fix: Array.isArray(data.depends_on_fix)
-      ? data.depends_on_fix.map(String)
-      : [],
+    depends_on_fix: Array.isArray(data.depends_on_fix) ? data.depends_on_fix.map(String) : [],
     tests: data.tests,
     human_gate: Boolean(data.human_gate),
     max_turns: Number(data.max_turns ?? 25),
