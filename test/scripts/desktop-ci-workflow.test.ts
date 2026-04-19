@@ -15,28 +15,42 @@ import { z } from "zod";
 
 const WorkflowSchema = z.object({
   name: z.string(),
-  on: z.object({
-    push: z.object({
-      tags: z.array(z.string()).optional(),
-    }).optional(),
-    workflow_dispatch: z.object({
-      inputs: z.record(z.any()).optional(),
-    }).optional(),
-  }).passthrough(),
+  on: z
+    .object({
+      push: z
+        .object({
+          tags: z.array(z.string()).optional(),
+        })
+        .optional(),
+      workflow_dispatch: z
+        .object({
+          inputs: z.record(z.any()).optional(),
+        })
+        .optional(),
+    })
+    .passthrough(),
   env: z.record(z.string()).optional(),
-  jobs: z.record(z.object({
-    name: z.string().optional(),
-    "runs-on": z.string(),
-    steps: z.array(z.object({
-      name: z.string().optional(),
-      uses: z.string().optional(),
-      run: z.string().optional(),
-      env: z.record(z.any()).optional(),
-      with: z.record(z.any()).optional(),
-      if: z.string().optional(),
-    }).passthrough()),
-    env: z.record(z.any()).optional(),
-  }).passthrough()),
+  jobs: z.record(
+    z
+      .object({
+        name: z.string().optional(),
+        "runs-on": z.string(),
+        steps: z.array(
+          z
+            .object({
+              name: z.string().optional(),
+              uses: z.string().optional(),
+              run: z.string().optional(),
+              env: z.record(z.any()).optional(),
+              with: z.record(z.any()).optional(),
+              if: z.string().optional(),
+            })
+            .passthrough(),
+        ),
+        env: z.record(z.any()).optional(),
+      })
+      .passthrough(),
+  ),
 });
 
 // ---------------------------------------------------------------------------
@@ -44,10 +58,7 @@ const WorkflowSchema = z.object({
 // ---------------------------------------------------------------------------
 
 describe("desktop-ci-workflow-valid", () => {
-  const workflowPath = path.resolve(
-    process.cwd(),
-    ".github/workflows/desktop-build.yml",
-  );
+  const workflowPath = path.resolve(process.cwd(), ".github/workflows/desktop-build.yml");
 
   it("workflow file exists", () => {
     expect(fs.existsSync(workflowPath)).toBe(true);
@@ -130,8 +141,8 @@ describe("desktop-ci-workflow-valid", () => {
     const parsed = yaml.parse(content);
 
     const macosJob = parsed.jobs["build-macos"];
-    const uploadStep = macosJob.steps.find(
-      (s: { uses?: string }) => s.uses?.includes("upload-artifact"),
+    const uploadStep = macosJob.steps.find((s: { uses?: string }) =>
+      s.uses?.includes("upload-artifact"),
     );
 
     expect(uploadStep).toBeDefined();
@@ -142,8 +153,8 @@ describe("desktop-ci-workflow-valid", () => {
     const parsed = yaml.parse(content);
 
     const macosJob = parsed.jobs["build-macos"];
-    const cleanupStep = macosJob.steps.find(
-      (s: { name?: string }) => s.name?.toLowerCase().includes("cleanup"),
+    const cleanupStep = macosJob.steps.find((s: { name?: string }) =>
+      s.name?.toLowerCase().includes("cleanup"),
     );
 
     expect(cleanupStep).toBeDefined();

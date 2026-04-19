@@ -155,9 +155,7 @@ describe("GET /api/runs/:id — not found", () => {
       }),
     });
     const app = mountApp(routes);
-    const res = await app.fetch(
-      new Request("http://test/api/runs/ghost-run"),
-    );
+    const res = await app.fetch(new Request("http://test/api/runs/ghost-run"));
     expect(res.status).toBe(404);
     const body = (await res.json()) as { error: string };
     expect(body.error).toMatch(/not found/i);
@@ -166,9 +164,7 @@ describe("GET /api/runs/:id — not found", () => {
   it("rejects invalid run ids (path-traversal style) with 400", async () => {
     const routes = createRunsRoute({ inboxDir, sessionsDir });
     const app = mountApp(routes);
-    const res = await app.fetch(
-      new Request("http://test/api/runs/..%2Fetc"),
-    );
+    const res = await app.fetch(new Request("http://test/api/runs/..%2Fetc"));
     // Hono decodes the segment before it reaches the handler; the resulting
     // id fails the character-class regex → 400.
     expect(res.status).toBe(400);
@@ -200,9 +196,7 @@ describe("GET /api/runs/:id — found", () => {
       }),
     });
     const app = mountApp(routes);
-    const res = await app.fetch(
-      new Request(`http://test/api/runs/${runId}`),
-    );
+    const res = await app.fetch(new Request(`http://test/api/runs/${runId}`));
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
       id: string;
@@ -239,9 +233,7 @@ describe("GET /api/runs/:id — found", () => {
       }),
     });
     const app = mountApp(routes);
-    const res = await app.fetch(
-      new Request(`http://test/api/runs/${runId}`),
-    );
+    const res = await app.fetch(new Request(`http://test/api/runs/${runId}`));
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
       log: { lines: string[]; lineCount: number };
@@ -279,10 +271,7 @@ describe("POST /api/runs/:id/action", () => {
 
     const files = await fs.readdir(inboxDir);
     expect(files).toHaveLength(1);
-    const written = await fs.readFile(
-      path.join(inboxDir, files[0]),
-      "utf8",
-    );
+    const written = await fs.readFile(path.join(inboxDir, files[0]), "utf8");
     const parsed = JSON.parse(written) as {
       cmd: string;
       target: string;

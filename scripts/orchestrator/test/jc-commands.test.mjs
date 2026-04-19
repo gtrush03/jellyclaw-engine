@@ -131,7 +131,9 @@ test("`jc abort T0-01` writes inbox with cmd:abort, target:T0-01", () => {
     assert.equal(res.status, 0, `stderr: ${res.stderr}`);
     const files = readdirSync(join(root, ".orchestrator", "inbox"));
     assert.equal(files.length, 1);
-    const payload = JSON.parse(readFileSync(join(root, ".orchestrator", "inbox", files[0]), "utf8"));
+    const payload = JSON.parse(
+      readFileSync(join(root, ".orchestrator", "inbox", files[0]), "utf8"),
+    );
     assert.equal(payload.cmd, "abort");
     assert.equal(payload.target, "T0-01");
   } finally {
@@ -139,7 +141,7 @@ test("`jc abort T0-01` writes inbox with cmd:abort, target:T0-01", () => {
   }
 });
 
-test("`jc tell <id> \"hint\"` writes inbox with payload", () => {
+test('`jc tell <id> "hint"` writes inbox with payload', () => {
   const root = tmpRoot();
   try {
     seedState(root, { rig_version: "0.1.0", runs: {}, queue: [] });
@@ -147,7 +149,9 @@ test("`jc tell <id> \"hint\"` writes inbox with payload", () => {
     assert.equal(res.status, 0);
     const files = readdirSync(join(root, ".orchestrator", "inbox"));
     assert.equal(files.length, 1);
-    const payload = JSON.parse(readFileSync(join(root, ".orchestrator", "inbox", files[0]), "utf8"));
+    const payload = JSON.parse(
+      readFileSync(join(root, ".orchestrator", "inbox", files[0]), "utf8"),
+    );
     assert.equal(payload.cmd, "tell");
     assert.equal(payload.target, "T0-05");
     assert.equal(payload.payload, "check the env var TEST_SHIM");
@@ -163,7 +167,9 @@ test("`jc concurrency 4` writes inbox with numeric payload", () => {
     const res = run(["concurrency", "4"], { AUTOBUILD_ROOT: root });
     assert.equal(res.status, 0);
     const files = readdirSync(join(root, ".orchestrator", "inbox"));
-    const payload = JSON.parse(readFileSync(join(root, ".orchestrator", "inbox", files[0]), "utf8"));
+    const payload = JSON.parse(
+      readFileSync(join(root, ".orchestrator", "inbox", files[0]), "utf8"),
+    );
     assert.equal(payload.cmd, "concurrency");
     assert.equal(payload.payload, 4);
   } finally {
@@ -178,7 +184,9 @@ test("`jc concurrency auto` writes the string 'auto'", () => {
     const res = run(["concurrency", "auto"], { AUTOBUILD_ROOT: root });
     assert.equal(res.status, 0);
     const files = readdirSync(join(root, ".orchestrator", "inbox"));
-    const payload = JSON.parse(readFileSync(join(root, ".orchestrator", "inbox", files[0]), "utf8"));
+    const payload = JSON.parse(
+      readFileSync(join(root, ".orchestrator", "inbox", files[0]), "utf8"),
+    );
     assert.equal(payload.cmd, "concurrency");
     assert.equal(payload.payload, "auto");
   } finally {
@@ -207,7 +215,9 @@ test("`jc pause-until 09:30` writes inbox + sentinel file", () => {
     const sentinel = readFileSync(join(root, ".orchestrator", "paused-until"), "utf8");
     assert.equal(sentinel, "09:30");
     const files = readdirSync(join(root, ".orchestrator", "inbox"));
-    const payload = JSON.parse(readFileSync(join(root, ".orchestrator", "inbox", files[0]), "utf8"));
+    const payload = JSON.parse(
+      readFileSync(join(root, ".orchestrator", "inbox", files[0]), "utf8"),
+    );
     assert.equal(payload.cmd, "pause-until");
     assert.equal(payload.payload, "09:30");
   } finally {

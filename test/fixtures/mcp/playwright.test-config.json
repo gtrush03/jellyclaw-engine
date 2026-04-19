@@ -5,9 +5,9 @@
     {
       "transport": "stdio",
       "name": "playwright",
-      "command": "npx",
+      "command": "bunx",
       "args": [
-        "@playwright/mcp@0.0.41",
+        "@playwright/mcp@0.0.70",
         "--browser",
         "chrome",
         "--cdp-endpoint",

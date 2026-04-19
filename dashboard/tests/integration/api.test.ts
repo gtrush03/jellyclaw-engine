@@ -12,15 +12,15 @@
  * These tests read from the real jellyclaw-engine repo (20 phases, ~63 prompts)
  * and assert the backend shape matches the frontend's expectations.
  */
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll } from "vitest";
 import {
   PromptsListResponseSchema,
   PromptDetailSchema,
   PhasesListResponseSchema,
   StatusSchema,
-} from '../../src/lib/api-validation.js';
+} from "../../src/lib/api-validation.js";
 
-const API = process.env.JC_API_BASE ?? 'http://127.0.0.1:5174/api';
+const API = process.env.JC_API_BASE ?? "http://127.0.0.1:5174/api";
 
 async function waitForBackend(retries = 30, delayMs = 500): Promise<void> {
   for (let i = 0; i < retries; i++) {
@@ -39,8 +39,8 @@ beforeAll(async () => {
   await waitForBackend();
 }, 30_000);
 
-describe('GET /api/prompts', () => {
-  it('returns the envelope with the prompts list', async () => {
+describe("GET /api/prompts", () => {
+  it("returns the envelope with the prompts list", async () => {
     const res = await fetch(`${API}/prompts`);
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -52,8 +52,8 @@ describe('GET /api/prompts', () => {
   });
 });
 
-describe('GET /api/prompts/:phase/:slug', () => {
-  it('returns an assembled prompt with startup + completion templates embedded', async () => {
+describe("GET /api/prompts/:phase/:slug", () => {
+  it("returns an assembled prompt with startup + completion templates embedded", async () => {
     // Use a prompt we know exists.
     const res = await fetch(`${API}/prompts/phase-01/01-research`);
     expect(res.status).toBe(200);
@@ -62,17 +62,17 @@ describe('GET /api/prompts/:phase/:slug', () => {
     expect(parsed.assembled.length).toBeGreaterThan(200);
     // The assembler stitches the startup + closeout templates with `---` dividers
     // surrounding the body.
-    expect(parsed.assembled).toContain('---');
+    expect(parsed.assembled).toContain("---");
   });
 
-  it('returns 404 for non-existent prompts', async () => {
+  it("returns 404 for non-existent prompts", async () => {
     const res = await fetch(`${API}/prompts/phase-00/99-does-not-exist`);
     expect(res.status).toBe(404);
   });
 });
 
-describe('GET /api/phases', () => {
-  it('returns 20 phases', async () => {
+describe("GET /api/phases", () => {
+  it("returns 20 phases", async () => {
     const res = await fetch(`${API}/phases`);
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -82,13 +82,13 @@ describe('GET /api/phases', () => {
     // First should be phase "00", last "19".
     const first = parsed.phases[0];
     const last = parsed.phases[parsed.phases.length - 1];
-    expect(first?.phase).toBe('00');
-    expect(last?.phase).toBe('19');
+    expect(first?.phase).toBe("00");
+    expect(last?.phase).toBe("19");
   });
 });
 
-describe('GET /api/status', () => {
-  it('returns a valid status snapshot', async () => {
+describe("GET /api/status", () => {
+  it("returns a valid status snapshot", async () => {
     const res = await fetch(`${API}/status`);
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -96,19 +96,19 @@ describe('GET /api/status', () => {
     expect(parsed.progressPercent).toBeGreaterThanOrEqual(0);
     expect(parsed.progressPercent).toBeLessThanOrEqual(100);
     expect(Array.isArray(parsed.blockers)).toBe(true);
-    expect(typeof parsed.phaseStatus).toBe('object');
+    expect(typeof parsed.phaseStatus).toBe("object");
   });
 });
 
-describe('GET /api/events (SSE)', () => {
-  it('emits a heartbeat event within 30s', async () => {
+describe("GET /api/events (SSE)", () => {
+  it("emits a heartbeat event within 30s", async () => {
     const ctrl = new AbortController();
     const res = await fetch(`${API}/events`, {
       signal: ctrl.signal,
-      headers: { Accept: 'text/event-stream' },
+      headers: { Accept: "text/event-stream" },
     });
     expect(res.status).toBe(200);
-    expect(res.headers.get('content-type')).toContain('text/event-stream');
+    expect(res.headers.get("content-type")).toContain("text/event-stream");
 
     // Read the first event (better-sse pushes an immediate heartbeat on connect).
     const reader = res.body?.getReader();
@@ -116,7 +116,7 @@ describe('GET /api/events (SSE)', () => {
     if (!reader) return;
 
     const decoder = new TextDecoder();
-    let buf = '';
+    let buf = "";
     const deadline = Date.now() + 30_000;
 
     try {
@@ -124,12 +124,12 @@ describe('GET /api/events (SSE)', () => {
         const { value, done } = await reader.read();
         if (done) break;
         buf += decoder.decode(value, { stream: true });
-        if (buf.includes('event: heartbeat')) {
-          expect(buf).toContain('event: heartbeat');
+        if (buf.includes("event: heartbeat")) {
+          expect(buf).toContain("event: heartbeat");
           return;
         }
       }
-      throw new Error('no heartbeat event received within 30s');
+      throw new Error("no heartbeat event received within 30s");
     } finally {
       ctrl.abort();
       reader.releaseLock();

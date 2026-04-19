@@ -31,12 +31,11 @@ import todowriteSchema from "../../fixtures/tools/claude-code-schemas/todowrite.
 import webfetchSchema from "../../fixtures/tools/claude-code-schemas/webfetch.json" with {
   type: "json",
 };
-import websearchSchema from "../../fixtures/tools/claude-code-schemas/websearch.json" with {
-  type: "json",
-};
 import writeSchema from "../../fixtures/tools/claude-code-schemas/write.json" with { type: "json" };
 import allowedDrift from "../../fixtures/tools/parity-allowed-drift.json" with { type: "json" };
 
+// WebSearch intentionally absent from builtinTools — provided via
+// the default Exa MCP instead. See docs/tools.md and T5-02.
 const REFERENCE_SCHEMAS: Record<string, unknown> = {
   Bash: bashSchema,
   Edit: editSchema,
@@ -47,32 +46,33 @@ const REFERENCE_SCHEMAS: Record<string, unknown> = {
   Task: taskSchema,
   TodoWrite: todowriteSchema,
   WebFetch: webfetchSchema,
-  WebSearch: websearchSchema,
   Write: writeSchema,
 };
 
 const EXPECTED_TOOL_NAMES = Object.keys(REFERENCE_SCHEMAS).sort();
 
 describe("tool registry parity", () => {
-  const tools = listTools();
+  const allTools = listTools();
+  // Filter to Claude Code canonical tools only for parity checks
+  const tools = allTools.filter((t) => EXPECTED_TOOL_NAMES.includes(t.name));
 
-  it("registers exactly 11 tools", () => {
-    expect(tools.length).toBe(11);
+  it("includes all 10 Claude Code canonical tools (WebSearch removed — now via Exa MCP)", () => {
+    expect(tools.length).toBe(10);
   });
 
-  it("registers exactly the Claude Code canonical tool names", () => {
+  it("includes exactly the Claude Code canonical tool names", () => {
     const got = tools.map((t) => t.name).sort();
     expect(got).toEqual(EXPECTED_TOOL_NAMES);
   });
 
-  it("every registered tool overrides the OpenCode builtin", () => {
+  it("every Claude Code canonical tool overrides the OpenCode builtin", () => {
     for (const tool of tools) {
       expect(tool.overridesOpenCode).toBe(true);
     }
   });
 
   it("every registered tool has a non-empty description", () => {
-    for (const tool of tools) {
+    for (const tool of allTools) {
       expect(tool.description.length).toBeGreaterThan(0);
     }
   });

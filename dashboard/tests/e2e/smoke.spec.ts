@@ -12,19 +12,19 @@
  * Playwright will launch a headless Chromium and walk the UI. If any step fails,
  * a trace.zip is written under `test-results/` for debugging.
  */
-import { test, expect } from '@playwright/test';
+import { test, expect } from "@playwright/test";
 
-const BASE = process.env.JC_DASHBOARD_URL ?? 'http://127.0.0.1:5173';
+const BASE = process.env.JC_DASHBOARD_URL ?? "http://127.0.0.1:5173";
 
-test.describe('dashboard smoke', () => {
-  test('loads sidebar with at least 20 phases, opens a prompt, copies it', async ({
+test.describe("dashboard smoke", () => {
+  test("loads sidebar with at least 20 phases, opens a prompt, copies it", async ({
     page,
     context,
   }) => {
     // Grant clipboard access so `navigator.clipboard.readText()` works in-page.
-    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    await context.grantPermissions(["clipboard-read", "clipboard-write"]);
 
-    await page.goto(BASE, { waitUntil: 'networkidle' });
+    await page.goto(BASE, { waitUntil: "networkidle" });
 
     // --- Sidebar: 20 phases ---------------------------------------------------
     // We don't assume a specific DOM structure — the polish agent may iterate.
@@ -35,22 +35,18 @@ test.describe('dashboard smoke', () => {
       .toBeGreaterThanOrEqual(20);
 
     // --- Pick the first prompt card and click it -----------------------------
-    const promptCard = page
-      .locator('[data-prompt], [data-testid^="prompt-"]')
-      .first();
+    const promptCard = page.locator('[data-prompt], [data-testid^="prompt-"]').first();
     await expect(promptCard).toBeVisible({ timeout: 15_000 });
     await promptCard.click();
 
     // --- Right pane: assembled prompt renders --------------------------------
-    const detailPane = page.locator(
-      '[data-testid="prompt-detail"], [data-pane="detail"]',
-    );
+    const detailPane = page.locator('[data-testid="prompt-detail"], [data-pane="detail"]');
     await expect(detailPane).toBeVisible({ timeout: 10_000 });
     // Markdown rendered → at least one heading element inside the pane.
-    await expect(detailPane.locator('h1, h2, h3').first()).toBeVisible();
+    await expect(detailPane.locator("h1, h2, h3").first()).toBeVisible();
 
     // --- Copy button: clipboard captures the full assembled text -------------
-    const copyButton = page.getByRole('button', { name: /copy/i }).first();
+    const copyButton = page.getByRole("button", { name: /copy/i }).first();
     await expect(copyButton).toBeVisible();
     await copyButton.click();
 
@@ -61,7 +57,7 @@ test.describe('dashboard smoke', () => {
       try {
         return await navigator.clipboard.readText();
       } catch {
-        return '';
+        return "";
       }
     });
     expect(clip.length).toBeGreaterThan(100);
@@ -70,8 +66,8 @@ test.describe('dashboard smoke', () => {
     expect(clip).toMatch(/#\s*Phase\s+\d{2}/);
   });
 
-  test('header shows a LIVE indicator once SSE is connected', async ({ page }) => {
-    await page.goto(BASE, { waitUntil: 'networkidle' });
+  test("header shows a LIVE indicator once SSE is connected", async ({ page }) => {
+    await page.goto(BASE, { waitUntil: "networkidle" });
     const live = page.getByText(/live/i).first();
     await expect(live).toBeVisible({ timeout: 10_000 });
   });

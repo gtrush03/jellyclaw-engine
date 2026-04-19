@@ -136,9 +136,7 @@ describe("sidecar-handshake", () => {
       },
     });
 
-    await expect(
-      getSidecarInfo(mockInvoke, { maxAttempts: 1 }),
-    ).rejects.toThrow(SidecarError);
+    await expect(getSidecarInfo(mockInvoke, { maxAttempts: 1 })).rejects.toThrow(SidecarError);
   });
 });
 

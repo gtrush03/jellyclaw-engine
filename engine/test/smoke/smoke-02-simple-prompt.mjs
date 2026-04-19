@@ -20,18 +20,12 @@ export default async function run({ log }) {
       maxTurns: 5,
     });
     log?.(`  run ${runId} (session ${sessionId}) created`);
-    const { events, kindCounts } = await streamRunEvents(
-      baseUrl,
-      token,
-      runId,
-      undefined,
-      { timeoutMs: 90_000 },
-    );
+    const { events, kindCounts } = await streamRunEvents(baseUrl, token, runId, undefined, {
+      timeoutMs: 90_000,
+    });
     log?.(`  received ${events.length} events; kinds=${JSON.stringify(kindCounts)}`);
 
-    const finalMessages = events.filter(
-      (e) => e?.type === "agent.message" && e?.final === true,
-    );
+    const finalMessages = events.filter((e) => e?.type === "agent.message" && e?.final === true);
     assert(
       finalMessages.length >= 1,
       "smoke-02: expected at least one agent.message with final=true",

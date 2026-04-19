@@ -69,10 +69,7 @@ const pathsMod = await import("../lib/paths.mjs");
 mkdirSync(join(root, ".autobuild"), { recursive: true });
 
 function writeQueueJson(order) {
-  writeFileSync(
-    join(root, ".autobuild", "queue.json"),
-    JSON.stringify({ order }, null, 2),
-  );
+  writeFileSync(join(root, ".autobuild", "queue.json"), JSON.stringify({ order }, null, 2));
 }
 
 function resetState(mutator) {

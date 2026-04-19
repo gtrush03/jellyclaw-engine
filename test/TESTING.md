@@ -426,3 +426,54 @@ Run through before W3 cutover. Sign off in an issue.
 13. [ ] Verify `config/genie-system.md` skills paths resolve via `~/.claurst/skills/` symlink to `~/.jellyclaw/skills/`.
 14. [ ] Flip `GENIE_ENGINE=claurst`, restart server, run wish #4 again. Claurst path still works (rollback verified).
 15. [ ] Flip back to `jellyclaw`. Run full 12-wish canonical set over 48h burn-in. All pass.
+
+---
+
+## Phase 07.5 — Chrome MCP integration test
+
+`test/integration/chrome-mcp.test.ts` is gated behind `JELLYCLAW_CHROME_MCP_TEST=1`
+to keep the default suite fast and deterministic. It:
+
+1. Launches an isolated Chrome on port 9333 via `scripts/playwright-test-chrome.sh`
+2. Spawns `jellyclaw run` with `--mcp-config test/fixtures/mcp/chrome-test-config.json`
+3. Feeds a navigate+screenshot prompt
+4. Asserts the event stream contains successful `browser_navigate` + `browser_take_screenshot`
+5. Cleans up: stops Chrome, removes tmp datadir
+
+Run locally:
+
+```bash
+JELLYCLAW_CHROME_MCP_TEST=1 bun run test test/integration/chrome-mcp.test.ts
+```
+
+Wall-clock: ~60s. Requires Chrome installed + `ANTHROPIC_API_KEY` or
+`~/.jellyclaw/credentials.json` set. CI runs this only in the `integration-chrome` job.
+
+---
+
+## Phase 07.5 T4-03 — Chrome demo end-to-end test
+
+`test/integration/chrome-demo-e2e.test.ts` is gated behind `JELLYCLAW_CHROME_DEMO_TEST=1`.
+This is the full regression test for the Chrome auto-lifecycle (T4-01) and session-end
+screenshot (T4-02) features working together.
+
+**Test cases:**
+
+1. **Cold start** — Chrome killed, jellyclaw auto-launches it, navigates to example.com,
+   captures final screenshot, asserts PNG magic bytes.
+2. **Warm start** — Chrome already running from test 1, jellyclaw detects it and skips
+   re-launch (no "auto-launching" in logs).
+
+Run locally:
+
+```bash
+JELLYCLAW_CHROME_DEMO_TEST=1 bun run test test/integration/chrome-demo-e2e.test.ts
+```
+
+Wall-clock: ~3 minutes. The cold start test has a 180s timeout to accommodate
+npx fetching `@playwright/mcp@latest` on first run.
+
+Requires:
+- Chrome installed at default macOS location
+- `ANTHROPIC_API_KEY` or `~/.jellyclaw/credentials.json` set
+- `scripts/jellyclaw-chrome.sh` and `scripts/jellyclaw-chrome-stop.sh` available

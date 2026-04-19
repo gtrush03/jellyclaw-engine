@@ -321,9 +321,18 @@ export async function createRun(baseUrl, token, body) {
  * events is the ordered list of AgentEvent objects (the "event" frames) plus
  * the terminal done payload tagged with type="__done__".
  */
-export async function streamRunEvents(baseUrl, token, runId, onEvent, { timeoutMs = 120_000 } = {}) {
+export async function streamRunEvents(
+  baseUrl,
+  token,
+  runId,
+  onEvent,
+  { timeoutMs = 120_000 } = {},
+) {
   const ac = new AbortController();
-  const timer = setTimeout(() => ac.abort(new Error(`streamRunEvents: timed out after ${timeoutMs}ms`)), timeoutMs);
+  const timer = setTimeout(
+    () => ac.abort(new Error(`streamRunEvents: timed out after ${timeoutMs}ms`)),
+    timeoutMs,
+  );
 
   let res;
   try {

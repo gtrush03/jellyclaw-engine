@@ -78,7 +78,8 @@ function discoverTests(filter) {
     .sort();
   if (filter) {
     return entries.filter(
-      (n) => n === filter || n === `${filter}.mjs` || n.startsWith(`${filter}-`) || n.includes(filter),
+      (n) =>
+        n === filter || n === `${filter}.mjs` || n.startsWith(`${filter}-`) || n.includes(filter),
     );
   }
   return entries;

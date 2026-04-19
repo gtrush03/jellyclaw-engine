@@ -36,9 +36,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  await fs.rm(tmpRoot, { recursive: true, force: true }).catch(
-    () => undefined,
-  );
+  await fs.rm(tmpRoot, { recursive: true, force: true }).catch(() => undefined);
 });
 
 function isAlive(pid: number): boolean {
@@ -126,9 +124,7 @@ describe("POST /api/rig/start", () => {
     });
     const app = mountApp(routes);
 
-    const res = await app.fetch(
-      new Request("http://test/api/rig/start", { method: "POST" }),
-    );
+    const res = await app.fetch(new Request("http://test/api/rig/start", { method: "POST" }));
     expect(res.status).toBe(201);
     const body = (await res.json()) as {
       running: boolean;
@@ -173,9 +169,7 @@ describe("POST /api/rig/start", () => {
     });
     const app = mountApp(routes);
 
-    const res = await app.fetch(
-      new Request("http://test/api/rig/start", { method: "POST" }),
-    );
+    const res = await app.fetch(new Request("http://test/api/rig/start", { method: "POST" }));
     expect(res.status).toBe(409);
     const body = (await res.json()) as { error: string; pid: number };
     expect(body.error).toBe("already_running");
@@ -191,9 +185,7 @@ describe("POST /api/rig/stop", () => {
       autobuildBin: "/usr/bin/true",
     });
     const app = mountApp(routes);
-    const res = await app.fetch(
-      new Request("http://test/api/rig/stop", { method: "POST" }),
-    );
+    const res = await app.fetch(new Request("http://test/api/rig/stop", { method: "POST" }));
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
       running: boolean;
@@ -216,16 +208,12 @@ describe("POST /api/rig/stop", () => {
     });
     const app = mountApp(routes);
 
-    const startRes = await app.fetch(
-      new Request("http://test/api/rig/start", { method: "POST" }),
-    );
+    const startRes = await app.fetch(new Request("http://test/api/rig/start", { method: "POST" }));
     expect(startRes.status).toBe(201);
     const { pid } = (await startRes.json()) as { pid: number };
     expect(isAlive(pid)).toBe(true);
 
-    const stopRes = await app.fetch(
-      new Request("http://test/api/rig/stop", { method: "POST" }),
-    );
+    const stopRes = await app.fetch(new Request("http://test/api/rig/stop", { method: "POST" }));
     expect(stopRes.status).toBe(200);
     const stopBody = (await stopRes.json()) as { running: boolean };
     expect(stopBody.running).toBe(false);
@@ -244,7 +232,7 @@ describe("POST /api/rig/tick", () => {
     const spawnFn: typeof spawn = (_cmd, _args, options) =>
       spawn(
         "/bin/sh",
-        ["-c", "echo '{\"ok\":true,\"processed\":0}'; exit 0"],
+        ["-c", 'echo \'{"ok":true,"processed":0}\'; exit 0'],
         options as SpawnOptions,
       );
 
@@ -256,9 +244,7 @@ describe("POST /api/rig/tick", () => {
     });
     const app = mountApp(routes);
 
-    const res = await app.fetch(
-      new Request("http://test/api/rig/tick", { method: "POST" }),
-    );
+    const res = await app.fetch(new Request("http://test/api/rig/tick", { method: "POST" }));
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
       exit_code: number;
@@ -274,11 +260,7 @@ describe("POST /api/rig/tick", () => {
 
   it("returns a 500-style envelope when the tick fails", async () => {
     const spawnFn: typeof spawn = (_cmd, _args, options) =>
-      spawn(
-        "/bin/sh",
-        ["-c", "echo 'boom' 1>&2; exit 1"],
-        options as SpawnOptions,
-      );
+      spawn("/bin/sh", ["-c", "echo 'boom' 1>&2; exit 1"], options as SpawnOptions);
 
     const routes = createRigControlRoute({
       pidFile,
@@ -288,9 +270,7 @@ describe("POST /api/rig/tick", () => {
     });
     const app = mountApp(routes);
 
-    const res = await app.fetch(
-      new Request("http://test/api/rig/tick", { method: "POST" }),
-    );
+    const res = await app.fetch(new Request("http://test/api/rig/tick", { method: "POST" }));
     expect(res.status).toBe(500);
     const body = (await res.json()) as {
       exit_code: number;

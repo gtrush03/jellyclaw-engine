@@ -57,7 +57,7 @@ test("spawnWorker invokes new-session before pipe-pane", () => {
   // the transition to "working").
   const realSpawnStart = src.indexOf("// Real spawn.");
   assert.ok(realSpawnStart > 0, "could not locate '// Real spawn.' marker");
-  const realSpawnEnd = src.indexOf("appendTransition(sdir, { to: \"working\" })", realSpawnStart);
+  const realSpawnEnd = src.indexOf('appendTransition(sdir, { to: "working" })', realSpawnStart);
   assert.ok(realSpawnEnd > realSpawnStart, "could not locate 'working' transition");
   const block = src.slice(realSpawnStart, realSpawnEnd);
 
@@ -67,10 +67,7 @@ test("spawnWorker invokes new-session before pipe-pane", () => {
   assert.ok(pipePaneIdx > 0, "pipePane call missing from real-spawn block");
   assert.ok(newSessionIdx > 0, "newDetachedSession call missing from real-spawn block");
   assert.ok(ensureServerIdx > 0, "ensureTmuxServer call missing — server not started eagerly");
-  assert.ok(
-    ensureServerIdx < newSessionIdx,
-    "ensureTmuxServer must run before newDetachedSession",
-  );
+  assert.ok(ensureServerIdx < newSessionIdx, "ensureTmuxServer must run before newDetachedSession");
   assert.ok(
     newSessionIdx < pipePaneIdx,
     "newDetachedSession must run before pipePane (this is the tmux ordering bug we just fixed)",
@@ -79,11 +76,7 @@ test("spawnWorker invokes new-session before pipe-pane", () => {
   // There should be exactly ONE pipePane call in the real-spawn block — the
   // earlier double-call was the regression.
   const pipePaneCount = block.split("pipePane(tmux, tmuxLog)").length - 1;
-  assert.equal(
-    pipePaneCount,
-    1,
-    `expected exactly one pipePane call, found ${pipePaneCount}`,
-  );
+  assert.equal(pipePaneCount, 1, `expected exactly one pipePane call, found ${pipePaneCount}`);
 });
 
 test("lib/tmux.mjs exports ensureTmuxServer", () => {

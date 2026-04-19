@@ -39,9 +39,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  await fs.rm(tmpRoot, { recursive: true, force: true }).catch(
-    () => undefined,
-  );
+  await fs.rm(tmpRoot, { recursive: true, force: true }).catch(() => undefined);
 });
 
 // Small fixture helper — writes a populated state.json that mimics the real
@@ -89,10 +87,7 @@ async function writeQueue(): Promise<void> {
     queueFile,
     JSON.stringify(
       {
-        queue: [
-          "T1-01-cap-tool-output-bytes",
-          "T1-02-handle-max-tokens-stop-reason",
-        ],
+        queue: ["T1-01-cap-tool-output-bytes", "T1-02-handle-max-tokens-stop-reason"],
       },
       null,
       2,
@@ -129,9 +124,7 @@ describe("POST /api/rig/reset", () => {
     });
     const app = mountApp(routes);
 
-    const res = await app.fetch(
-      new Request("http://test/api/rig/reset", { method: "POST" }),
-    );
+    const res = await app.fetch(new Request("http://test/api/rig/reset", { method: "POST" }));
     expect(res.status).toBe(409);
     const body = (await res.json()) as { error: string; message: string };
     expect(body.error).toBe("rig_running");
@@ -165,9 +158,7 @@ describe("POST /api/rig/reset", () => {
     });
     const app = mountApp(routes);
 
-    const res = await app.fetch(
-      new Request("http://test/api/rig/reset", { method: "POST" }),
-    );
+    const res = await app.fetch(new Request("http://test/api/rig/reset", { method: "POST" }));
     expect(res.status).toBe(200);
     const body = (await res.json()) as { ok: boolean; reset_at: string };
     expect(body.ok).toBe(true);
@@ -231,9 +222,7 @@ describe("POST /api/rig/reset", () => {
     });
     const app = mountApp(routes);
 
-    const res = await app.fetch(
-      new Request("http://test/api/rig/reset", { method: "POST" }),
-    );
+    const res = await app.fetch(new Request("http://test/api/rig/reset", { method: "POST" }));
     expect(res.status).toBe(200);
 
     const stateRaw = await fs.readFile(stateFile, "utf8");

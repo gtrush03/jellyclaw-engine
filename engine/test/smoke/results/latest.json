@@ -50,11 +50,7 @@
       "passed": true,
       "duration_ms": 11962,
       "details": {
-        "toolsSeen": [
-          "Glob",
-          "Read",
-          "Grep"
-        ],
+        "toolsSeen": ["Glob", "Read", "Grep"],
         "kindCounts": {
           "session.started": 1,
           "tool.called": 3,
@@ -96,11 +92,7 @@
       "passed": true,
       "duration_ms": 3529,
       "details": {
-        "checks": [
-          "health-authed",
-          "runs-400",
-          "runs-401"
-        ]
+        "checks": ["health-authed", "runs-400", "runs-401"]
       }
     }
   ],

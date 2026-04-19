@@ -29,13 +29,9 @@ export default async function run({ log }) {
     });
     log?.(`  run ${runId} created`);
 
-    const { events, kindCounts } = await streamRunEvents(
-      baseUrl,
-      token,
-      runId,
-      undefined,
-      { timeoutMs: 240_000 },
-    );
+    const { events, kindCounts } = await streamRunEvents(baseUrl, token, runId, undefined, {
+      timeoutMs: 240_000,
+    });
     log?.(`  received ${events.length} events; kinds=${JSON.stringify(kindCounts)}`);
 
     let bashCalls = 0;
@@ -45,11 +41,7 @@ export default async function run({ log }) {
     const peakInput = maxInputTokens(events);
     log?.(`  bashCalls=${bashCalls} peakInputTokens=${peakInput}`);
 
-    assert(
-      bashCalls >= 5,
-      "smoke-04: expected ≥5 tool.called Bash events",
-      `got ${bashCalls}`,
-    );
+    assert(bashCalls >= 5, "smoke-04: expected ≥5 tool.called Bash events", `got ${bashCalls}`);
     assert(
       (kindCounts["session.completed"] ?? 0) >= 1,
       "smoke-04: expected session.completed",

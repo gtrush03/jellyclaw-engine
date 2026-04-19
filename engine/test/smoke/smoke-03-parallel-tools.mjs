@@ -20,13 +20,9 @@ export default async function run({ log }) {
     });
     log?.(`  run ${runId} created`);
 
-    const { events, kindCounts } = await streamRunEvents(
-      baseUrl,
-      token,
-      runId,
-      undefined,
-      { timeoutMs: 120_000 },
-    );
+    const { events, kindCounts } = await streamRunEvents(baseUrl, token, runId, undefined, {
+      timeoutMs: 120_000,
+    });
     log?.(`  received ${events.length} events; kinds=${JSON.stringify(kindCounts)}`);
 
     const targetTools = new Set(["Glob", "Read", "Grep"]);

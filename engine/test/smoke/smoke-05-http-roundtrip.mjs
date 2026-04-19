@@ -31,7 +31,11 @@ export default async function run({ log }) {
       });
       const body = await res.text();
       log?.(`  /v1/health(authed) status=${res.status}`);
-      assert(res.status === 200, "smoke-05: /v1/health authed status", `got ${res.status} body=${body.slice(0, 200)}`);
+      assert(
+        res.status === 200,
+        "smoke-05: /v1/health authed status",
+        `got ${res.status} body=${body.slice(0, 200)}`,
+      );
       let parsed;
       try {
         parsed = JSON.parse(body);

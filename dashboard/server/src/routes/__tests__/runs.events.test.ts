@@ -120,9 +120,8 @@ async function startTestServer(state: RigState): Promise<string> {
   app.route("/api", routes);
 
   httpServer = await new Promise<http.Server>((resolve) => {
-    const s = serve(
-      { fetch: app.fetch, port: 0, hostname: "127.0.0.1" },
-      () => resolve(s as unknown as http.Server),
+    const s = serve({ fetch: app.fetch, port: 0, hostname: "127.0.0.1" }, () =>
+      resolve(s as unknown as http.Server),
     ) as unknown as http.Server;
   });
   const addr = httpServer.address() as AddressInfo;
@@ -206,11 +205,7 @@ describe("GET /api/runs/:id/events — SSE streaming", () => {
         };
         return parsed;
       });
-      expect(seededLines.map((p) => p.line)).toEqual([
-        "line-1",
-        "line-2",
-        "line-3",
-      ]);
+      expect(seededLines.map((p) => p.line)).toEqual(["line-1", "line-2", "line-3"]);
       expect(seededLines.every((p) => p.runId === runId)).toBe(true);
       expect(seededLines.every((p) => p.replay === true)).toBe(true);
 
@@ -241,9 +236,7 @@ describe("GET /api/runs/:id/events — SSE streaming", () => {
       runs: {},
     });
     // Slashes in the id → rejected by the param regex.
-    const res = await fetch(
-      `${baseUrl}/api/runs/${encodeURIComponent("bad/id")}/events`,
-    );
+    const res = await fetch(`${baseUrl}/api/runs/${encodeURIComponent("bad/id")}/events`);
     expect(res.status).toBe(400);
     expect(res.headers.get("content-type")).toContain("application/json");
   });

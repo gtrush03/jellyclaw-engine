@@ -64,7 +64,11 @@ export default async function run({ log }) {
     details.steps.push({ step: "--help", code: r.code, timedOut: r.timedOut });
     log?.(`  [--help] exit=${r.code} timedOut=${r.timedOut}`);
     assert(!r.timedOut, "smoke-01: --help timed out after 5s");
-    assert(r.code === 0, "smoke-01: --help exit code", `got ${r.code}, stderr=${r.stderr.slice(0, 400)}`);
+    assert(
+      r.code === 0,
+      "smoke-01: --help exit code",
+      `got ${r.code}, stderr=${r.stderr.slice(0, 400)}`,
+    );
     assert(
       r.stdout.includes("jellyclaw — open-source Claude Code replacement"),
       "smoke-01: --help stdout description missing",
@@ -78,7 +82,11 @@ export default async function run({ log }) {
     details.steps.push({ step: "--version", code: r.code, timedOut: r.timedOut });
     log?.(`  [--version] exit=${r.code} stdout=${r.stdout.trim()}`);
     assert(!r.timedOut, "smoke-01: --version timed out after 5s");
-    assert(r.code === 0, "smoke-01: --version exit code", `got ${r.code}, stderr=${r.stderr.slice(0, 400)}`);
+    assert(
+      r.code === 0,
+      "smoke-01: --version exit code",
+      `got ${r.code}, stderr=${r.stderr.slice(0, 400)}`,
+    );
     const trimmed = r.stdout.trim();
     assert(
       /^\d+\.\d+\.\d+/.test(trimmed),
