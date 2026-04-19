@@ -2,6 +2,22 @@
 
 Open-source Claude Code replacement for Genie, eventually embedded in the `jelly-claw` macOS video-calling app as its AI layer.
 
+---
+
+## Where runbooks live
+
+**This split is live as of 2026-04-19.** Completed phases moved to `ARCHIVE/phases/`; in-flight phases stay here.
+
+| State       | Directory                | Phases                                                                     |
+| ----------- | ------------------------ | -------------------------------------------------------------------------- |
+| In flight   | `phases/` (this dir)     | 11 (testing harness), 99 (unfucking), 08-hosting (via `prompts/phase-08-hosting/`) |
+| Planned     | `phases/`                | 12, 13, 14, 15, 16, 17, 18, 19                                              |
+| Completed   | `ARCHIVE/phases/`        | 00, 01, 02, 03, 04, 05, 06, 07, 07.5, 08, 09, 10, 10.5                      |
+
+`STATUS.md` + `COMPLETION-LOG.md` at the repo root are the live source of truth — this split is a paper-trail cache.
+
+---
+
 ## Design pillars
 
 1. **Thin wrapper on OpenCode `>=1.4.4`** — inherit provider abstraction, tools, MCP client, session server. Do not fork. Pin + patch.
