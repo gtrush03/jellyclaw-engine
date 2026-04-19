@@ -1,6 +1,6 @@
 # Built-in tools
 
-jellyclaw ships **11 built-in tools** that mirror Claude Code's published
+jellyclaw ships **10 built-in tools** that mirror Claude Code's published
 schemas byte-for-byte (see `test/fixtures/tools/claude-code-schemas/`). The
 parity suite at `test/unit/tools/parity.test.ts` enforces this on every
 test run; the `parity-allowed-drift.json` file is the only legitimate
@@ -20,12 +20,22 @@ jellyclaw implementation wins inside an OpenCode session).
 | `Glob`         | ✅          | ✅       | ✅ override                  | tinyglobby, `.gitignore` filter, mtime-desc sort              |
 | `Grep`         | ✅          | ✅       | ✅ override                  | `@vscode/ripgrep` via `spawn(argv)` (never shell)             |
 | `WebFetch`     | ✅          | ✅       | ✅ override                  | undici, SSRF preflight, per-hop redirect re-check, 10MB cap   |
-| `WebSearch`    | ✅          | ➖       | 🟡 stub                      | always errors with MCP-config hint (Phase 06+ MCP shadowing)  |
+| `WebSearch`    | ✅          | ➖       | ✅ via MCP                   | Provided by the default Exa MCP. Set `EXA_API_KEY` to enable. |
 | `TodoWrite`    | ✅          | ✅       | ✅ override                  | full-list replace, single in_progress invariant               |
 | `Task`         | ✅          | ✅       | 🟡 stub                      | dispatch surface wired; real subagent engine lands Phase 06   |
 | `NotebookEdit` | ✅          | ✅       | ✅ override                  | nbformat v4, replace/insert/delete, output preservation       |
 
 Legend: ✅ = full implementation, 🟡 = stub (fails loudly with hint), ➖ = not present.
+
+## WebSearch
+
+**Provided by the default Exa MCP.** Set `EXA_API_KEY` in your environment to
+enable. When the env var is present, jellyclaw automatically loads the Exa MCP
+at startup and the model gets access to `mcp__exa__web_search_exa`. When the
+env var is absent, no WebSearch capability is advertised — clean silent skip,
+no error.
+
+Get an API key at https://dashboard.exa.ai/api-keys.
 
 ## TodoWrite
 

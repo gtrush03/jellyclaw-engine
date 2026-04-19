@@ -5,6 +5,27 @@ runtime. All tools advertised by a server are exposed to the model under the
 `mcp__<server>__<tool>` namespace; the server prefix is unique per config entry,
 making collisions impossible.
 
+## Defaults
+
+jellyclaw ships with a default MCP template that auto-enables when the required
+environment variable is present:
+
+| Server | Transport | Env var required | Tools provided |
+|--------|-----------|------------------|----------------|
+| **exa** | http | `EXA_API_KEY` | `mcp__exa__web_search_exa` (WebSearch parity) |
+
+Get an Exa API key at https://dashboard.exa.ai/api-keys and set it in your shell:
+
+```sh
+export EXA_API_KEY="your-key-here"
+```
+
+When the key is present, jellyclaw automatically connects to Exa's MCP and the
+model gains web search capabilities. When absent, the Exa entry is silently
+skipped — no error, no stub.
+
+## Transports
+
 Three transports are supported (Phase 07):
 
 | transport | status | when to use |
@@ -51,6 +72,75 @@ union on `transport`.
 Server `name` must match `/^[a-z0-9-]+$/` — it becomes the tool-namespace prefix,
 and underscores would break round-trip parsing. The validator rejects
 non-conforming names at config load.
+
+## Transports
+
+### stdio (default)
+
+Local subprocess. The server is spawned as a child process and communication
+happens over stdin/stdout. This is the transport for Playwright MCP, filesystem
+tools, Git, etc.
+
+```jsonc
+{
+  "transport": "stdio",
+  "name": "echo",
+  "command": "bun",
+  "args": ["./test/fixtures/mcp/echo-server.ts"],
+  "env": { "DEBUG": "true" }  // values are scrubbed from logs
+}
+```
+
+### http (StreamableHTTP)
+
+Remote MCP servers speaking the 2025 StreamableHTTP protocol. One URL handles
+both POST and SSE upgrades. This is the transport for Browserbase, Exa, and most
+cloud MCP servers.
+
+**Header forwarding:** Headers from `headers` are passed to every outbound
+request via `requestInit.headers`. Use this for static bearer tokens or API keys.
+
+```jsonc
+{
+  "transport": "http",
+  "name": "exa",
+  "url": "https://mcp.exa.ai/mcp",
+  "headers": {
+    "Authorization": "Bearer YOUR_EXA_API_KEY"
+  }
+}
+```
+
+For Browserbase:
+
+```jsonc
+{
+  "transport": "http",
+  "name": "browserbase",
+  "url": "https://mcp.browserbase.com/mcp",
+  "headers": {
+    "Authorization": "Bearer YOUR_BROWSERBASE_API_KEY",
+    "X-Browserbase-Project": "YOUR_PROJECT_ID"
+  }
+}
+```
+
+### sse (legacy)
+
+Deprecated SSE-only transport for servers that haven't migrated to StreamableHTTP.
+Same header forwarding semantics as `http`. Prefer `http` when both are available.
+
+```jsonc
+{
+  "transport": "sse",
+  "name": "legacy-tool",
+  "url": "https://example.test/mcp/sse",
+  "headers": { "X-Api-Key": "<secret>" }
+}
+```
+
+**Note:** Header values in both `http` and `sse` configs are treated as secrets
+and scrubbed from all logs and error messages.
 
 ## OAuth 2.1 + PKCE
 
@@ -148,42 +238,16 @@ bun run engine/scripts/mcp-list.ts
 # mcp__echo__echo
 ```
 
-## Playwright / browser automation
+## Driving a real browser — Chrome MCP
 
-jellyclaw drives a real Chrome through `@playwright/mcp@0.0.41` as a stdio
-MCP server. The version pin is deliberate and load-bearing — see
-`patches/004-playwright-mcp-pin.md`. Do NOT float it.
+See `docs/chrome-setup.md` for the end-to-end setup. Quick summary:
 
-**Production (drive your real browser on `9222`):**
+- Primary: Microsoft `@playwright/mcp@^0.0.70` — navigate, click, snapshot, screenshot
+- Optional secondary: Google `chrome-devtools-mcp` (Lighthouse + performance; see T3-02)
+- Three flows: Chrome Web Store extension (Flow 1), dedicated debug profile (Flow 2), ephemeral Chromium (Flow 3)
 
-```json
-{
-  "mcp": [
-    {
-      "transport": "stdio",
-      "name": "playwright",
-      "command": "npx",
-      "args": [
-        "@playwright/mcp@0.0.41",
-        "--browser", "chrome",
-        "--cdp-endpoint", "http://127.0.0.1:9222"
-      ]
-    }
-  ]
-}
-```
-
-Port `9222` is reserved for your real browser (logged-in sessions, cookies,
-bank tabs). Tests never touch `9222`; the test harness runs an isolated
-headless Chrome on `9333` with a throwaway user-data-dir. Full walkthrough
-in `docs/playwright-setup.md`.
-
-The integration test (`test/integration/playwright-mcp.test.ts`) spawns
-Chrome via `scripts/playwright-test-chrome.sh`, loads the MCP server, and
-asserts a navigate+screenshot round-trip against `http://example.com`.
-`assertNoForbiddenPort()` fails any test line whose config, helper output,
-or path contains the literal `9222`; the helper script itself refuses to
-bind `9222` when asked.
+Both `browser_evaluate` and `browser_run_code` always prompt for confirmation regardless of `--permission-mode`.
+Rate limit: 60/min with burst 10 on every `browser_*` tool.
 
 ## Files
 

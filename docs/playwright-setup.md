@@ -1,13 +1,16 @@
 # Playwright MCP — setup
 
-jellyclaw connects to `@playwright/mcp@0.0.41` as an ordinary stdio MCP server
+jellyclaw connects to `@playwright/mcp@0.0.70` as an ordinary stdio MCP server
 (see `docs/mcp.md`). Zero jellyclaw code is added to support it — the
 integration is entirely config-driven.
 
+> **User-facing setup:** For a quickstart on how to drive your real Chrome
+> with jellyclaw, see [`docs/chrome-setup.md`](./chrome-setup.md). This doc
+> covers the **test harness** (port 9333) used by the integration suite.
+
 > **Version pin is deliberate.** See `patches/004-playwright-mcp-pin.md`.
-> Releases after `0.0.41` have a regression that drops several tool
-> definitions (`browser_fill_form`, `browser_select_option`,
-> `browser_run_code`, some `browser_tabs` variants). Do not float the version.
+> We pin to `^0.0.70` for stability. The "missing tool" regression documented
+> in earlier versions has been fixed upstream.
 
 ## Two modes: production vs tests
 
@@ -44,9 +47,9 @@ IP would let any other machine on your network drive your logged-in browser.
     {
       "transport": "stdio",
       "name": "playwright",
-      "command": "npx",
+      "command": "bunx",
       "args": [
-        "@playwright/mcp@0.0.41",
+        "@playwright/mcp@0.0.70",
         "--browser", "chrome",
         "--cdp-endpoint", "http://127.0.0.1:9222"
       ]
@@ -126,10 +129,10 @@ reviewer can eyeball the output.
   Chrome refuses to honor the flag if another instance is already using the
   same profile directory. Quit fully first, or launch with
   `--user-data-dir=<throwaway>` to sidestep the default profile.
-- **`npx @playwright/mcp@0.0.41` hangs on first run.** `npx` fetches the package
-  on the initial call; this can take 30 s+ on a cold cache. Pre-install with
-  `bun add -d @playwright/mcp@0.0.41` (already done in this repo) or set a
-  longer `connectTimeoutMs` per server.
+- **`bunx @playwright/mcp@0.0.70` hangs on first run.** `bunx` fetches the package
+  on the initial call; this can take 30 s+ on a cold cache. The package is
+  already installed via `engine/package.json`, or set a longer
+  `connectTimeoutMs` per server.
 - **macOS `/tmp` symlink.** Chrome sometimes rejects paths under `/tmp/` because
   macOS symlinks them to `/private/tmp/`. The helper script uses `mktemp -d -t`
   which resolves to the real path.
