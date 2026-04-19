@@ -22,7 +22,8 @@ Same tools, same schema, your infra.
 
 - 🪼 **Claude-Code parity** — 11 built-in tools (`Bash`, `Read`, `Write`, `Edit`, `Glob`, `Grep`, `WebFetch`, `TodoWrite`, `Task`, `NotebookEdit`, `WebSearch`) at schema parity. ✅ DONE
 - 🌊 **Stream-first** — line-delimited `AgentEvent` protocol over stdout or SSE. Byte-parity target with Claude Code `stream-json`. ✅ DONE (parity on 3 golden prompts; 5-prompt target in M1)
-- 🔌 **MCP client** — stdio + Streamable HTTP + deprecated SSE transports; OAuth with PKCE; Playwright MCP blessed at `0.0.41`. ✅ DONE
+- 🔌 **MCP client** — stdio + Streamable HTTP + deprecated SSE transports; OAuth with PKCE; Playwright MCP blessed at `0.0.70`. ✅ DONE
+- 🌐 **Chrome browsing** via Playwright MCP — [`docs/chrome-setup.md`](./docs/chrome-setup.md)
 - 🛡️ **Permission engine + hooks** — deny-wins rule matcher, 10 hook event kinds, audit log at `~/.jellyclaw/logs/`. ✅ DONE
 - 🔀 **Provider router** — Anthropic direct (primary, with prompt caching) + OpenRouter (opt-in, warn-on-startup). ✅ DONE
 - 🪝 **Skills + subagents** — loads `.claude/skills/` unmodified; full subagent hook propagation. ✅ DONE
