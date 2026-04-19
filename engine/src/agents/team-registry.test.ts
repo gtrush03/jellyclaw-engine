@@ -161,6 +161,39 @@ describe("TeamRegistry", () => {
       expect(teamAfter?.members[0]?.status).toBe("done");
     });
 
+    // Error 9 fix smoke: proves TeamRegistry's import path resolves the
+    // SQLite shim cleanly. Under Bun this is the chokepoint where the old
+    // `import Database from "better-sqlite3"` would throw `ERR_DLOPEN_FAILED`.
+    it("constructs and opens via the runtime SQLite shim without dlopen failure", () => {
+      const tempDir2 = fs.mkdtempSync(path.join(os.tmpdir(), "team-registry-shim-test-"));
+      const reg = new TeamRegistry({ stateDir: tempDir2 });
+      try {
+        expect(reg.isOpen).toBe(false);
+        reg.open();
+        expect(reg.isOpen).toBe(true);
+
+        // Round-trip a tiny insert/get to exercise the prepared statements.
+        reg.createTeam({
+          team_id: "shim-team",
+          owner_session: "shim-session",
+          members: [
+            {
+              agent_id: "a",
+              subagent_id: "s",
+              tools: [],
+              system_prompt: "",
+              prompt: "p",
+              model: null,
+            },
+          ],
+        });
+        expect(reg.teamExists("shim-team")).toBe(true);
+      } finally {
+        reg.close();
+        fs.rmSync(tempDir2, { recursive: true, force: true });
+      }
+    });
+
     it("reap removes team from registry", () => {
       registry.createTeam({
         team_id: "reap-team",

@@ -91,29 +91,59 @@ interface BunDatabase {
 
 function wrapStatement(stmt: BunStatement): SqliteStatement {
   return {
-    run(params?: unknown): SqliteRunResult {
+    run(...params: unknown[]): SqliteRunResult {
       // Bun's .run() can take spread args or a single object/array
-      const result = params !== undefined ? stmt.run(params) : stmt.run();
+      const result = stmt.run(...adaptBunParams(params));
       return {
         changes: result.changes,
         lastInsertRowid: result.lastInsertRowid,
       };
     },
 
-    get(params?: unknown): unknown {
-      return params !== undefined ? stmt.get(params) : stmt.get();
+    get(...params: unknown[]): unknown {
+      return stmt.get(...adaptBunParams(params));
     },
 
-    all(params?: unknown): unknown[] {
-      return params !== undefined ? stmt.all(params) : stmt.all();
+    all(...params: unknown[]): unknown[] {
+      return stmt.all(...adaptBunParams(params));
     },
 
-    *iterate(params?: unknown): IterableIterator<unknown> {
+    *iterate(...params: unknown[]): IterableIterator<unknown> {
       // Bun doesn't have a native iterate, so we use all() and yield
-      const rows = params !== undefined ? stmt.all(params) : stmt.all();
+      const rows = stmt.all(...adaptBunParams(params));
       for (const row of rows) {
         yield row;
       }
     },
   };
+}
+
+/**
+ * Adapt named-parameter binding objects for `bun:sqlite`, which requires
+ * placeholder sigils (`@`/`$`/`:`) on object keys, unlike `better-sqlite3`
+ * which accepts bare keys. Mirrors `adaptBunParams` in `sqlite.ts`.
+ */
+function adaptBunParams(params: unknown[]): unknown[] {
+  return params.map((p) => {
+    if (
+      p === null ||
+      typeof p !== "object" ||
+      Array.isArray(p) ||
+      p instanceof Uint8Array ||
+      ArrayBuffer.isView(p)
+    ) {
+      return p;
+    }
+    const out: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(p as Record<string, unknown>)) {
+      if (key.startsWith("@") || key.startsWith("$") || key.startsWith(":")) {
+        out[key] = value;
+      } else {
+        out[`@${key}`] = value;
+        out[`$${key}`] = value;
+        out[`:${key}`] = value;
+      }
+    }
+    return out;
+  });
 }

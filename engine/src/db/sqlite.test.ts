@@ -2,11 +2,18 @@
  * Phase 08 T5-04 — SQLite adapter tests.
  *
  * Tests run against whichever backend is active (bun:sqlite or better-sqlite3).
+ *
+ * Vitest runs under Node by default, so the better-sqlite3 path is exercised
+ * here. The bun:sqlite path is exercised end-to-end at TUI launch
+ * (`bun engine/bin/jellyclaw tui`) — see Error 9 fix in the runtime shim.
  */
 
+import * as fs from "node:fs";
+import * as os from "node:os";
+import * as path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { openSqlite, type SqliteDatabase } from "./sqlite.js";
+import { isBun, openSqlite, openSqliteSync, type SqliteDatabase } from "./sqlite.js";
 
 describe("SqliteDatabase adapter", () => {
   let db: SqliteDatabase;
@@ -185,5 +192,137 @@ describe("SqliteDatabase adapter", () => {
 
       expect(row).toEqual({ id: 1, name: "Alice" });
     });
+
+    it("supports spread positional parameters (multi-arg .run)", () => {
+      // This shape is used by team-registry / monitor-registry — single
+      // .run(a, b, c) call with multiple positional args. The shim must
+      // forward these through to the underlying backend.
+      db.exec("CREATE TABLE log (ts INTEGER, level TEXT, msg TEXT)");
+      const stmt = db.prepare("INSERT INTO log VALUES (?, ?, ?)");
+
+      const result = stmt.run(1700000000, "info", "hello");
+      expect(result.changes).toBe(1);
+
+      const row = db.prepare("SELECT * FROM log WHERE ts = ?").get(1700000000) as {
+        ts: number;
+        level: string;
+        msg: string;
+      };
+      expect(row).toEqual({ ts: 1700000000, level: "info", msg: "hello" });
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Synchronous shim — proves the openSqliteSync / Error 9 fix
+// ---------------------------------------------------------------------------
+
+describe("openSqliteSync (Error 9 runtime shim)", () => {
+  it("isBun() returns a boolean matching the actual runtime", () => {
+    const expected = typeof (globalThis as { Bun?: unknown }).Bun !== "undefined";
+    expect(isBun()).toBe(expected);
+  });
+
+  it("opens an in-memory database synchronously", () => {
+    const db = openSqliteSync(":memory:");
+    try {
+      expect(db.open).toBe(true);
+      db.exec("CREATE TABLE t (id INTEGER)");
+      db.prepare("INSERT INTO t VALUES (?)").run(42);
+      const row = db.prepare("SELECT id FROM t").get() as { id: number };
+      expect(row.id).toBe(42);
+    } finally {
+      db.close();
+    }
+  });
+
+  it("opens a file-backed database and persists across handles", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "sqlite-shim-test-"));
+    const dbPath = path.join(dir, "shim.db");
+
+    try {
+      const a = openSqliteSync(dbPath);
+      a.exec("CREATE TABLE k (k TEXT PRIMARY KEY, v TEXT)");
+      a.prepare("INSERT INTO k VALUES (?, ?)").run("hello", "world");
+      a.close();
+
+      const b = openSqliteSync(dbPath);
+      try {
+        const row = b.prepare("SELECT v FROM k WHERE k = ?").get("hello") as { v: string };
+        expect(row.v).toBe("world");
+      } finally {
+        b.close();
+      }
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("WAL pragma + synchronous=NORMAL + busy_timeout configure cleanly", () => {
+    // File-backed DB so WAL actually engages (in-memory falls back to 'memory').
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "sqlite-shim-pragma-"));
+    const dbPath = path.join(dir, "wal.db");
+
+    try {
+      const db = openSqliteSync(dbPath);
+      try {
+        db.pragma("journal_mode", "WAL");
+        db.pragma("synchronous", "NORMAL");
+        db.pragma("busy_timeout", 2000);
+        db.pragma("foreign_keys", "ON");
+
+        const journalMode = db.pragma("journal_mode") as Array<{ journal_mode: string }>;
+        expect(journalMode[0]?.journal_mode?.toLowerCase()).toBe("wal");
+
+        const fk = db.pragma("foreign_keys") as Array<{ foreign_keys: number }>;
+        expect(fk[0]?.foreign_keys).toBe(1);
+      } finally {
+        db.close();
+      }
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("transaction() commits on success and rolls back on error", () => {
+    const db = openSqliteSync(":memory:");
+    try {
+      db.exec("CREATE TABLE n (i INTEGER)");
+
+      const insertOk = db.transaction(() => {
+        db.prepare("INSERT INTO n VALUES (1)").run();
+        db.prepare("INSERT INTO n VALUES (2)").run();
+      });
+      insertOk();
+
+      const insertFail = db.transaction(() => {
+        db.prepare("INSERT INTO n VALUES (3)").run();
+        throw new Error("boom");
+      });
+      expect(() => insertFail()).toThrow("boom");
+
+      const count = (db.prepare("SELECT COUNT(*) as c FROM n").get() as { c: number }).c;
+      expect(count).toBe(2);
+    } finally {
+      db.close();
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Async shim — proves openSqlite() still works after spread-args refactor
+// ---------------------------------------------------------------------------
+
+describe("openSqlite (async)", () => {
+  it("matches openSqliteSync output for a basic round-trip", async () => {
+    const db = await openSqlite(":memory:");
+    try {
+      db.exec("CREATE TABLE t (id INTEGER)");
+      db.prepare("INSERT INTO t VALUES (?)").run(7);
+      const row = db.prepare("SELECT id FROM t").get() as { id: number };
+      expect(row.id).toBe(7);
+    } finally {
+      db.close();
+    }
   });
 });

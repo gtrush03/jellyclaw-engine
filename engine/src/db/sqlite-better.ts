@@ -65,24 +65,24 @@ function wrapStatement(stmt: BetterStatement): SqliteStatement {
   };
 
   return {
-    run(params?: unknown): SqliteRunResult {
-      const result = params !== undefined ? s.run(params) : s.run();
+    run(...params: unknown[]): SqliteRunResult {
+      const result = s.run(...params);
       return {
         changes: result.changes,
         lastInsertRowid: result.lastInsertRowid,
       };
     },
 
-    get(params?: unknown): unknown {
-      return params !== undefined ? s.get(params) : s.get();
+    get(...params: unknown[]): unknown {
+      return s.get(...params);
     },
 
-    all(params?: unknown): unknown[] {
-      return params !== undefined ? s.all(params) : s.all();
+    all(...params: unknown[]): unknown[] {
+      return s.all(...params);
     },
 
-    iterate(params?: unknown): IterableIterator<unknown> {
-      return params !== undefined ? s.iterate(params) : s.iterate();
+    iterate(...params: unknown[]): IterableIterator<unknown> {
+      return s.iterate(...params);
     },
   };
 }

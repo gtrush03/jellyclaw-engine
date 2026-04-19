@@ -4,16 +4,19 @@
  * Manages teams of concurrent subagents with SQLite-backed persistence.
  * Teams survive the parent turn so TeamDelete can run on a subsequent turn.
  *
- * Uses `better-sqlite3` with WAL journal mode (already a dep from T4-01).
+ * Uses the runtime SQLite shim (`db/sqlite.ts`) so that this registry works
+ * under both Bun (`bun:sqlite`) and Node (`better-sqlite3`). Statically
+ * importing `better-sqlite3` here would crash the bun-launched TUI with
+ * `ERR_DLOPEN_FAILED` the moment a Team tool is invoked.
  */
 
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 
-import type { Database as DatabaseType, Statement } from "better-sqlite3";
-import Database from "better-sqlite3";
 import { z } from "zod";
+
+import { type Database as DatabaseType, openSqliteSync, type Statement } from "../db/sqlite.js";
 
 // ---------------------------------------------------------------------------
 // Zod schemas - types flow FROM Zod (per CLAUDE.md convention)
@@ -131,13 +134,13 @@ export class TeamRegistry {
     // Ensure state directory exists.
     fs.mkdirSync(this.stateDir, { recursive: true, mode: 0o700 });
 
-    this.#db = new Database(this.dbPath);
+    this.#db = openSqliteSync(this.dbPath);
 
-    // Pragmas per spec.
-    this.#db.pragma("journal_mode = WAL");
-    this.#db.pragma("synchronous = NORMAL");
-    this.#db.pragma("busy_timeout = 2000");
-    this.#db.pragma("foreign_keys = ON");
+    // Pragmas per spec (two-arg form for the adapter).
+    this.#db.pragma("journal_mode", "WAL");
+    this.#db.pragma("synchronous", "NORMAL");
+    this.#db.pragma("busy_timeout", 2000);
+    this.#db.pragma("foreign_keys", "ON");
 
     this.#migrate();
     this.#prepareStatements();

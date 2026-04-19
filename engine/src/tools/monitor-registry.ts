@@ -4,15 +4,22 @@
  * Persists monitor state in the scheduler's SQLite database with a
  * dedicated `monitors` table. Monitors can be persistent (survive daemon
  * restart) or ephemeral.
+ *
+ * Uses the runtime SQLite shim (`db/sqlite.ts`) so the monitor pipeline
+ * (and the `Monitor` tool that triggers it) works under both Bun and Node.
  */
 
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 
-import type { Database as DatabaseType, Statement } from "better-sqlite3";
-import Database from "better-sqlite3";
 import { z } from "zod";
+
+import {
+  type Database as DatabaseType,
+  openSqliteSync,
+  type Statement,
+} from "../db/sqlite.js";
 
 // ---------------------------------------------------------------------------
 // Zod schemas — types flow FROM Zod (per CLAUDE.md convention).
@@ -115,13 +122,13 @@ export class MonitorRegistry {
     // Ensure state directory exists.
     fs.mkdirSync(this.stateDir, { recursive: true, mode: 0o700 });
 
-    this.#db = new Database(this.dbPath);
+    this.#db = openSqliteSync(this.dbPath);
 
-    // Pragmas per spec.
-    this.#db.pragma("journal_mode = WAL");
-    this.#db.pragma("synchronous = NORMAL");
-    this.#db.pragma("busy_timeout = 2000");
-    this.#db.pragma("foreign_keys = ON");
+    // Pragmas per spec (two-arg form for the adapter).
+    this.#db.pragma("journal_mode", "WAL");
+    this.#db.pragma("synchronous", "NORMAL");
+    this.#db.pragma("busy_timeout", 2000);
+    this.#db.pragma("foreign_keys", "ON");
 
     this.#migrate();
     this.#prepareStatements();
