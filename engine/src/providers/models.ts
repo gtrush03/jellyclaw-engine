@@ -30,7 +30,7 @@ export const KNOWN_MODELS = [
 
 export type KnownModel = (typeof KNOWN_MODELS)[number];
 
-export const DEFAULT_MODEL: KnownModel = "claude-sonnet-4-7";
+export const DEFAULT_MODEL: KnownModel = "claude-opus-4-7";
 
 export class InvalidModelError extends Error {
   readonly modelId: string;
