@@ -1,16 +1,22 @@
 # Caddyfile — reverse proxy for jellyclaw.dev
 #
 # Fly.io terminates TLS at the edge, so Caddy only needs to serve plain HTTP
-# inside the container. Three routes:
-#   /         → static landing page (site/)
-#   /v1/*     → jellyclaw-serve on 127.0.0.1:8080
-#   /tui, /tui/* → ttyd on 127.0.0.1:7681
+# inside the container. Routes:
+#   /           → static landing page (site/)
+#   /v1/*       → jellyclaw-serve on 127.0.0.1:8080
+#   /tui, /tui/*, /tui/ws → ttyd on 127.0.0.1:7681
+#
+# Auth model for /tui/*:
+#   - basicauth challenges on HTML requests · Safari sends creds
+#   - on success, Caddy sets `jc_tui=OK` cookie
+#   - WebSocket upgrade requests carry the cookie (WebSockets send cookies!)
+#     but NOT HTTP Basic Auth headers (WebKit bug since 2012)
+#   - cookie-matcher short-circuits the basicauth check for WS
 #
 # See phases/PHASE-08-hosting and T3-01 spec for context.
 {
 	admin off
 	auto_https off
-	# Fly terminates TLS at the edge; we only serve HTTP inside the container.
 	servers {
 		trusted_proxies static private_ranges
 	}
@@ -24,12 +30,36 @@
 		reverse_proxy 127.0.0.1:8080
 	}
 
-	# Web TUI (ttyd) — both /tui and /tui/*
+	# /tui redirect (no-slash → with-slash)
 	handle_path /tui {
 		redir /tui/ permanent
 	}
+
+	# Web TUI (ttyd) — cookie-or-basic auth so Safari WS upgrades work.
+	@tui_authed header Cookie *jc_tui=OK*
+
 	handle /tui/* {
-		reverse_proxy 127.0.0.1:7681
+		# Path A: cookie already set — skip basicauth, inject Authorization
+		#         for ttyd (which still has --credential). Safari sends
+		#         cookies on WS upgrades.
+		handle @tui_authed {
+			reverse_proxy 127.0.0.1:7681 {
+				header_up Authorization "Basic {env.JC_TUI_BASIC_B64}"
+			}
+		}
+
+		# Path B: no cookie — require HTTP Basic Auth. On success, set cookie
+		#         and proxy. HTML page requests (from Safari) do send the
+		#         Authorization header, so this path succeeds on first load.
+		handle {
+			basicauth {
+				tui {env.JC_TUI_PASS_HASH}
+			}
+			header Set-Cookie "jc_tui=OK; Path=/tui; Secure; HttpOnly; SameSite=Lax; Max-Age=2592000"
+			reverse_proxy 127.0.0.1:7681 {
+				header_up Authorization "Basic {env.JC_TUI_BASIC_B64}"
+			}
+		}
 	}
 
 	# Static landing page (default fallback)

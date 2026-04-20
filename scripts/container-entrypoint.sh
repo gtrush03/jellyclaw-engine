@@ -48,7 +48,20 @@ log "started jellyclaw-serve pid=$!"
 pids+=("$!")
 log "started ttyd pid=$!"
 
-# 3. Caddy on :80 (static + /v1 proxy + /tui proxy)
+# 3. Caddy on :80 · before starting, hash the TUI password for cookie-auth
+#    Safari on iOS does not send HTTP Basic Auth on WebSocket upgrades
+#    (WebKit bug since 2012); we rely on Caddy cookie-or-basic auth so the
+#    cookie rides the WS handshake.
+if [[ -n "${JELLYCLAW_TUI_PASSWORD:-}" ]]; then
+  JC_TUI_PASS_HASH=$(caddy hash-password --plaintext "${JELLYCLAW_TUI_PASSWORD}")
+  export JC_TUI_PASS_HASH
+  # Also base64-encode the basic auth credentials so we can inject the
+  # Authorization header for ttyd (which still checks --credential).
+  JC_TUI_BASIC_B64=$(printf 'tui:%s' "${JELLYCLAW_TUI_PASSWORD}" | base64)
+  export JC_TUI_BASIC_B64
+  log "tui password hashed for Caddy basicauth"
+fi
+
 caddy run --config /etc/caddy/Caddyfile --adapter caddyfile &
 pids+=("$!")
 log "started caddy pid=$!"
