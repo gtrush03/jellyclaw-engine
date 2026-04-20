@@ -96,16 +96,18 @@ COPY scripts/container-entrypoint.sh /usr/local/bin/container-entrypoint.sh
 RUN chmod +x /usr/local/bin/ttyd-args.sh /usr/local/bin/container-entrypoint.sh
 
 # Install bun for the TUI shim (engine/bin/jellyclaw uses bun to load vendored TSX).
-# Symlink into /usr/local/bin so pwuser (non-root) can invoke it on PATH.
-# unzip is required by bun's install script (not present in the Playwright base).
+# Install under /usr/local/lib/bun so pwuser (non-root) can traverse the path
+# (/root is 0700 — pwuser can't cd through it even if the bun binary itself
+# is +x). unzip is required by bun's install script (not present in the
+# Playwright base).
 # hadolint ignore=DL3008,DL4006
+ENV BUN_INSTALL=/usr/local/lib/bun
 RUN apt-get update \
     && apt-get install -y --no-install-recommends unzip \
     && rm -rf /var/lib/apt/lists/* \
     && curl -fsSL https://bun.sh/install | bash \
-    && ln -sf /root/.bun/bin/bun /usr/local/bin/bun \
-    && chmod 755 /root/.bun/bin/bun \
-    && chmod -R a+rX /root/.bun \
+    && ln -sf /usr/local/lib/bun/bin/bun /usr/local/bin/bun \
+    && chmod -R a+rX /usr/local/lib/bun \
     && /usr/local/bin/bun --version
 
 # Symlink the CLI entrypoint so /usr/local/bin/jellyclaw works from anywhere
