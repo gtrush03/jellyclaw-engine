@@ -96,6 +96,9 @@ Scope is one of: `engine`, `providers`, `cli`, `mcp`, `config`, `deps`, `phases`
 Body required for anything beyond a one-line mechanical change. Reference the phase (`Phase 1`)
 and any upstream issue (`upstream: sst/opencode#1234`).
 
+**No `Co-Authored-By: Claude` trailers.** George authors, not Claude. Omit the trailer
+entirely — don't add it even when tooling would otherwise suggest it.
+
 ## What to do when unsure
 
 1. Re-read the relevant phase doc.
