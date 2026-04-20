@@ -13,7 +13,7 @@ primary_region = "iad"
   JELLYCLAW_CHROME_MODE    = "inline"
 
 [http_service]
-  internal_port        = 8080
+  internal_port        = 80
   force_https          = true
   auto_stop_machines   = "off"
   auto_start_machines  = true
