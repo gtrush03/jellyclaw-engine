@@ -23,7 +23,7 @@ export const AnthropicProviderConfig = z.object({
   type: z.literal("anthropic"),
   apiKey: z.string().optional(), // falls back to ANTHROPIC_API_KEY env
   baseURL: z.string().url().optional(),
-  defaultModel: z.string().default("claude-sonnet-4-5-20250929"),
+  defaultModel: z.string().default("claude-opus-4-7"),
   cache: z
     .object({
       enabled: z.boolean().default(true),
@@ -39,7 +39,7 @@ export const OpenRouterProviderConfig = z.object({
   type: z.literal("openrouter"),
   apiKey: z.string().optional(), // falls back to OPENROUTER_API_KEY env
   baseURL: z.string().url().default("https://openrouter.ai/api/v1"),
-  defaultModel: z.string().default("anthropic/claude-sonnet-4.5"),
+  defaultModel: z.string().default("anthropic/claude-opus-4.7"),
   acknowledgeCachingLimits: z
     .boolean()
     .default(false)
