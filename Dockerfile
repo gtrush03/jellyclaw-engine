@@ -94,6 +94,20 @@ COPY web-tui/ttyd-args.sh /usr/local/bin/ttyd-args.sh
 COPY scripts/container-entrypoint.sh /usr/local/bin/container-entrypoint.sh
 RUN chmod +x /usr/local/bin/ttyd-args.sh /usr/local/bin/container-entrypoint.sh
 
+# Install bun for the TUI shim (engine/bin/jellyclaw uses bun to load vendored TSX).
+# Symlink into /usr/local/bin so pwuser (non-root) can invoke it on PATH.
+# hadolint ignore=DL4006
+RUN curl -fsSL https://bun.sh/install | bash \
+    && ln -sf /root/.bun/bin/bun /usr/local/bin/bun \
+    && chmod 755 /root/.bun/bin/bun \
+    && chmod -R a+rX /root/.bun \
+    && /usr/local/bin/bun --version
+
+# Symlink the CLI entrypoint so /usr/local/bin/jellyclaw works from anywhere
+# (web-tui/ttyd-args.sh execs /usr/local/bin/jellyclaw tui).
+RUN ln -sf /app/engine/bin/jellyclaw /usr/local/bin/jellyclaw \
+    && chmod +x /app/engine/bin/jellyclaw
+
 USER pwuser
 
 # Caddy binds :80 in-container; Fly maps 443→80 at the edge.
