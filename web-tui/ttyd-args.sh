@@ -21,7 +21,6 @@ common_args=(
   --check-origin
   --max-clients 10
   --terminal-type xterm-256color
-  --title-format "jellyclaw"
 )
 
 mode="${JELLYCLAW_TUI_AUTH:-required}"
