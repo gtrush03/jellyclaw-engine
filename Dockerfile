@@ -65,11 +65,12 @@ ENV NODE_ENV=production \
 # universe does not ship caddy by default.
 # hadolint ignore=DL3008,DL4006
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends tini ca-certificates curl gnupg debian-keyring debian-archive-keyring apt-transport-https \
+    && apt-get install -y --no-install-recommends tini ca-certificates curl gnupg debian-keyring debian-archive-keyring apt-transport-https libcap2-bin \
     && curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg \
     && curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' > /etc/apt/sources.list.d/caddy-stable.list \
     && apt-get update \
     && apt-get install -y --no-install-recommends caddy \
+    && setcap 'cap_net_bind_service=+ep' /usr/bin/caddy \
     && rm -rf /var/lib/apt/lists/*
 
 # ttyd binary — produced by Stage 0 above.
