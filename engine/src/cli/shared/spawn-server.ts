@@ -22,7 +22,7 @@ import { existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { execaNode } from "execa";
+import { execa } from "execa";
 
 import type { Logger } from "../../logger.js";
 import { logger as defaultLogger } from "../../logger.js";
@@ -130,12 +130,11 @@ export async function spawnEmbeddedServer(
   // Run via execaNode — a forked node child with the CLI entry. stdio is piped
   // so we can shuttle logs through pino without leaking the bearer token onto
   // the parent's stdout.
-  // Force node even when parent is bun · bun has SSE+chunked-encoding bug.
-  // Also clear nodeOptions — execa defaults to process.execArgv which under
-  // bun contains bun-specific flags that node(1) rejects with "bad option".
-  const child = execaNode(cliEntry, args, {
-    nodePath: "node",
-    nodeOptions: [],
+  // Plain `execa` (child_process.spawn) instead of `execaNode` (fork).
+  // Forking under bun carries bun-specific execArgv + IPC semantics that
+  // break the node child. A plain spawn of `node dist/cli/main.js` is what
+  // the child actually needs.
+  const child = execa("node", [cliEntry, ...args], {
     cwd: opts.cwd ?? process.cwd(),
     env: {
       ...process.env,
