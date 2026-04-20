@@ -14,7 +14,7 @@ blocks: [19]
 
 ## Deliverables
 
-- Public GitHub repo at `github.com/gtrush03/jellyclaw` (or chosen org)
+- Public GitHub repo at `github.com/gtrush03/jellyclaw-engine` (or chosen org)
 - `npm` package `@jellyclaw/engine` + CLI package `jellyclaw`
 - Homebrew formula
 - Docs site on Vercel (`jellyclaw.dev`) built from `docs/`
@@ -37,7 +37,7 @@ blocks: [19]
 
 ### Step 3 — Public repo push
 ```bash
-gh repo create gtrush03/jellyclaw --public --source . --push
+gh repo create gtrush03/jellyclaw-engine --public --source . --push
 ```
 
 ### Step 4 — npm publish
@@ -94,7 +94,7 @@ Keep-a-changelog format. First entry: `v0.1.0 — Initial public release`.
 
 - [ ] GitHub repo public, clean history, CI green on `main`
 - [ ] `npm install -g jellyclaw && jellyclaw --version` works on fresh Node 20
-- [ ] `brew install gtrush03/jellyclaw/jellyclaw` works on fresh macOS
+- [ ] `brew install gtrush03/jellyclaw-engine/jellyclaw` works on fresh macOS
 - [ ] Docs site live at `jellyclaw.dev`
 - [ ] Desktop .dmg / .AppImage / .msi attached to `v0.1.0` release
 - [ ] Blog post + Show HN live

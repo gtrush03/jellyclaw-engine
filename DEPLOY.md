@@ -30,7 +30,7 @@ Engine side:
 
 ## Blockers — none of these are optional before `flyctl deploy`
 
-1. **Engine is not yet bootable under `jellyclaw serve` on Fly's Node 20 runtime.** Status: `Engine on: n/a (not yet bootable)` per `STATUS.md`. The T6-04 surface smoke verified `jellyclaw run` + `jellyclaw tui` against a real key, but `jellyclaw serve` behind `min_machines_running=2` has not been exercised end-to-end against the multi-tenant auth seam that landed in phase 08 T5-03. Fix: run `scripts/run-web-tui-e2e.sh` inside the container locally (`docker run --rm -e ANTHROPIC_API_KEY=… ghcr.io/gtrush03/jellyclaw:latest`) and confirm `/v1/sessions` + `/v1/events` SSE stays stable for ≥60 s. **Gate.**
+1. **Engine is not yet bootable under `jellyclaw serve` on Fly's Node 20 runtime.** Status: `Engine on: n/a (not yet bootable)` per `STATUS.md`. The T6-04 surface smoke verified `jellyclaw run` + `jellyclaw tui` against a real key, but `jellyclaw serve` behind `min_machines_running=2` has not been exercised end-to-end against the multi-tenant auth seam that landed in phase 08 T5-03. Fix: run `scripts/run-web-tui-e2e.sh` inside the container locally (`docker run --rm -e ANTHROPIC_API_KEY=… ghcr.io/gtrush03/jellyclaw-engine:latest`) and confirm `/v1/sessions` + `/v1/events` SSE stays stable for ≥60 s. **Gate.**
 
 2. **Phase 99 unfucking is 5/8 done.** STATUS explicitly parks Phase 11 behind Phase 99. The 3 remaining prompts (see `phases/PHASE-99-unfucking.md`) include the session-restoration path that lets a crashed Machine resume in-flight runs. Without that, rolling deploys drop active SSE streams. Fix: finish T6-T8 of phase-99. **Gate for `auto_start_machines = true` with a rolling strategy.**
 

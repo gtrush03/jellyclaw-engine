@@ -11,6 +11,7 @@ primary_region = "iad"
   LOG_LEVEL      = "info"
   PLAYWRIGHT_BROWSERS_PATH = "/ms-playwright"
   JELLYCLAW_CHROME_MODE    = "inline"
+  JELLYCLAW_TUI_AUTH       = "optional"
 
 [http_service]
   internal_port        = 80

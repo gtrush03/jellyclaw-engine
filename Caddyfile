@@ -35,31 +35,11 @@
 		redir /tui/ permanent
 	}
 
-	# Web TUI (ttyd) — cookie-or-basic auth so Safari WS upgrades work.
-	@tui_authed header Cookie *jc_tui=OK*
-
+	# Web TUI (ttyd) — public passthrough (auth removed 2026-04-20).
+	# The ttyd process runs with JELLYCLAW_TUI_AUTH=optional, so no
+	# --credential flag, so no Authorization header needed here.
 	handle /tui/* {
-		# Path A: cookie already set — skip basicauth, inject Authorization
-		#         for ttyd (which still has --credential). Safari sends
-		#         cookies on WS upgrades.
-		handle @tui_authed {
-			reverse_proxy 127.0.0.1:7681 {
-				header_up Authorization "Basic {env.JC_TUI_BASIC_B64}"
-			}
-		}
-
-		# Path B: no cookie — require HTTP Basic Auth. On success, set cookie
-		#         and proxy. HTML page requests (from Safari) do send the
-		#         Authorization header, so this path succeeds on first load.
-		handle {
-			basicauth {
-				tui {env.JC_TUI_PASS_HASH}
-			}
-			header Set-Cookie "jc_tui=OK; Path=/tui; Secure; HttpOnly; SameSite=Lax; Max-Age=2592000"
-			reverse_proxy 127.0.0.1:7681 {
-				header_up Authorization "Basic {env.JC_TUI_BASIC_B64}"
-			}
-		}
+		reverse_proxy 127.0.0.1:7681
 	}
 
 	# Static landing page (default fallback)

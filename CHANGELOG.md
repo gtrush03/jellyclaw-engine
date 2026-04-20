@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (Apr 20, 2026)
+- **Web TUI auth removed.** Basicauth + cookie gate in `Caddyfile` stripped
+  and `JELLYCLAW_TUI_AUTH=optional` set in `fly.toml`. `/tui/` is now a
+  public passthrough to `ttyd` for the shareable demo link. Flip back by
+  restoring the `@tui_authed` matcher + `basicauth` block and running
+  `fly secrets set JELLYCLAW_TUI_AUTH=required -a jellyclaw-prod`.
+  Cost exposure is real — every visitor hits `ANTHROPIC_API_KEY` and shares
+  one ttyd session (`--writable --max-clients 10`).
+- Fixed `gtrush03/jellyclaw` → `gtrush03/jellyclaw-engine` repo URL
+  references in `site/index.html`, `DEPLOY.md`, and
+  `phases/PHASE-18-open-source-release.md`. README already correct.
+
 ### Added (Apr 15–19, 2026)
 - feat(prompts): phase 07.5 + phase 08 hosting prompt trees (T3–T7 —
   HTTP/SSE MCP, Exa default web search, multi-tenant auth seam, SQLite
