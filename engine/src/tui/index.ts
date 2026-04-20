@@ -211,9 +211,19 @@ export async function launchTui(opts: LaunchTuiOptions): Promise<LaunchTuiHandle
   };
 
   const creds = await credsHooks.load();
-  if (typeof creds.anthropicApiKey === "string" && creds.anthropicApiKey.length > 0) {
+  // Env-var fallback · ANTHROPIC_API_KEY is the canonical way the engine
+  // is configured in Fly/Docker/CI. Before prompting, accept it as if it
+  // came from ~/.jellyclaw/credentials.json.
+  const envKey = process.env.ANTHROPIC_API_KEY;
+  const effectiveKey =
+    typeof creds.anthropicApiKey === "string" && creds.anthropicApiKey.length > 0
+      ? creds.anthropicApiKey
+      : typeof envKey === "string" && envKey.length > 0
+        ? envKey
+        : null;
+  if (effectiveKey !== null) {
     try {
-      await launchAfterKey(creds.anthropicApiKey);
+      await launchAfterKey(effectiveKey);
     } catch (err) {
       offAllSignals();
       throw err;
@@ -236,7 +246,18 @@ export async function launchTui(opts: LaunchTuiOptions): Promise<LaunchTuiHandle
             try {
               await credsHooks.save(key);
               await launchAfterKey(key);
-            } catch {
+            } catch (err) {
+              // Surface the failure to stderr so the operator sees why the
+              // TUI bailed instead of a blank "exit 1".
+              try {
+                process.stderr.write(
+                  `jellyclaw tui: failed to launch after accepting key: ${String(
+                    (err as Error)?.message ?? err,
+                  )}\n`,
+                );
+              } catch {
+                /* best-effort */
+              }
               settle(1);
             }
           })();
