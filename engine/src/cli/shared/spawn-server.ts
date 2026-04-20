@@ -130,9 +130,12 @@ export async function spawnEmbeddedServer(
   // Run via execaNode — a forked node child with the CLI entry. stdio is piped
   // so we can shuttle logs through pino without leaking the bearer token onto
   // the parent's stdout.
+  // Force node even when parent is bun · bun has SSE+chunked-encoding bug.
+  // Also clear nodeOptions — execa defaults to process.execArgv which under
+  // bun contains bun-specific flags that node(1) rejects with "bad option".
   const child = execaNode(cliEntry, args, {
-    // force node even when parent is bun · bun has SSE+chunked-encoding bug
     nodePath: "node",
+    nodeOptions: [],
     cwd: opts.cwd ?? process.cwd(),
     env: {
       ...process.env,
