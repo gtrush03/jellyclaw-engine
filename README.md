@@ -11,6 +11,8 @@ Same tools, same schema, your infra.
 [![Bun](https://img.shields.io/badge/bun-%3E%3D1.1-black)](package.json)
 [![Status](https://img.shields.io/badge/status-active-brightgreen)](STATUS.md)
 [![TypeScript](https://img.shields.io/badge/typed-strict-blue)](tsconfig.json)
+[![Hosted on Fly.io](https://img.shields.io/badge/hosted-fly.io-7B3FE4)](https://jellyclaw-prod.fly.dev/)
+[![Tests](https://img.shields.io/badge/tests-2115%20passing-brightgreen)](STATUS.md)
 
 </div>
 
@@ -18,17 +20,26 @@ Same tools, same schema, your infra.
 
 **jellyclaw** is an embeddable, auditable agent runtime — an open-source alternative to the proprietary `claude` binary. It exposes a stable typed event API so agents and apps can dispatch work without shelling out to a closed-source CLI. You bring the API key; jellyclaw handles the agent loop, tool calls, permissions, hooks, MCP, sessions, and streaming — all in strict TypeScript you can read.
 
+## 🌐 Try it now
+
+**Live demo (no install, no signup):** [jellyclaw-prod.fly.dev/tui/](https://jellyclaw-prod.fly.dev/tui/)
+
+Drops you straight into the jellyclaw TUI in your browser. Heads-up: the demo is a shared terminal backed by a shared Anthropic key, so it's for a quick look — clone locally for real work.
+
+Landing page: [jellyclaw-prod.fly.dev](https://jellyclaw-prod.fly.dev/) · Stack: Caddy → ttyd → `jellyclaw tui` on Fly.io (rolling deploys, 2 machines, `iad`).
+
 ## ✨ Features
 
 - 🪼 **Claude-Code parity** — 11 built-in tools (`Bash`, `Read`, `Write`, `Edit`, `Glob`, `Grep`, `WebFetch`, `TodoWrite`, `Task`, `NotebookEdit`, `WebSearch`) at schema parity. ✅ DONE
 - 🌊 **Stream-first** — line-delimited `AgentEvent` protocol over stdout or SSE. Byte-parity target with Claude Code `stream-json`. ✅ DONE (parity on 3 golden prompts; 5-prompt target in M1)
 - 🔌 **MCP client** — stdio + Streamable HTTP + deprecated SSE transports; OAuth with PKCE; Playwright MCP blessed at `0.0.70`. ✅ DONE
-- 🌐 **Chrome browsing** via Playwright MCP — [`docs/chrome-setup.md`](./docs/chrome-setup.md)
+- 🌐 **Chrome browsing** via Playwright MCP — [`docs/chrome-setup.md`](./docs/chrome-setup.md). Cloud Chrome via Browserbase also wired. ✅ DONE
 - 🛡️ **Permission engine + hooks** — deny-wins rule matcher, 10 hook event kinds, audit log at `~/.jellyclaw/logs/`. ✅ DONE
-- 🔀 **Provider router** — Anthropic direct (primary, with prompt caching) + OpenRouter (opt-in, warn-on-startup). ✅ DONE
-- 🪝 **Skills + subagents** — loads `.claude/skills/` unmodified; full subagent hook propagation. ✅ DONE
+- 🔀 **Provider router** — Anthropic direct (primary, with prompt caching + 1M-context beta header for `claude-*-4-7`) + OpenRouter (opt-in, warn-on-startup). ✅ DONE
+- 🪝 **Skills + subagents** — loads `.claude/skills/` unmodified; full subagent hook propagation; real `SubagentDispatcher` wired (the `Task` tool dispatches). ✅ DONE
 - 🖥️ **Interactive TUI** — Ink-based, jellyfish spinner, slash-command palette, in-place API key capture. ✅ DONE (Phase 10.5)
 - 📡 **HTTP server** — `POST /v1/runs` + SSE with bearer auth, loopback-by-default, `Last-Event-Id` replay. ✅ DONE (Phase 10.02)
+- 🚢 **Hosted stack on Fly.io** — Caddy + ttyd + `jellyclaw serve` in one image. Landing + browser TUI + HTTP API on one domain. GitHub Actions auto-deploys on merge to `main`. ✅ DONE (Phase 08 Hosting)
 - 🖱️ **Tauri desktop app** — signed, notarized, auto-updating. 📋 PLANNED (Phase 15–16)
 - 🎙️ **Voice triggers in-call** — `"Jelly, …"` inside a WebRTC call. 📋 PLANNED (Phase 17)
 
@@ -40,7 +51,7 @@ Same tools, same schema, your infra.
      ┌──────────────────────────────────────────────────────────┐
      │   Consumers:  Genie  ·  jelly-claw  ·  jellyclaw CLI     │
      └────────┬────────────────┬───────────────────┬────────────┘
-              │ spawn          │ JSON-RPC          │ direct import
+              │ spawn          │ HTTP+SSE          │ direct import
      ┌────────▼────────────────▼───────────────────▼────────────┐
      │           Public API:  run() · AgentEvent · Engine       │
      ╰────────┬─────────────────────────────────────────────────╯
@@ -65,9 +76,17 @@ Same tools, same schema, your infra.
                        │  Anthropic API  │
                        │  (opus · sonnet)│
                        └─────────────────┘
+
+  Hosted surface (jellyclaw-prod.fly.dev):
+  ┌───────────────────────────────────────────────────────────┐
+  │   Caddy :80   ──┬──▶  /            →  static site/       │
+  │   (TLS@edge)    ├──▶  /tui/*       →  ttyd :7681 → TUI    │
+  │                 └──▶  /v1/*        →  jellyclaw serve     │
+  │                                       :8080               │
+  └───────────────────────────────────────────────────────────┘
 ```
 
-Three entry points drive the same core: the **TUI** (Ink), the **CLI** (`jellyclaw run`), and the **HTTP server** (`jellyclaw serve`). All speak the same `AgentEvent` event protocol. More detail in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+Three entry points drive the same core: the TUI (Ink), the CLI (`jellyclaw run`), and the HTTP server (`jellyclaw serve`). All speak the same `AgentEvent` event protocol. The Fly.io image ships all three behind one Caddy reverse proxy. More detail in [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) and [`DEPLOY.md`](./DEPLOY.md).
 
 ## ⚡ Quick Start
 
@@ -89,7 +108,7 @@ You should see:
 ```
 🪼  jellyclaw           open-source agent runtime · 1M context
     ──────────────────────────────────────────────────────────
-    claude-sonnet-4-5  ·  ~/your-project
+    claude-opus-4-7  ·  ~/your-project
 
     Type a prompt or / for commands.
 ```
@@ -100,25 +119,25 @@ Prefer a one-shot run without the TUI? Pipe a prompt in:
 ./engine/bin/jellyclaw run "list the files in this repo"
 ```
 
-A 60-second walkthrough lives at [`docs/GETTING-STARTED.md`](docs/GETTING-STARTED.md).
+A 60-second walkthrough lives at [`docs/GETTING-STARTED.md`](./docs/GETTING-STARTED.md).
 
 ## 🎮 TUI slash commands
 
-| Command           | What it does                                         |
-|-------------------|------------------------------------------------------|
-| `/help`           | List available commands                              |
-| `/model [name]`   | Switch model for the next run (no arg = show current)|
-| `/clear`          | Clear the transcript (keeps session)                 |
-| `/new`            | Start a fresh session                                |
-| `/sessions`       | List prior sessions (most recent first)              |
-| `/resume <id>`    | Resume a prior session by id                         |
-| `/cwd`            | Print the current working directory                  |
-| `/cost`           | Show session usage + cost                            |
-| `/cancel`         | Cancel the active run                                |
-| `/key`            | Rotate the API key (exits TUI — run `jellyclaw key`) |
-| `/end`            | Exit the TUI (aliases: `/exit`, `/quit`)             |
+| Command           | What it does                                                |
+| ----------------- | ----------------------------------------------------------- |
+| `/help`           | List available commands                                     |
+| `/model [name]`   | Switch model for the next run (no arg = show current)       |
+| `/clear`          | Clear the transcript (keeps session)                        |
+| `/new`            | Start a fresh session                                       |
+| `/sessions`       | List prior sessions (most recent first)                     |
+| `/resume <id>`    | Resume a prior session by id                                |
+| `/cwd`            | Print the current working directory                         |
+| `/cost`           | Show session usage + cost                                   |
+| `/cancel`         | Cancel the active run                                       |
+| `/key`            | Rotate the API key (exits TUI — run `jellyclaw key`)        |
+| `/end`            | Exit the TUI (aliases: `/exit`, `/quit`)                    |
 
-Full TUI reference: [`docs/tui.md`](docs/tui.md).
+Full TUI reference: [`docs/tui.md`](./docs/tui.md).
 
 ## 📡 HTTP API
 
@@ -139,7 +158,7 @@ Full TUI reference: [`docs/tui.md`](docs/tui.md).
     data: {"exit":0,"usage":...}  │   done
 ```
 
-Working `curl` example:
+Working curl example:
 
 ```bash
 # Generate a token, export it, start the server.
@@ -166,7 +185,7 @@ Sample SSE output:
 
 ```
 event: session.start
-data: {"sessionId":"sess_01hxy...","ts":"2026-04-15T20:00:00Z"}
+data: {"sessionId":"sess_01hxy...","ts":"2026-04-21T00:00:00Z"}
 
 event: message.delta
 data: {"text":"Hi!"}
@@ -178,37 +197,56 @@ event: done
 data: {"exit":0}
 ```
 
-Full reference: [`docs/http-api.md`](docs/http-api.md).
+Full reference: [`docs/http-api.md`](./docs/http-api.md).
 
 ## 🧪 Current Status
 
-Source of truth: [`STATUS.md`](STATUS.md).
+> Source of truth: [`STATUS.md`](./STATUS.md). Snapshot as of 2026-04-21:
 
-| Phase   | Name                                 | Status |
-|---------|--------------------------------------|--------|
-| 00      | Repo scaffolding                     | ✅ done |
-| 01      | Runtime bootstrap                    | ✅ done |
-| 02      | Config + provider layer              | ✅ done |
-| 03      | Event stream adapter                 | ✅ done |
-| 04      | Tool parity (11 tools)               | ✅ done |
-| 05      | Skills system                        | ✅ done |
-| 06      | Subagents + hook propagation         | ✅ done |
-| 07      | MCP client (stdio + HTTP + SSE)      | ✅ done |
-| 08      | Permission engine + hooks            | ✅ done |
-| 09      | Session persistence + resume        | ✅ done |
-| 10      | CLI + HTTP server + library          | ✅ done |
-| 10.5    | Interactive TUI                      | ✅ done |
-| 99      | Unfucking sprint                     | 🚧 5.5/8 |
-| 11      | Testing harness (5 golden prompts)   | 📋 planned |
-| 12–13   | Genie integration + cutover          | 📋 planned |
-| 14      | Observability (OTLP traces)          | 📋 planned |
-| 15–16   | Desktop app (Tauri 2)                | 📋 planned |
-| 17      | jelly-claw in-call integration       | 📋 planned |
-| 18      | Public OSS release                   | 📋 planned |
+| Phase | Name                                           | Status         |
+| ----- | ---------------------------------------------- | -------------- |
+| 00    | Repo scaffolding                               | ✅ done        |
+| 01    | Runtime bootstrap                              | ✅ done        |
+| 02    | Config + provider layer                        | ✅ done        |
+| 03    | Event stream adapter                           | ✅ done        |
+| 04    | Tool parity (11 tools)                         | ✅ done        |
+| 05    | Skills system                                  | ✅ done        |
+| 06    | Subagents + hook propagation                   | ✅ done        |
+| 07    | MCP client (stdio + HTTP + SSE)                | ✅ done        |
+| 07.5  | Chrome MCP (local + Browserbase)               | ✅ done        |
+| 08    | Permission engine + hooks + v1 tool surface    | ✅ done        |
+| 08h   | Hosting (Fly.io, Caddy, ttyd, CI/CD)           | ✅ done        |
+| 09    | Session persistence + resume                   | ✅ done        |
+| 10    | CLI + HTTP server + library                    | ✅ done        |
+| 10.5  | Interactive TUI                                | ✅ done        |
+| 99    | Unfucking sprint                               | 🚧 5/8 prompts |
+| 11    | Testing harness (5 golden prompts)             | 📋 planned     |
+| 12–13 | Genie integration + cutover                    | 📋 planned     |
+| 14    | Observability (OTLP traces)                    | 📋 planned     |
+| 15–16 | Desktop app (Tauri 2)                          | 📋 planned     |
+| 17    | jelly-claw in-call integration                 | 📋 planned     |
+| 18    | Public OSS release                             | 📋 planned     |
+
+**Suite health:** 2115 tests passing / 37 pre-existing failures (subprocess/perf-timeout flakes, not regressions) / 23 skipped across 182 files. Typecheck clean. Biome warnings down from peak.
+
+## 🚢 Deployment
+
+The full Fly.io stack is in the repo. `fly deploy --remote-only` builds a single image containing:
+
+- **Caddy** on `:80` — reverse proxy + static file server for `site/`, TLS terminated at the Fly edge.
+- **`jellyclaw-serve`** on `127.0.0.1:8080` — the HTTP API (`/v1/*`).
+- **ttyd** on `127.0.0.1:7681` — wraps `jellyclaw tui` for the browser terminal at `/tui/*`.
+- **tini** as PID 1, a small bash supervisor forks the three processes and restarts the machine if any exits.
+
+See [`DEPLOY.md`](./DEPLOY.md) for env vars, secrets, and a pre/post-deploy checklist. `scripts/deploy-fly.sh` is the one-shot helper. GitHub Actions (`.github/workflows/fly-deploy.yml`) auto-deploys on merge to `main`.
+
+Production and staging apps both live:
+- **Prod:** [jellyclaw-prod.fly.dev](https://jellyclaw-prod.fly.dev/) — `min_machines_running = 2`, rolling strategy
+- **Staging:** [jellyclaw-staging.fly.dev](https://jellyclaw-staging.fly.dev/) — single-machine
 
 ## 🗺️ Roadmap
 
-Q2 2026 → v1.0 engine ships. Q3 → jelly-claw voice triggers. Q4 → public GitHub + community skills registry. Details in [`ROADMAP.md`](ROADMAP.md).
+Q2 2026 → v1.0 engine ships. Q3 → jelly-claw voice triggers. Q4 → public GitHub + community skills registry. Details in [`ROADMAP.md`](./ROADMAP.md).
 
 ```
   2026                                                2027
@@ -235,22 +273,21 @@ bun run typecheck   # tsc --noEmit
 bun run build       # tsup → engine/dist/
 ```
 
-**Required env** (copy [`.env.example`](.env.example) to `.env.local`):
+Required env (copy `.env.example` to `.env.local`):
 
-| Var                       | Required? | Notes                                          |
-|---------------------------|-----------|------------------------------------------------|
-| `ANTHROPIC_API_KEY`       | yes (default) | Get one at https://console.anthropic.com   |
-| `OPENROUTER_API_KEY`      | opt-in    | Warn-on-startup; caching is lossy              |
-| `JELLYCLAW_TOKEN`         | server    | Bearer for `jellyclaw serve`                   |
-| `JELLYCLAW_LOG_LEVEL`     | no        | `trace \| debug \| info \| warn \| error \| silent` |
-| `JELLYCLAW_TELEMETRY_DISABLED` | no   | Telemetry is already off; flag exists for assertions |
+| Var                             | Required?     | Notes                                                         |
+| ------------------------------- | ------------- | ------------------------------------------------------------- |
+| `ANTHROPIC_API_KEY`             | yes (default) | Get one at https://console.anthropic.com                      |
+| `OPENROUTER_API_KEY`            | opt-in        | Warn-on-startup; caching is lossy                             |
+| `JELLYCLAW_TOKEN`               | server        | Bearer for `jellyclaw serve`                                  |
+| `JELLYCLAW_LOG_LEVEL`           | no            | `trace` \| `debug` \| `info` \| `warn` \| `error` \| `silent` |
+| `JELLYCLAW_TELEMETRY_DISABLED`  | no            | Telemetry is already off; flag exists for assertions          |
+| `JELLYCLAW_TUI_AUTH`            | deploy only   | `required` (basicauth) or `optional` (public)                 |
+| `JELLYCLAW_TUI_PASSWORD`        | if `required` | Shared password for `/tui/` when gated                        |
 
-**Point at OpenRouter** instead of Anthropic direct by setting
-`OPENROUTER_API_KEY` and passing a `openrouter/…` model string
-(e.g. `--model openrouter/anthropic/claude-sonnet-4`). jellyclaw will
-WARN on startup — [`docs/providers.md`](docs/providers.md) explains why.
+Point at OpenRouter instead of Anthropic direct by setting `OPENROUTER_API_KEY` and passing a `openrouter/…` model string (e.g. `--model openrouter/anthropic/claude-sonnet-4`). jellyclaw will WARN on startup — [`docs/providers.md`](./docs/providers.md) explains why.
 
-Repo conventions (strict TS, no `console.log`, Biome, Vitest, conventional commits) live in [`CLAUDE.md`](CLAUDE.md).
+Repo conventions (strict TS, no `console.log`, Biome, Vitest, conventional commits, no `Co-Authored-By` trailers) live in [`CLAUDE.md`](./CLAUDE.md).
 
 ## 📐 Design: one request, end to end
 
@@ -287,27 +324,27 @@ Repo conventions (strict TS, no `console.log`, Biome, Vitest, conventional commi
 
 ## 🎨 Theme
 
-The jellyjelly palette lives at [`engine/src/tui/theme/brand.ts`](engine/src/tui/theme/brand.ts). Five semantic colors over a deep-sea base:
+The jellyjelly palette lives at [`engine/src/tui/theme/brand.ts`](./engine/src/tui/theme/brand.ts). Five semantic colors over a deep-sea base:
 
-| Swatch | Hex        | Name            | Used for                             |
-|--------|------------|-----------------|--------------------------------------|
-| 🟦     | `#3BA7FF`  | Jelly Cyan      | bell / primary focus / user accent   |
-| 🟪     | `#9E7BFF`  | Medusa Violet   | tentacle glow / assistant accent     |
-| 🟧     | `#FFB547`  | Amber Eye       | heartbeat / warning / tool emphasis  |
-| 🟥     | `#FF6FB5`  | Blush Pink      | "candid" highlight / rim accent      |
-| ⬛     | `#0A1020`  | Abyss           | background                           |
+| Swatch | Hex       | Name            | Used for                                |
+| ------ | --------- | --------------- | --------------------------------------- |
+| 🟦     | `#3BA7FF` | Jelly Cyan      | bell / primary focus / user accent      |
+| 🟪     | `#9E7BFF` | Medusa Violet   | tentacle glow / assistant accent        |
+| 🟧     | `#FFB547` | Amber Eye       | heartbeat / warning / tool emphasis     |
+| 🟥     | `#FF6FB5` | Blush Pink      | "candid" highlight / rim accent         |
+| ⬛     | `#0A1020` | Abyss           | background                              |
 
 Per-session variance hashes the session id to pick one of five accent rotations, so each session looks distinct without straying from the palette.
 
 ## 🤝 Contributing
 
-PRs are welcome — please **open an issue first**. Work happens phase-by-phase in [`phases/`](phases/), and random code before the phase it belongs to tends to get thrown away. Repo conventions are in [`CLAUDE.md`](CLAUDE.md).
+PRs are welcome — please open an issue first. Work happens phase-by-phase in [`phases/`](./phases/), and random code before the phase it belongs to tends to get thrown away. Repo conventions are in [`CLAUDE.md`](./CLAUDE.md).
 
-Work through phases **in order**. Each phase has an objective, a definition of done, a test plan, and a rollback plan. Do not start Phase N+1 until Phase N's DoD passes.
+Work through phases in order. Each phase has an objective, a definition of done, a test plan, and a rollback plan. Do not start Phase N+1 until Phase N's DoD passes.
 
 ## 📜 License
 
-[MIT](LICENSE) — use it, fork it, embed it, ship it. No warranty.
+MIT — use it, fork it, embed it, ship it. No warranty.
 
 ## 👤 Author
 
@@ -315,11 +352,12 @@ Work through phases **in order**. Each phase has an objective, a definition of d
 
 ## 🙏 Acknowledgments
 
-- **Anthropic** — the Claude Code UX jellyclaw is built to preserve.
-- [**Genie**](https://github.com/gtrush03/genie-2.0) — first consumer and north-star.
+- **[Anthropic](https://anthropic.com)** — the Claude Code UX jellyclaw is built to preserve; the models it talks to.
+- **[OpenCode](https://github.com/sst/opencode)** — the upstream agent-loop library jellyclaw wraps at `>= 1.4.4`.
+- **[ttyd](https://github.com/tsl0922/ttyd)** — the web-terminal that makes the browser TUI possible.
+- **[Caddy](https://caddyserver.com)** — the reverse proxy fronting the hosted stack.
+- **[Fly.io](https://fly.io)** — where the hosted stack runs.
+- **[Playwright](https://playwright.dev)** + **[Browserbase](https://browserbase.com)** — local and cloud Chrome for the browser tool.
+- **[Genie](https://github.com/gtrush03/genie-2.0)** — first consumer and north-star.
 
----
-
-<div align="center">
-<sub>🪼 jellyclaw is infrastructure, not a product. Users see <b>Genie</b> or <b>jelly-claw</b>; jellyclaw is the engine underneath.</sub>
-</div>
+> 🪼 jellyclaw is infrastructure, not a product. Users see Genie or jelly-claw; jellyclaw is the engine underneath.
